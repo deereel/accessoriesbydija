@@ -8,6 +8,7 @@
     <link rel="canonical" href="<?php echo 'https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']; ?>">
     <link rel="stylesheet" href="assets/css/header.css">
     <link rel="stylesheet" href="assets/css/hero.css">
+    <link rel="stylesheet" href="assets/css/category-section.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
@@ -31,6 +32,19 @@
                     <i class="fas fa-shopping-bag"></i>
                     <span class="cart-count">0</span>
                 </a>
+                <div class="currency-selector">
+                    <button class="currency-btn" id="currency-btn">
+                        <span id="current-currency">GBP</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="currency-dropdown" id="currency-dropdown">
+                        <div class="currency-option" data-currency="GBP">£ GBP</div>
+                        <div class="currency-option" data-currency="USD">$ USD</div>
+                        <div class="currency-option" data-currency="EUR">€ EUR</div>
+                        <div class="currency-option" data-currency="CNY">¥ CNY</div>
+                        <div class="currency-option" data-currency="NGN">₦ NGN</div>
+                    </div>
+                </div>
                 <div class="hamburger" id="hamburger">
                     <span></span>
                     <span></span>
@@ -67,7 +81,7 @@
                             <div class="placeholder-img">Product <?php echo $i; ?></div>
                         </div>
                         <h4>New Product <?php echo $i; ?></h4>
-                        <p class="price">$<?php echo rand(50, 500); ?></p>
+                        <p class="price">£<?php echo rand(50, 500); ?></p>
                     </div>
                     <?php endfor; ?>
                 </div>
@@ -97,9 +111,9 @@
                         <a href="category.php?cat=men&sub=rings">Rings</a>
                         <a href="category.php?cat=men&sub=bracelets">Bracelets</a>
                         <a href="category.php?cat=men&sub=necklaces">Necklaces</a>
-                        <a href="category.php?cat=men&sub=bangles">Bangles/Cuffs</a>
-                        <a href="category.php?cat=men&sub=anklets">Anklets</a>
-                        <a href="category.php?cat=men&sub=earrings">Earrings</a>
+                        <a href="category.php?cat=men&sub=chains">Chains</a>
+                        <a href="category.php?cat=men&sub=watches">Watches</a>
+                        <a href="category.php?cat=men&sub=cufflinks">Cufflinks</a>
                     </div>
                     <div class="promo-banner">
                         <div class="placeholder-banner">Men's Collection</div>

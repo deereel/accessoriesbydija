@@ -45,42 +45,89 @@ include 'includes/header.php';
     </section>
 
 
-    <!-- Featured Categories -->
-    <section class="featured-categories" itemscope itemtype="https://schema.org/ItemList">
+    <!-- Shop by Category -->
+    <section class="shop-by-category">
         <div class="container">
-            <h2 itemprop="name">Shop by Category</h2>
-            <p class="category-intro">Explore our curated jewelry collections, each piece designed with precision and crafted using premium materials. From everyday elegance to special occasion statements.</p>
-            <div class="category-grid">
-                <div class="category-card" itemprop="itemListElement" itemscope itemtype="https://schema.org/Product">
-                    <img src="assets/images/rings-category.jpg" alt="Premium rings collection including engagement rings, wedding bands, and fashion rings" loading="lazy" itemprop="image">
-                    <div class="category-info">
-                        <h3 itemprop="name">Rings</h3>
-                        <p itemprop="description">Elegant rings for every style - engagement, wedding, fashion, and statement pieces crafted in gold, silver, and platinum</p>
-                        <a href="category.php?sub=rings" class="btn-link">Shop Rings</a>
+            <h2>Shop by Category</h2>
+            <p class="section-intro">Discover our curated collections designed for every style and occasion</p>
+            
+            <div class="main-categories">
+                <button class="category-btn" data-category="women" onclick="toggleCategory('women')">
+                    <div class="category-icon">♀</div>
+                    <h3>Women</h3>
+                    <p>Elegant jewelry for her</p>
+                </button>
+                <button class="category-btn" data-category="men" onclick="toggleCategory('men')">
+                    <div class="category-icon">♂</div>
+                    <h3>Men</h3>
+                    <p>Sophisticated pieces for him</p>
+                </button>
+            </div>
+            
+            <div class="subcategories" id="subcategories">
+                <div class="subcategory-grid" id="women-subcategories" style="display: none;">
+                    <div class="subcategory-card" onclick="location.href='category.php?cat=women&sub=rings'">
+                        <div class="subcategory-image">💍</div>
+                        <h4>Rings</h4>
+                        <p>Engagement, wedding & fashion rings</p>
+                    </div>
+                    <div class="subcategory-card" onclick="location.href='category.php?cat=women&sub=earrings'">
+                        <div class="subcategory-image">👂</div>
+                        <h4>Earrings</h4>
+                        <p>Studs, hoops & statement pieces</p>
+                    </div>
+                    <div class="subcategory-card" onclick="location.href='category.php?cat=women&sub=necklaces'">
+                        <div class="subcategory-image">📿</div>
+                        <h4>Necklaces</h4>
+                        <p>Pendants, chains & chokers</p>
+                    </div>
+                    <div class="subcategory-card" onclick="location.href='category.php?cat=women&sub=bracelets'">
+                        <div class="subcategory-image">💎</div>
+                        <h4>Bracelets</h4>
+                        <p>Tennis, charm & chain bracelets</p>
+                    </div>
+                    <div class="subcategory-card" onclick="location.href='category.php?cat=women&sub=bangles'">
+                        <div class="subcategory-image">⭕</div>
+                        <h4>Bangles/Cuffs</h4>
+                        <p>Statement bangles & cuffs</p>
+                    </div>
+                    <div class="subcategory-card" onclick="location.href='category.php?cat=women&sub=anklets'">
+                        <div class="subcategory-image">🦶</div>
+                        <h4>Anklets</h4>
+                        <p>Delicate ankle jewelry</p>
                     </div>
                 </div>
-                <div class="category-card" itemprop="itemListElement" itemscope itemtype="https://schema.org/Product">
-                    <img src="assets/images/necklaces-category.jpg" alt="Luxury necklaces collection featuring pendants, chains, and statement pieces" loading="lazy" itemprop="image">
-                    <div class="category-info">
-                        <h3 itemprop="name">Necklaces</h3>
-                        <p itemprop="description">Statement pieces and delicate chains - from minimalist pendants to bold statement necklaces in precious metals</p>
-                        <a href="category.php?sub=necklaces" class="btn-link">Shop Necklaces</a>
+                
+                <div class="subcategory-grid" id="men-subcategories" style="display: none;">
+                    <div class="subcategory-card" onclick="location.href='category.php?cat=men&sub=rings'">
+                        <div class="subcategory-image">💍</div>
+                        <h4>Rings</h4>
+                        <p>Wedding bands & signet rings</p>
                     </div>
-                </div>
-                <div class="category-card" itemprop="itemListElement" itemscope itemtype="https://schema.org/Product">
-                    <img src="assets/images/earrings-category.jpg" alt="Designer earrings collection including studs, hoops, and drop earrings" loading="lazy" itemprop="image">
-                    <div class="category-info">
-                        <h3 itemprop="name">Earrings</h3>
-                        <p itemprop="description">From studs to statement drops - diamond studs, pearl drops, gold hoops, and chandelier earrings for every occasion</p>
-                        <a href="category.php?sub=earrings" class="btn-link">Shop Earrings</a>
+                    <div class="subcategory-card" onclick="location.href='category.php?cat=men&sub=bracelets'">
+                        <div class="subcategory-image">⛓️</div>
+                        <h4>Bracelets</h4>
+                        <p>Leather, metal & beaded</p>
                     </div>
-                </div>
-                <div class="category-card" itemprop="itemListElement" itemscope itemtype="https://schema.org/Product">
-                    <img src="assets/images/bracelets-category.jpg" alt="Luxury bracelets collection featuring tennis bracelets, bangles, and charm bracelets" loading="lazy" itemprop="image">
-                    <div class="category-info">
-                        <h3 itemprop="name">Bracelets</h3>
-                        <p itemprop="description">Elegant wrist accessories - tennis bracelets, charm bracelets, bangles, and cuffs in gold, silver, and diamond</p>
-                        <a href="category.php?sub=bracelets" class="btn-link">Shop Bracelets</a>
+                    <div class="subcategory-card" onclick="location.href='category.php?cat=men&sub=necklaces'">
+                        <div class="subcategory-image">📿</div>
+                        <h4>Necklaces</h4>
+                        <p>Pendants & dog tags</p>
+                    </div>
+                    <div class="subcategory-card" onclick="location.href='category.php?cat=men&sub=chains'">
+                        <div class="subcategory-image">🔗</div>
+                        <h4>Chains</h4>
+                        <p>Gold, silver & steel chains</p>
+                    </div>
+                    <div class="subcategory-card" onclick="location.href='category.php?cat=men&sub=watches'">
+                        <div class="subcategory-image">⌚</div>
+                        <h4>Watches</h4>
+                        <p>Luxury timepieces</p>
+                    </div>
+                    <div class="subcategory-card" onclick="location.href='category.php?cat=men&sub=cufflinks'">
+                        <div class="subcategory-image">🔘</div>
+                        <h4>Cufflinks</h4>
+                        <p>Elegant shirt accessories</p>
                     </div>
                 </div>
             </div>
