@@ -134,6 +134,42 @@ include 'includes/header.php';
         </div>
     </section>
 
+    <!-- Collection Banner Swiper -->
+    <section class="collection-banners">
+        <div class="banner-swiper">
+            <div class="banner-slide active" data-bg="assets/images/golden-hour-banner.jpg">
+                <div class="banner-content">
+                    <h2>Golden Hour Glow</h2>
+                    <p>Discover our exclusive collection of warm-toned jewelry that captures the magic of golden hour</p>
+                    <a href="collection.php?name=golden-hour" class="banner-btn">Shop Collection</a>
+                </div>
+            </div>
+            <div class="banner-slide" data-bg="assets/images/luxury-banner.jpg">
+                <div class="banner-content">
+                    <h2>Luxury Collection</h2>
+                    <p>Exquisite pieces crafted with the finest materials and exceptional attention to detail</p>
+                    <a href="collection.php?name=luxury" class="banner-btn">Explore Luxury</a>
+                </div>
+            </div>
+            <div class="banner-slide" data-bg="assets/images/holiday-banner.jpg">
+                <div class="banner-content">
+                    <h2>Holiday Sale</h2>
+                    <p>Special offers on selected jewelry pieces - perfect gifts for your loved ones</p>
+                    <a href="sale.php" class="banner-btn">Shop Sale</a>
+                </div>
+            </div>
+        </div>
+        <div class="banner-nav">
+            <button class="banner-prev" onclick="changeBannerSlide(-1)"><i class="fas fa-chevron-left"></i></button>
+            <button class="banner-next" onclick="changeBannerSlide(1)"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <div class="banner-dots">
+            <span class="banner-dot active" onclick="currentBannerSlide(1)"></span>
+            <span class="banner-dot" onclick="currentBannerSlide(2)"></span>
+            <span class="banner-dot" onclick="currentBannerSlide(3)"></span>
+        </div>
+    </section>
+
     <!-- Featured Products -->
     <section class="featured-products">
         <div class="container">

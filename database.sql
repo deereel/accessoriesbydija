@@ -4,7 +4,7 @@ CREATE DATABASE IF NOT EXISTS dija_accessories;
 USE dija_accessories;
 
 -- Categories table
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     slug VARCHAR(100) UNIQUE NOT NULL,
@@ -19,7 +19,7 @@ CREATE TABLE categories (
 );
 
 -- Products table
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(255) UNIQUE NOT NULL,
@@ -43,7 +43,7 @@ CREATE TABLE products (
 );
 
 -- Product categories relationship
-CREATE TABLE product_categories (
+CREATE TABLE IF NOT EXISTS product_categories (
     product_id INT,
     category_id INT,
     PRIMARY KEY (product_id, category_id),
@@ -52,7 +52,7 @@ CREATE TABLE product_categories (
 );
 
 -- Product images
-CREATE TABLE product_images (
+CREATE TABLE IF NOT EXISTS product_images (
     id INT PRIMARY KEY AUTO_INCREMENT,
     product_id INT NOT NULL,
     image_url VARCHAR(255) NOT NULL,
@@ -64,7 +64,7 @@ CREATE TABLE product_images (
 );
 
 -- Customers table
-CREATE TABLE customers (
+CREATE TABLE IF NOT EXISTS customers (
     id INT PRIMARY KEY AUTO_INCREMENT,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
@@ -79,7 +79,7 @@ CREATE TABLE customers (
 );
 
 -- Customer addresses
-CREATE TABLE customer_addresses (
+CREATE TABLE IF NOT EXISTS customer_addresses (
     id INT PRIMARY KEY AUTO_INCREMENT,
     customer_id INT NOT NULL,
     type ENUM('billing', 'shipping') NOT NULL,
@@ -98,7 +98,7 @@ CREATE TABLE customer_addresses (
 );
 
 -- Orders table
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
     id INT PRIMARY KEY AUTO_INCREMENT,
     customer_id INT,
     order_number VARCHAR(50) UNIQUE NOT NULL,
@@ -118,7 +118,7 @@ CREATE TABLE orders (
 );
 
 -- Order items
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTS order_items (
     id INT PRIMARY KEY AUTO_INCREMENT,
     order_id INT NOT NULL,
     product_id INT NOT NULL,
@@ -133,7 +133,7 @@ CREATE TABLE order_items (
 );
 
 -- Custom jewelry requests
-CREATE TABLE custom_requests (
+CREATE TABLE IF NOT EXISTS custom_requests (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
@@ -153,7 +153,7 @@ CREATE TABLE custom_requests (
 );
 
 -- Testimonials
-CREATE TABLE testimonials (
+CREATE TABLE IF NOT EXISTS testimonials (
     id INT PRIMARY KEY AUTO_INCREMENT,
     customer_name VARCHAR(255) NOT NULL,
     email VARCHAR(255),
@@ -168,7 +168,7 @@ CREATE TABLE testimonials (
 );
 
 -- Banners/Promotions
-CREATE TABLE banners (
+CREATE TABLE IF NOT EXISTS banners (
     id INT PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
     subtitle VARCHAR(255),
@@ -186,7 +186,7 @@ CREATE TABLE banners (
 );
 
 -- Newsletter subscribers
-CREATE TABLE newsletter_subscribers (
+CREATE TABLE IF NOT EXISTS newsletter_subscribers (
     id INT PRIMARY KEY AUTO_INCREMENT,
     email VARCHAR(255) UNIQUE NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
@@ -194,8 +194,58 @@ CREATE TABLE newsletter_subscribers (
     unsubscribed_at TIMESTAMP NULL
 );
 
+-- Admin users
+CREATE TABLE IF NOT EXISTS admin_users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    full_name VARCHAR(255),
+    role ENUM('admin', 'manager') DEFAULT 'admin',
+    is_active BOOLEAN DEFAULT TRUE,
+    last_login TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Collection banners
+CREATE TABLE IF NOT EXISTS collection_banners (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,
+    subtitle VARCHAR(255),
+    image_url VARCHAR(255) NOT NULL,
+    link_url VARCHAR(255),
+    button_text VARCHAR(100),
+    sort_order INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Currency settings
+CREATE TABLE IF NOT EXISTS currency_settings (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    code VARCHAR(3) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    symbol VARCHAR(10) NOT NULL,
+    exchange_rate DECIMAL(10,6) DEFAULT 1.000000,
+    is_default BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,
+    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Site settings
+CREATE TABLE IF NOT EXISTS site_settings (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    setting_key VARCHAR(100) UNIQUE NOT NULL,
+    setting_value TEXT,
+    setting_type ENUM('text', 'number', 'boolean', 'json') DEFAULT 'text',
+    description VARCHAR(255),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 -- Insert sample categories
-INSERT INTO categories (name, slug, description) VALUES
+INSERT IGNORE INTO categories (name, slug, description) VALUES
 ('Women', 'women', 'Jewelry collection for women'),
 ('Men', 'men', 'Jewelry collection for men'),
 ('Rings', 'rings', 'Beautiful rings for all occasions'),
@@ -207,21 +257,49 @@ INSERT INTO categories (name, slug, description) VALUES
 ('Sets', 'sets', 'Complete jewelry sets');
 
 -- Insert sample products
-INSERT INTO products (name, slug, description, short_description, sku, price, material, stone_type, gender, is_featured) VALUES
+INSERT IGNORE INTO products (name, slug, description, short_description, sku, price, material, stone_type, gender, is_featured) VALUES
 ('Diamond Solitaire Ring', 'diamond-solitaire-ring', 'Elegant diamond solitaire ring crafted in 14k gold', 'Classic solitaire ring with brilliant cut diamond', 'DSR001', 299.00, 'Gold', 'Diamond', 'women', TRUE),
 ('Pearl Drop Earrings', 'pearl-drop-earrings', 'Beautiful pearl drop earrings in sterling silver', 'Elegant pearl earrings perfect for any occasion', 'PDE001', 89.00, 'Silver', 'Pearl', 'women', TRUE),
 ('Gold Chain Necklace', 'gold-chain-necklace', 'Classic gold chain necklace, perfect for layering', '18-inch gold chain necklace', 'GCN001', 159.00, 'Gold', NULL, 'unisex', TRUE),
 ('Silver Charm Bracelet', 'silver-charm-bracelet', 'Sterling silver charm bracelet with heart charm', 'Adjustable silver bracelet with charm', 'SCB001', 79.00, 'Silver', NULL, 'women', TRUE);
 
 -- Link products to categories
-INSERT INTO product_categories (product_id, category_id) VALUES
+INSERT IGNORE INTO product_categories (product_id, category_id) VALUES
 (1, 1), (1, 3), -- Diamond ring -> Women, Rings
 (2, 1), (2, 5), -- Pearl earrings -> Women, Earrings  
 (3, 4), -- Gold necklace -> Necklaces
 (4, 1), (4, 6); -- Silver bracelet -> Women, Bracelets
 
 -- Insert sample testimonials
-INSERT INTO testimonials (customer_name, rating, title, content, is_featured, is_approved) VALUES
+INSERT IGNORE INTO testimonials (customer_name, rating, title, content, is_featured, is_approved) VALUES
 ('Sarah M.', 5, 'Beautiful quality jewelry', 'Beautiful quality jewelry and excellent customer service. My custom engagement ring exceeded all expectations!', TRUE, TRUE),
 ('Michael R.', 5, 'Fast shipping', 'Fast shipping and gorgeous pieces. The necklace I ordered looks even better in person.', TRUE, TRUE),
 ('Emma L.', 5, 'Amazing craftsmanship', 'Amazing craftsmanship and attention to detail. Will definitely be ordering again!', TRUE, TRUE);
+
+-- Insert default admin user (username: admin, password: admin123)
+INSERT IGNORE INTO admin_users (username, password_hash, email, full_name) VALUES
+('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin@dijaccessories.com', 'Administrator');
+
+-- Insert sample collection banners
+INSERT IGNORE INTO collection_banners (title, subtitle, image_url, link_url, button_text, sort_order) VALUES
+('New Arrivals', 'Discover our latest jewelry collection', 'assets/images/banners/new-arrivals.jpg', '/category/new', 'Shop Now', 1),
+('Wedding Collection', 'Perfect pieces for your special day', 'assets/images/banners/wedding.jpg', '/category/wedding', 'Explore', 2),
+('Gift Sets', 'Beautiful jewelry gift sets', 'assets/images/banners/gift-sets.jpg', '/category/sets', 'Shop Gifts', 3);
+
+-- Insert currency settings
+INSERT IGNORE INTO currency_settings (code, name, symbol, exchange_rate, is_default, is_active) VALUES
+('GBP', 'British Pound', '£', 1.000000, TRUE, TRUE),
+('USD', 'US Dollar', '$', 1.270000, FALSE, TRUE),
+('EUR', 'Euro', '€', 1.170000, FALSE, TRUE),
+('CNY', 'Chinese Yuan', '¥', 9.100000, FALSE, TRUE),
+('NGN', 'Nigerian Naira', '₦', 1050.000000, FALSE, TRUE);
+
+-- Insert site settings
+INSERT IGNORE INTO site_settings (setting_key, setting_value, setting_type, description) VALUES
+('site_name', 'Dija Accessories', 'text', 'Website name'),
+('site_tagline', 'Premium Jewelry for Every Occasion', 'text', 'Website tagline'),
+('default_currency', 'GBP', 'text', 'Default currency code'),
+('exchange_api_key', '', 'text', 'Exchange rate API key'),
+('products_per_page', '12', 'number', 'Products per page in listings'),
+('enable_reviews', 'true', 'boolean', 'Enable product reviews'),
+('maintenance_mode', 'false', 'boolean', 'Site maintenance mode');

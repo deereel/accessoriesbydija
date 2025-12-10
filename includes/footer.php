@@ -48,6 +48,7 @@
     <script src="assets/js/header.js"></script>
     <script src="assets/js/hero.js"></script>
     <script src="assets/js/category-section.js"></script>
+    <script src="assets/js/collection-banners.js"></script>
     <script src="assets/js/currency.js"></script>
 </body>
 </html>

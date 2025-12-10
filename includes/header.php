@@ -1,3 +1,9 @@
+<?php
+session_start();
+require_once 'config/security.php';
+require_once 'config/seo.php';
+require_once 'config/cache.php';
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,6 +15,7 @@
     <link rel="stylesheet" href="assets/css/header.css">
     <link rel="stylesheet" href="assets/css/hero.css">
     <link rel="stylesheet" href="assets/css/category-section.css">
+    <link rel="stylesheet" href="assets/css/collection-banners.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
