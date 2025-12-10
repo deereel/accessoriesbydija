@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://accessoriesbydija.com/sitemap.xml
+
+# Disallow admin areas
+Disallow: /admin/
+Disallow: /config/
+Disallow: *.sql
+
+# Allow important pages for crawling
+Allow: /category/
+Allow: /product/
+Allow: /custom-jewelry.php
+Allow: /assets/css/
+Allow: /assets/js/
+Allow: /assets/images/
