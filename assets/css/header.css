@@ -110,14 +110,28 @@ body {
     display: none;
     flex-direction: column;
     cursor: pointer;
-    gap: 3px;
+    gap: 4px;
+    padding: 5px;
 }
 
 .hamburger span {
-    width: 20px;
-    height: 2px;
+    width: 22px;
+    height: 3px;
     background: #222;
-    transition: 0.3s;
+    transition: 0.3s ease;
+    border-radius: 2px;
+}
+
+.hamburger.active span:nth-child(1) {
+    transform: rotate(45deg) translate(6px, 6px);
+}
+
+.hamburger.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -6px);
 }
 
 /* Currency Selector */
@@ -400,7 +414,22 @@ body {
     }
     
     .search-container {
+        display: block;
+        flex: none;
+        max-width: none;
+        width: auto;
+    }
+    
+    .search-container input {
         display: none;
+    }
+    
+    .search-container i {
+        position: static;
+        font-size: 18px;
+        color: #222;
+        cursor: pointer;
+        padding: 5px;
     }
     
     .logo a {
@@ -411,19 +440,35 @@ body {
         display: flex;
     }
     
+
+    
     .main-nav {
-        display: none;
         position: fixed;
         top: 0;
-        right: -300px;
+        right: -100%;
         width: 300px;
         height: 100vh;
-        background: white;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        display: flex;
         flex-direction: column;
-        padding: 80px 20px 20px;
+        padding: 20px;
         box-shadow: -2px 0 10px rgba(0,0,0,0.1);
-        transition: right 0.3s;
+        transition: right 0.3s ease;
         z-index: 1001;
+    }
+    
+    .mobile-close {
+        align-self: flex-end;
+        font-size: 24px;
+        color: #222;
+        cursor: pointer;
+        margin-bottom: 20px;
+        padding: 10px;
+    }
+    
+    .mobile-close:hover {
+        color: #C27BA0;
     }
     
     .main-nav.active {

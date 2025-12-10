@@ -1,235 +1,83 @@
 <?php
-$category = $_GET['cat'] ?? '';
-$subcategory = $_GET['sub'] ?? '';
-
-$page_title = ucfirst($subcategory ?: $category);
-$page_description = "Browse our premium " . ($subcategory ?: $category) . " collection at Dija Accessories. Quality jewelry for every occasion.";
-
+$page_title = "Category";
+$page_description = "Browse our jewelry collection by category.";
 include 'includes/header.php';
+
+$category = $_GET['cat'] ?? 'all';
+$subcategory = $_GET['sub'] ?? '';
 ?>
 
+<style>
+.category-container { max-width: 1400px; margin: 0 auto; padding: 40px 20px; }
+.category-header { text-align: center; margin-bottom: 40px; }
+.category-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; }
+.category-card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: transform 0.3s; }
+.category-card:hover { transform: translateY(-5px); }
+.category-image { height: 250px; background: linear-gradient(135deg, #f5f5f5, #e8e8e8); display: flex; align-items: center; justify-content: center; font-size: 48px; color: #999; }
+.category-info { padding: 25px; text-align: center; }
+.category-name { font-size: 24px; font-weight: 600; margin-bottom: 10px; }
+.category-description { color: #666; margin-bottom: 20px; }
+.category-btn { background: #C27BA0; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; text-decoration: none; display: inline-block; }
+</style>
+
 <main>
-    <section class="category-hero">
-        <div class="container">
-            <div class="breadcrumb">
-                <a href="index.php">Home</a>
-                <?php if ($category): ?>
-                    <span>/</span>
-                    <a href="category.php?cat=<?php echo $category; ?>"><?php echo ucfirst($category); ?></a>
-                <?php endif; ?>
-                <?php if ($subcategory): ?>
-                    <span>/</span>
-                    <span><?php echo ucfirst($subcategory); ?></span>
-                <?php endif; ?>
-            </div>
-            <h1><?php echo ucfirst($subcategory ?: $category); ?> Collection</h1>
-            <p>Discover our exquisite <?php echo strtolower($subcategory ?: $category); ?> crafted with precision and elegance</p>
+    <div class="category-container">
+        <div class="category-header">
+            <h1><?= ucfirst($category) ?> Collection</h1>
+            <p>Discover our exquisite jewelry pieces</p>
         </div>
-    </section>
 
-    <section class="category-content">
-        <div class="container">
-            <div class="category-layout">
-                <aside class="filters">
-                    <h3>Filter By</h3>
-                    
-                    <div class="filter-group">
-                        <h4>Price Range</h4>
-                        <div class="price-range">
-                            <input type="range" id="price-min" min="0" max="1000" value="0">
-                            <input type="range" id="price-max" min="0" max="1000" value="1000">
-                            <div class="price-display">
-                                <span>$<span id="min-price">0</span></span>
-                                <span>$<span id="max-price">1000</span></span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="filter-group">
-                        <h4>Material</h4>
-                        <label><input type="checkbox" value="gold"> Gold</label>
-                        <label><input type="checkbox" value="silver"> Silver</label>
-                        <label><input type="checkbox" value="platinum"> Platinum</label>
-                        <label><input type="checkbox" value="rose-gold"> Rose Gold</label>
-                    </div>
-
-                    <div class="filter-group">
-                        <h4>Stone Type</h4>
-                        <label><input type="checkbox" value="diamond"> Diamond</label>
-                        <label><input type="checkbox" value="ruby"> Ruby</label>
-                        <label><input type="checkbox" value="emerald"> Emerald</label>
-                        <label><input type="checkbox" value="sapphire"> Sapphire</label>
-                        <label><input type="checkbox" value="pearl"> Pearl</label>
-                    </div>
-
-                    <?php if ($subcategory === 'rings'): ?>
-                    <div class="filter-group">
-                        <h4>Ring Size</h4>
-                        <select id="ring-size">
-                            <option value="">Select Size</option>
-                            <option value="5">5</option>
-                            <option value="6">6</option>
-                            <option value="7">7</option>
-                            <option value="8">8</option>
-                            <option value="9">9</option>
-                            <option value="10">10</option>
-                        </select>
-                    </div>
-                    <?php endif; ?>
-                </aside>
-
-                <div class="products-section">
-                    <div class="products-header">
-                        <div class="results-count">
-                            <span id="product-count">Loading...</span> products found
-                        </div>
-                        <div class="sort-options">
-                            <select id="sort-by">
-                                <option value="featured">Featured</option>
-                                <option value="price-low">Price: Low to High</option>
-                                <option value="price-high">Price: High to Low</option>
-                                <option value="newest">Newest First</option>
-                                <option value="rating">Highest Rated</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="product-grid" id="product-grid">
-                        <!-- Products loaded via JavaScript -->
-                    </div>
-
-                    <div class="pagination" id="pagination">
-                        <!-- Pagination loaded via JavaScript -->
-                    </div>
+        <div class="category-grid">
+            <?php if ($category === 'women' || $category === 'all'): ?>
+            <div class="category-card">
+                <div class="category-image">💍</div>
+                <div class="category-info">
+                    <h3 class="category-name">Rings</h3>
+                    <p class="category-description">Elegant rings for every occasion</p>
+                    <a href="products.php?category=rings" class="category-btn">Shop Rings</a>
                 </div>
             </div>
+            
+            <div class="category-card">
+                <div class="category-image">📿</div>
+                <div class="category-info">
+                    <h3 class="category-name">Necklaces</h3>
+                    <p class="category-description">Beautiful necklaces to complement your style</p>
+                    <a href="products.php?category=necklaces" class="category-btn">Shop Necklaces</a>
+                </div>
+            </div>
+            
+            <div class="category-card">
+                <div class="category-image">👂</div>
+                <div class="category-info">
+                    <h3 class="category-name">Earrings</h3>
+                    <p class="category-description">Stunning earrings for any look</p>
+                    <a href="products.php?category=earrings" class="category-btn">Shop Earrings</a>
+                </div>
+            </div>
+            <?php endif; ?>
+            
+            <?php if ($category === 'men' || $category === 'all'): ?>
+            <div class="category-card">
+                <div class="category-image">⌚</div>
+                <div class="category-info">
+                    <h3 class="category-name">Watches</h3>
+                    <p class="category-description">Luxury timepieces for men</p>
+                    <a href="products.php?category=watches" class="category-btn">Shop Watches</a>
+                </div>
+            </div>
+            
+            <div class="category-card">
+                <div class="category-image">🔗</div>
+                <div class="category-info">
+                    <h3 class="category-name">Chains</h3>
+                    <p class="category-description">Bold chains and pendants</p>
+                    <a href="products.php?category=chains" class="category-btn">Shop Chains</a>
+                </div>
+            </div>
+            <?php endif; ?>
         </div>
-    </section>
+    </div>
 </main>
-
-<style>
-.category-hero {
-    background: linear-gradient(135deg, #f8f8f8 0%, #fff 100%);
-    padding: 2rem 0;
-    margin-top: 80px;
-}
-
-.breadcrumb {
-    margin-bottom: 1rem;
-    color: #666;
-}
-
-.breadcrumb a {
-    color: #c487a5;
-    text-decoration: none;
-}
-
-.breadcrumb span {
-    margin: 0 0.5rem;
-}
-
-.category-content {
-    padding: 2rem 0;
-}
-
-.category-layout {
-    display: grid;
-    grid-template-columns: 250px 1fr;
-    gap: 2rem;
-}
-
-.filters {
-    background: #f8f8f8;
-    padding: 1.5rem;
-    border-radius: 8px;
-    height: fit-content;
-}
-
-.filter-group {
-    margin-bottom: 2rem;
-}
-
-.filter-group h4 {
-    margin-bottom: 1rem;
-    color: #333;
-}
-
-.filter-group label {
-    display: block;
-    margin-bottom: 0.5rem;
-    cursor: pointer;
-}
-
-.filter-group input[type="checkbox"] {
-    margin-right: 0.5rem;
-}
-
-.price-range {
-    margin-top: 1rem;
-}
-
-.price-display {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 0.5rem;
-    font-weight: 600;
-}
-
-.products-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid #eee;
-}
-
-.product-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 2rem;
-    margin-bottom: 2rem;
-}
-
-.pagination {
-    display: flex;
-    justify-content: center;
-    gap: 0.5rem;
-}
-
-.pagination button {
-    padding: 0.5rem 1rem;
-    border: 1px solid #ddd;
-    background: white;
-    cursor: pointer;
-    border-radius: 4px;
-}
-
-.pagination button.active {
-    background: #c487a5;
-    color: white;
-    border-color: #c487a5;
-}
-
-@media (max-width: 768px) {
-    .category-layout {
-        grid-template-columns: 1fr;
-    }
-    
-    .filters {
-        order: 2;
-    }
-    
-    .products-section {
-        order: 1;
-    }
-    
-    .products-header {
-        flex-direction: column;
-        gap: 1rem;
-        align-items: stretch;
-    }
-}
-</style>
 
 <?php include 'includes/footer.php'; ?>

@@ -67,6 +67,9 @@ require_once 'config/cache.php';
             </div>
         </div>
         <nav class="main-nav">
+            <div class="mobile-close" id="mobile-close">
+                <i class="fas fa-times"></i>
+            </div>
             <div class="nav-item" data-menu="new">
                 <a href="new-arrivals.php">NEW <i class="fas fa-chevron-down"></i></a>
             </div>
@@ -89,7 +92,15 @@ require_once 'config/cache.php';
             <!-- NEW Dropdown -->
             <div class="dropdown-content" data-content="new">
                 <div class="new-products-grid" id="new-products-grid">
-                    <div class="loading">Loading new arrivals...</div>
+                    <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 1</h4><p class="price">£99.99</p></div>
+                    <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 2</h4><p class="price">£149.99</p></div>
+                    <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 3</h4><p class="price">£199.99</p></div>
+                    <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 4</h4><p class="price">£249.99</p></div>
+                    <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 5</h4><p class="price">£299.99</p></div>
+                    <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 6</h4><p class="price">£349.99</p></div>
+                    <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 7</h4><p class="price">£399.99</p></div>
+                    <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 8</h4><p class="price">£449.99</p></div>
+                    <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 9</h4><p class="price">£499.99</p></div>
                 </div>
             </div>
             
@@ -157,3 +168,76 @@ require_once 'config/cache.php';
             </div>
         </div>
     </header>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Hamburger menu
+        const hamburger = document.getElementById('hamburger');
+        const nav = document.querySelector('.main-nav');
+        
+        if (hamburger && nav) {
+            hamburger.addEventListener('click', function() {
+                nav.classList.toggle('active');
+                hamburger.classList.toggle('active');
+            });
+        }
+        
+        // Mobile close button
+        const mobileClose = document.getElementById('mobile-close');
+        if (mobileClose) {
+            mobileClose.addEventListener('click', function() {
+                nav.classList.remove('active');
+                hamburger.classList.remove('active');
+            });
+        }
+        
+        // Search icon click handler
+        const searchIcon = document.querySelector('.search-container i');
+        const searchInput = document.querySelector('.search-container input');
+        
+        if (searchIcon && searchInput) {
+            searchIcon.addEventListener('click', function() {
+                if (window.innerWidth <= 768) {
+                    searchInput.style.display = searchInput.style.display === 'block' ? 'none' : 'block';
+                    if (searchInput.style.display === 'block') {
+                        searchInput.focus();
+                    }
+                }
+            });
+        }
+        
+        // Close mobile nav when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.main-nav') && !e.target.closest('#hamburger')) {
+                nav.classList.remove('active');
+                hamburger.classList.remove('active');
+            }
+        });
+        
+        // Currency selector
+        const currencyBtn = document.getElementById('currency-btn');
+        const currencyDropdown = document.getElementById('currency-dropdown');
+        
+        if (currencyBtn && currencyDropdown) {
+            currencyBtn.addEventListener('click', function() {
+                currencyDropdown.classList.toggle('active');
+            });
+        }
+        
+        // Currency options
+        document.querySelectorAll('.currency-option').forEach(option => {
+            option.addEventListener('click', function() {
+                const currency = this.dataset.currency;
+                document.getElementById('current-currency').textContent = currency;
+                currencyDropdown.classList.remove('active');
+            });
+        });
+        
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.currency-selector')) {
+                currencyDropdown.classList.remove('active');
+            }
+        });
+    });
+    </script>
