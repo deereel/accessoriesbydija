@@ -91,29 +91,32 @@ class CurrencyConverter {
     }
 
     convertAllPrices() {
-        // Convert prices in product cards
-        document.querySelectorAll('.price').forEach(priceEl => {
-            const originalPrice = priceEl.dataset.originalPrice;
-            if (originalPrice) {
-                priceEl.textContent = this.convertPrice(parseFloat(originalPrice));
-            } else {
-                // Extract GBP price and store as original
-                const priceText = priceEl.textContent.replace(/[£$€]/g, '');
-                const gbpPrice = parseFloat(priceText);
-                if (!isNaN(gbpPrice)) {
-                    priceEl.dataset.originalPrice = gbpPrice;
-                    priceEl.textContent = this.convertPrice(gbpPrice);
-                }
+        // Convert product prices
+        document.querySelectorAll('.product-price[data-price]').forEach(priceEl => {
+            const gbpPrice = parseFloat(priceEl.dataset.price);
+            if (!isNaN(gbpPrice)) {
+                priceEl.innerHTML = this.convertPrice(gbpPrice);
             }
         });
 
-        // Convert prices in hero slider
-        document.querySelectorAll('.product-card .price').forEach(priceEl => {
-            const priceText = priceEl.textContent.replace(/[£$€]/g, '');
-            const gbpPrice = parseFloat(priceText);
+        // Convert featured product prices
+        document.querySelectorAll('.featured-price .price-amount[data-price]').forEach(priceEl => {
+            const gbpPrice = parseFloat(priceEl.dataset.price);
             if (!isNaN(gbpPrice)) {
-                priceEl.dataset.originalPrice = gbpPrice;
-                priceEl.textContent = this.convertPrice(gbpPrice);
+                priceEl.textContent = (gbpPrice * (this.rates[this.currentCurrency] || 1)).toFixed(2);
+            }
+        });
+
+        // Convert currency symbols
+        document.querySelectorAll('.currency-symbol').forEach(symbolEl => {
+            symbolEl.textContent = this.symbols[this.currentCurrency] || '£';
+        });
+
+        // Convert price ranges in shop by price section
+        document.querySelectorAll('.price-amount[data-price]').forEach(priceEl => {
+            const gbpPrice = parseFloat(priceEl.dataset.price);
+            if (!isNaN(gbpPrice)) {
+                priceEl.textContent = (gbpPrice * (this.rates[this.currentCurrency] || 1)).toFixed(0);
             }
         });
     }
@@ -126,6 +129,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Update prices when new products are loaded dynamically
 function updateProductPrices() {
+    if (window.currencyConverter) {
+        window.currencyConverter.convertAllPrices();
+    }
+}
+
+// Global function to update prices (called from other scripts)
+function updatePrices() {
     if (window.currencyConverter) {
         window.currencyConverter.convertAllPrices();
     }

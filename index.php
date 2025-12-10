@@ -174,67 +174,150 @@ include 'includes/header.php';
     <section class="featured-products">
         <div class="container">
             <h2>Featured Products</h2>
-            <div class="product-grid" id="featured-products">
+            <div class="featured-grid" id="featured-products">
                 <!-- Products loaded via JavaScript -->
             </div>
-        </div>
-    </section>
-
-    <!-- Custom Jewelry CTA -->
-    <section class="custom-cta" itemscope itemtype="https://schema.org/Service">
-        <div class="container">
-            <div class="cta-content">
-                <h2 itemprop="name">Create Your Perfect Piece</h2>
-                <p itemprop="description">Work with our expert designers to create custom jewelry that tells your unique story. From engagement rings to personalized gifts, we bring your vision to life with premium materials and expert craftsmanship.</p>
-                <div class="custom-features">
-                    <span>✓ Free Consultation</span>
-                    <span>✓ 3D Design Preview</span>
-                    <span>✓ Expert Artisans</span>
-                </div>
-                <a href="custom-jewelry.php" class="btn btn-primary" itemprop="url">Start Custom Design</a>
+            <div style="text-align: center; margin-top: 2rem;">
+                <a href="products.php" class="custom-btn">View All Products</a>
             </div>
         </div>
     </section>
 
-    <!-- Testimonials -->
-    <section class="testimonials" itemscope itemtype="https://schema.org/Organization">
+    <!-- Custom CTA Section -->
+    <section class="custom-cta">
+        <div class="container">
+            <div class="custom-content">
+                <div class="custom-text">
+                    <h2>Create Your Perfect Piece</h2>
+                    <p>Work with our expert designers to create custom jewelry that tells your unique story. From engagement rings to personalized gifts, we bring your vision to life with premium materials and expert craftsmanship.</p>
+                    <div class="custom-features">
+                        <span>✓ Free Consultation</span>
+                        <span>✓ 3D Design Preview</span>
+                        <span>✓ Expert Artisans</span>
+                    </div>
+                    <a href="custom-jewelry.php" class="custom-btn">Start Custom Design</a>
+                </div>
+                <div class="custom-image">
+                    <div class="jewelry-sketch">💍</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gift Guide Section -->
+    <section class="gift-guide">
+        <div class="container">
+            <h2>Gift Guide</h2>
+            <p class="gift-guide-intro">Find the perfect jewelry gift for any occasion</p>
+            
+            <div class="gift-grid">
+                <a href="products.php?material=gold" class="gift-card">
+                    <div class="gift-icon">🥇</div>
+                    <div class="gift-content">
+                        <h3>Gold Collection</h3>
+                        <p>Timeless gold jewelry pieces</p>
+                        <div class="gift-features">
+                            <span class="gift-tag">14K & 18K</span>
+                        </div>
+                    </div>
+                </a>
+
+                <a href="products.php?gender=women" class="gift-card">
+                    <div class="gift-icon">👩</div>
+                    <div class="gift-content">
+                        <h3>Gifts for Her</h3>
+                        <p>Elegant jewelry for women</p>
+                        <div class="gift-features">
+                            <span class="gift-tag">Popular</span>
+                        </div>
+                    </div>
+                </a>
+
+                <a href="products.php?price_min=0&price_max=100" class="gift-card">
+                    <div class="gift-icon">💝</div>
+                    <div class="gift-content">
+                        <h3>Under £100</h3>
+                        <p>Affordable luxury gifts</p>
+                        <div class="gift-features">
+                            <span class="gift-tag">Budget</span>
+                        </div>
+                    </div>
+                </a>
+
+                <a href="custom-jewelry.php" class="gift-card special">
+                    <div class="gift-icon">
+                        ✨
+                        <span class="gift-badge">Custom</span>
+                    </div>
+                    <div class="gift-content">
+                        <h3>Custom Design</h3>
+                        <p>One-of-a-kind pieces</p>
+                        <div class="gift-features">
+                            <span class="gift-tag">Unique</span>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            
+            <div style="text-align: center; margin-top: 2rem;">
+                <a href="gift-guide.php" class="custom-btn">View Full Gift Guide</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Shop by Price Section -->
+    <section class="shop-by-price">
+        <div class="container">
+            <h2>Shop by Price</h2>
+            <p class="price-intro">Find jewelry that fits your budget with our curated price ranges</p>
+            
+            <div class="price-buckets">
+                <a href="products.php?price_min=0&price_max=50" class="price-bucket">
+                    <div class="price-range">Under <span class="currency-symbol">£</span><span class="price-amount" data-price="50">50</span></div>
+                    <div class="price-description">Affordable everyday pieces</div>
+                    <div class="price-count">Budget-friendly</div>
+                </a>
+
+                <a href="products.php?price_min=50&price_max=150" class="price-bucket">
+                    <div class="price-range"><span class="currency-symbol">£</span><span class="price-amount" data-price="50">50</span> - <span class="currency-symbol">£</span><span class="price-amount" data-price="150">150</span></div>
+                    <div class="price-description">Quality jewelry for gifts</div>
+                    <div class="price-count">Most popular</div>
+                </a>
+
+                <a href="products.php?price_min=150&price_max=300" class="price-bucket">
+                    <div class="price-range"><span class="currency-symbol">£</span><span class="price-amount" data-price="150">150</span> - <span class="currency-symbol">£</span><span class="price-amount" data-price="300">300</span></div>
+                    <div class="price-description">Premium collections</div>
+                    <div class="price-count">Special occasions</div>
+                </a>
+
+                <a href="products.php?price_min=300" class="price-bucket">
+                    <div class="price-range"><span class="currency-symbol">£</span><span class="price-amount" data-price="300">300</span>+</div>
+                    <div class="price-description">Luxury statement pieces</div>
+                    <div class="price-count">Exclusive</div>
+                </a>
+            </div>
+        </div>
+    </section>
+
+
+
+
+
+    <!-- Testimonials Section -->
+    <section class="testimonials-section">
         <div class="container">
             <h2>What Our Customers Say</h2>
-            <p class="testimonials-intro">Real reviews from satisfied customers who chose Dija Accessories for their special moments.</p>
-            <div class="testimonial-grid">
-                <div class="testimonial-card" itemprop="review" itemscope itemtype="https://schema.org/Review">
-                    <div class="stars" itemprop="reviewRating" itemscope itemtype="https://schema.org/Rating">
-                        <meta itemprop="ratingValue" content="5">
-                        <meta itemprop="bestRating" content="5">
-                        ★★★★★
-                    </div>
-                    <p itemprop="reviewBody">"Beautiful quality jewelry and excellent customer service. My custom engagement ring exceeded all expectations!"</p>
-                    <cite itemprop="author" itemscope itemtype="https://schema.org/Person">
-                        - <span itemprop="name">Sarah M.</span>
-                    </cite>
+            <p class="testimonials-intro">Real reviews from satisfied customers who chose Dija Accessories for their special moments</p>
+            
+            <div class="testimonials-slider swiper-container" id="testimonials-slider">
+                <div class="swiper-wrapper">
+                    <!-- Testimonials loaded via JavaScript -->
                 </div>
-                <div class="testimonial-card" itemprop="review" itemscope itemtype="https://schema.org/Review">
-                    <div class="stars" itemprop="reviewRating" itemscope itemtype="https://schema.org/Rating">
-                        <meta itemprop="ratingValue" content="5">
-                        <meta itemprop="bestRating" content="5">
-                        ★★★★★
-                    </div>
-                    <p itemprop="reviewBody">"Fast shipping and gorgeous pieces. The necklace I ordered looks even better in person."</p>
-                    <cite itemprop="author" itemscope itemtype="https://schema.org/Person">
-                        - <span itemprop="name">Michael R.</span>
-                    </cite>
-                </div>
-                <div class="testimonial-card" itemprop="review" itemscope itemtype="https://schema.org/Review">
-                    <div class="stars" itemprop="reviewRating" itemscope itemtype="https://schema.org/Rating">
-                        <meta itemprop="ratingValue" content="5">
-                        <meta itemprop="bestRating" content="5">
-                        ★★★★★
-                    </div>
-                    <p itemprop="reviewBody">"Amazing craftsmanship and attention to detail. Will definitely be ordering again!"</p>
-                    <cite itemprop="author" itemscope itemtype="https://schema.org/Person">
-                        - <span itemprop="name">Emma L.</span>
-                    </cite>
-                </div>
+            </div>
+            
+            <div class="testimonials-nav">
+                <button class="testimonials-prev"><i class="fas fa-chevron-left"></i></button>
+                <button class="testimonials-next"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
     </section>

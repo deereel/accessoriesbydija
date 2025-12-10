@@ -261,14 +261,22 @@ INSERT IGNORE INTO products (name, slug, description, short_description, sku, pr
 ('Diamond Solitaire Ring', 'diamond-solitaire-ring', 'Elegant diamond solitaire ring crafted in 14k gold', 'Classic solitaire ring with brilliant cut diamond', 'DSR001', 299.00, 'Gold', 'Diamond', 'women', TRUE),
 ('Pearl Drop Earrings', 'pearl-drop-earrings', 'Beautiful pearl drop earrings in sterling silver', 'Elegant pearl earrings perfect for any occasion', 'PDE001', 89.00, 'Silver', 'Pearl', 'women', TRUE),
 ('Gold Chain Necklace', 'gold-chain-necklace', 'Classic gold chain necklace, perfect for layering', '18-inch gold chain necklace', 'GCN001', 159.00, 'Gold', NULL, 'unisex', TRUE),
-('Silver Charm Bracelet', 'silver-charm-bracelet', 'Sterling silver charm bracelet with heart charm', 'Adjustable silver bracelet with charm', 'SCB001', 79.00, 'Silver', NULL, 'women', TRUE);
+('Silver Charm Bracelet', 'silver-charm-bracelet', 'Sterling silver charm bracelet with heart charm', 'Adjustable silver bracelet with charm', 'SCB001', 79.00, 'Silver', NULL, 'women', TRUE),
+('Emerald Tennis Bracelet', 'emerald-tennis-bracelet', 'Stunning emerald tennis bracelet in white gold', 'Luxury emerald bracelet with premium stones', 'ETB001', 450.00, 'Gold', 'Emerald', 'women', TRUE),
+('Mens Signet Ring', 'mens-signet-ring', 'Classic mens signet ring in sterling silver', 'Traditional signet ring for men', 'MSR001', 125.00, 'Silver', NULL, 'men', TRUE),
+('Rose Gold Pendant', 'rose-gold-pendant', 'Delicate rose gold pendant with diamond accent', 'Beautiful rose gold heart pendant', 'RGP001', 189.00, 'Rose Gold', 'Diamond', 'women', TRUE),
+('Platinum Wedding Band', 'platinum-wedding-band', 'Classic platinum wedding band for men', 'Timeless platinum band', 'PWB001', 350.00, 'Platinum', NULL, 'men', TRUE);
 
 -- Link products to categories
 INSERT IGNORE INTO product_categories (product_id, category_id) VALUES
 (1, 1), (1, 3), -- Diamond ring -> Women, Rings
 (2, 1), (2, 5), -- Pearl earrings -> Women, Earrings  
 (3, 4), -- Gold necklace -> Necklaces
-(4, 1), (4, 6); -- Silver bracelet -> Women, Bracelets
+(4, 1), (4, 6), -- Silver bracelet -> Women, Bracelets
+(5, 1), (5, 6), -- Emerald bracelet -> Women, Bracelets
+(6, 2), (6, 3), -- Mens ring -> Men, Rings
+(7, 1), (7, 4), -- Rose gold pendant -> Women, Necklaces
+(8, 2), (8, 3); -- Platinum band -> Men, Rings
 
 -- Insert sample testimonials
 INSERT IGNORE INTO testimonials (customer_name, rating, title, content, is_featured, is_approved) VALUES

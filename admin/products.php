@@ -318,8 +318,22 @@ $products = $stmt->fetchAll();
         }
         
         function toggleFeatured(id) {
-            // Toggle featured status
-            alert('Toggle featured status for product ' + id + ' - Feature to be implemented');
+            fetch('toggle_featured.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: `product_id=${id}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                alert('Error toggling featured status');
+            });
         }
         
         function closeModal() {

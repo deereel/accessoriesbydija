@@ -16,8 +16,15 @@ require_once 'config/cache.php';
     <link rel="stylesheet" href="assets/css/hero.css">
     <link rel="stylesheet" href="assets/css/category-section.css">
     <link rel="stylesheet" href="assets/css/collection-banners.css">
+    <link rel="stylesheet" href="assets/css/featured-products.css">
+    <link rel="stylesheet" href="assets/css/custom-cta.css">
+    <link rel="stylesheet" href="assets/css/gift-guide.css">
+    <link rel="stylesheet" href="assets/css/shop-by-price.css">
+    <link rel="stylesheet" href="assets/css/testimonials.css">
+    <link rel="stylesheet" href="assets/css/footer.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="assets/js/new-nav.js"></script>
 </head>
 <body>
     <header class="header">
@@ -81,16 +88,8 @@ require_once 'config/cache.php';
         <div class="mega-menu" id="mega-menu">
             <!-- NEW Dropdown -->
             <div class="dropdown-content" data-content="new">
-                <div class="new-products-grid">
-                    <?php for($i = 1; $i <= 9; $i++): ?>
-                    <div class="product-card">
-                        <div class="product-image">
-                            <div class="placeholder-img">Product <?php echo $i; ?></div>
-                        </div>
-                        <h4>New Product <?php echo $i; ?></h4>
-                        <p class="price">£<?php echo rand(50, 500); ?></p>
-                    </div>
-                    <?php endfor; ?>
+                <div class="new-products-grid" id="new-products-grid">
+                    <div class="loading">Loading new arrivals...</div>
                 </div>
             </div>
             

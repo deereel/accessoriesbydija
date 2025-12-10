@@ -8,18 +8,21 @@ const totalSlides = slides.length;
 let slideInterval = setInterval(nextSlide, 5000);
 
 function showSlide(index) {
+    if (!slides.length || !slides[index]) return;
+    
     // Remove active class from all slides and dots
     slides.forEach(slide => slide.classList.remove('active'));
     dots.forEach(dot => dot.classList.remove('active'));
     
     // Add active class to current slide and dot
     slides[index].classList.add('active');
-    dots[index].classList.add('active');
+    if (dots[index]) dots[index].classList.add('active');
     
     currentSlideIndex = index;
 }
 
 function nextSlide() {
+    if (!slides.length) return;
     const nextIndex = (currentSlideIndex + 1) % totalSlides;
     showSlide(nextIndex);
 }
