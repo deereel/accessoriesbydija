@@ -130,11 +130,18 @@ body {
     color: #666;
 }
 
-.cart-icon {
+.cart-icon,
+.account-icon {
     position: relative;
     color: #333;
     font-size: 1.2rem;
     text-decoration: none;
+    margin-left: 1rem;
+}
+
+.account-icon:hover,
+.cart-icon:hover {
+    color: #c487a5;
 }
 
 .cart-count {

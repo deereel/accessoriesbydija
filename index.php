@@ -4,41 +4,46 @@ $page_description = "Discover handcrafted jewelry at Dija Accessories. Expert ar
 include 'includes/header.php';
 ?>
 
-<script type="application/ld+json">
-{
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "Dija Accessories",
-    "url": "https://accessoriesbydija.com",
-    "potentialAction": {
-        "@type": "SearchAction",
-        "target": "https://accessoriesbydija.com/search?q={search_term_string}",
-        "query-input": "required name=search_term_string"
-    }
-}
-</script>
-
 <main>
-    <!-- Hero Section -->
-    <section class="hero" itemscope itemtype="https://schema.org/Product">
-        <div class="hero-content">
-            <h1 itemprop="name">Elegant Jewelry for Every Occasion</h1>
-            <p itemprop="description">Discover our premium collection of handcrafted jewelry designed for the modern individual. Each piece is ethically sourced, expertly crafted, and comes with a lifetime warranty.</p>
-            <div class="hero-features">
-                <span class="feature">✓ Ethically Sourced</span>
-                <span class="feature">✓ Lifetime Warranty</span>
-                <span class="feature">✓ Free Shipping</span>
-                <span class="feature">✓ Expert Craftsmanship</span>
+    <!-- Hero Slider -->
+    <section class="hero-slider">
+        <div class="slider-container">
+            <div class="slide active" data-bg="assets/images/hero-1.jpg">
+                <div class="slide-content">
+                    <h1>Timeless Elegance</h1>
+                    <p>Discover modern jewelry made to match your everyday elegance</p>
+                    <div class="hero-buttons">
+                        <a href="category.php?cat=women" class="hero-btn">Shop Women</a>
+                        <a href="category.php?cat=men" class="hero-btn hero-btn-outline">Shop Men</a>
+                    </div>
+                </div>
             </div>
-            <div class="hero-buttons">
-                <a href="category.php?cat=women" class="btn btn-primary">Shop Women</a>
-                <a href="category.php?cat=men" class="btn btn-secondary">Shop Men</a>
+            <div class="slide" data-bg="assets/images/hero-2.jpg">
+                <div class="slide-content">
+                    <h1>Luxury Redefined</h1>
+                    <p>Handcrafted pieces that tell your unique story</p>
+                    <a href="exclusives.php" class="hero-btn">Explore Collections</a>
+                </div>
+            </div>
+            <div class="slide" data-bg="assets/images/hero-3.jpg">
+                <div class="slide-content">
+                    <h1>Custom Creations</h1>
+                    <p>Work with our designers to create your perfect piece</p>
+                    <a href="custom-jewelry.php" class="hero-btn">Start Designing</a>
+                </div>
             </div>
         </div>
-        <div class="hero-image" itemprop="image">
-            <img src="assets/images/hero-jewelry.jpg" alt="Premium handcrafted jewelry collection featuring rings, necklaces, and earrings" loading="lazy">
+        <div class="slider-nav">
+            <button class="prev" onclick="changeSlide(-1)"><i class="fas fa-chevron-left"></i></button>
+            <button class="next" onclick="changeSlide(1)"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        <div class="slider-dots">
+            <span class="dot active" onclick="currentSlide(1)"></span>
+            <span class="dot" onclick="currentSlide(2)"></span>
+            <span class="dot" onclick="currentSlide(3)"></span>
         </div>
     </section>
+
 
     <!-- Featured Categories -->
     <section class="featured-categories" itemscope itemtype="https://schema.org/ItemList">
