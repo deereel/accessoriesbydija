@@ -22,6 +22,7 @@ require_once 'config/cache.php';
     <link rel="stylesheet" href="assets/css/shop-by-price.css">
     <link rel="stylesheet" href="assets/css/testimonials.css">
     <link rel="stylesheet" href="assets/css/footer.css">
+    <link rel="stylesheet" href="assets/css/product-cards.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="assets/js/new-nav.js"></script>

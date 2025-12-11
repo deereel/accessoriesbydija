@@ -10,20 +10,70 @@ require_once '../config/database.php';
 // Handle product operations
 if ($_POST) {
     $action = $_POST['action'] ?? '';
-    
+
     if ($action === 'add_product') {
         $slug = strtolower(str_replace(' ', '-', $_POST['product_name']));
         $stmt = $pdo->prepare("INSERT INTO products (name, slug, description, sku, price, stock_quantity, weight, material, stone_type, gender, is_featured, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([$_POST['product_name'], $slug, $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], $_POST['weight'], $_POST['material'], $_POST['stone_type'], $_POST['gender'], isset($_POST['is_featured']) ? 1 : 0, isset($_POST['is_active']) ? 1 : 0]);
+        $product_id = $pdo->lastInsertId();
+
+        // Handle image uploads
+        handleImageUploads($product_id);
+
         $success = "Product added successfully!";
     } elseif ($action === 'update_product') {
         $stmt = $pdo->prepare("UPDATE products SET name=?, description=?, sku=?, price=?, stock_quantity=?, weight=?, material=?, stone_type=?, gender=?, is_featured=?, is_active=? WHERE id=?");
         $stmt->execute([$_POST['product_name'], $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], $_POST['weight'], $_POST['material'], $_POST['stone_type'], $_POST['gender'], isset($_POST['is_featured']) ? 1 : 0, isset($_POST['is_active']) ? 1 : 0, $_POST['product_id']]);
+
+        // Handle image uploads
+        handleImageUploads($_POST['product_id']);
+
         $success = "Product updated successfully!";
     } elseif ($action === 'delete_product') {
         $stmt = $pdo->prepare("DELETE FROM products WHERE id=?");
         $stmt->execute([$_POST['product_id']]);
         $success = "Product deleted successfully!";
+    }
+}
+
+function handleImageUploads($product_id) {
+    $upload_dir = '../assets/images/products/';
+    if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0755, true);
+    }
+
+    // Handle main image
+    if (isset($_FILES['main_image']) && $_FILES['main_image']['error'] === UPLOAD_ERR_OK) {
+        $main_image_name = uniqid() . '_' . basename($_FILES['main_image']['name']);
+        $main_image_path = $upload_dir . $main_image_name;
+
+        if (move_uploaded_file($_FILES['main_image']['tmp_name'], $main_image_path)) {
+            // First, set all existing images for this product as not primary
+            $stmt = $GLOBALS['pdo']->prepare("UPDATE product_images SET is_primary = 0 WHERE product_id = ?");
+            $stmt->execute([$product_id]);
+
+            // Insert main image as primary
+            $stmt = $GLOBALS['pdo']->prepare("INSERT INTO product_images (product_id, image_url, is_primary, sort_order) VALUES (?, ?, 1, 0)");
+            $stmt->execute([$product_id, 'assets/images/products/' . $main_image_name]);
+        }
+    }
+
+    // Handle additional images
+    if (isset($_FILES['additional_images'])) {
+        $sort_order = 1; // Start from 1 since main image is 0
+
+        foreach ($_FILES['additional_images']['tmp_name'] as $key => $tmp_name) {
+            if ($_FILES['additional_images']['error'][$key] === UPLOAD_ERR_OK) {
+                $additional_image_name = uniqid() . '_' . basename($_FILES['additional_images']['name'][$key]);
+                $additional_image_path = $upload_dir . $additional_image_name;
+
+                if (move_uploaded_file($tmp_name, $additional_image_path)) {
+                    $stmt = $GLOBALS['pdo']->prepare("INSERT INTO product_images (product_id, image_url, is_primary, sort_order) VALUES (?, ?, 0, ?)");
+                    $stmt->execute([$product_id, 'assets/images/products/' . $additional_image_name, $sort_order]);
+                    $sort_order++;
+                }
+            }
+        }
     }
 }
 
@@ -164,7 +214,7 @@ $products = $stmt->fetchAll();
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
             <h2 id="modalTitle">Add Product</h2>
-            <form id="productForm" method="POST">
+            <form id="productForm" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="action" id="formAction" value="add_product">
                 <input type="hidden" name="product_id" id="productId">
                 
@@ -248,9 +298,15 @@ $products = $stmt->fetchAll();
                     </div>
                 </div>
                 
-                <div class="form-group">
-                    <label for="product_image">Product Image</label>
-                    <input type="file" id="product_image" name="product_image" accept="image/*">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="main_image">Main Image</label>
+                        <input type="file" id="main_image" name="main_image" accept="image/*">
+                    </div>
+                    <div class="form-group">
+                        <label for="additional_images">Additional Images</label>
+                        <input type="file" id="additional_images" name="additional_images[]" accept="image/*" multiple>
+                    </div>
                 </div>
                 
                 <div class="form-row">

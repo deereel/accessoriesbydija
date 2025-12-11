@@ -61,11 +61,23 @@ if (!isset($_SESSION['admin_logged_in'])):
         .admin-nav a { color: white; text-decoration: none; margin-right: 2rem; padding: 0.5rem 1rem; border-radius: 4px; transition: background 0.3s; }
         .admin-nav a:hover, .admin-nav a.active { background: rgba(255,255,255,0.2); }
         .admin-content { padding: 2rem; }
-        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; margin-bottom: 2rem; }
-        .dashboard-card { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
-        .dashboard-card h3 { color: #333; margin-bottom: 1rem; }
-        .dashboard-card .number { font-size: 2rem; font-weight: bold; color: #c487a5; }
-        .recent-section { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2rem; }
+        .dashboard-card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); text-align: center; transition: transform 0.3s, box-shadow 0.3s; border-left: 4px solid #c487a5; }
+        .dashboard-card:hover { transform: translateY(-5px); box-shadow: 0 8px 30px rgba(0,0,0,0.12); }
+        .dashboard-card h3 { color: #333; margin-bottom: 1rem; font-size: 1.1rem; }
+        .dashboard-card .number { font-size: 2.5rem; font-weight: 700; color: #c487a5; margin-bottom: 0.5rem; }
+        .dashboard-card .icon { font-size: 2rem; color: #c487a5; margin-bottom: 1rem; }
+        .dashboard-card p { color: #666; font-size: 0.9rem; }
+        .recent-section { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .recent-section h2 { color: #333; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th { padding: 1rem; text-align: left; border-bottom: 2px solid #c487a5; background: #f8f9fa; font-weight: 600; }
+        td { padding: 1rem; border-bottom: 1px solid #eee; }
+        .status-badge { padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 500; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-processing { background: #fff3cd; color: #856404; }
+        .status-shipped { background: #d1ecf1; color: #0c5460; }
         .btn { padding: 0.5rem 1rem; background: #c487a5; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; }
         .btn:hover { background: #b07591; }
         .logout { background: #dc3545; }
@@ -91,63 +103,77 @@ if (!isset($_SESSION['admin_logged_in'])):
     <main class="admin-content">
         <div class="dashboard-grid">
             <div class="dashboard-card">
+                <div class="icon"><i class="fas fa-gem"></i></div>
                 <h3>Total Products</h3>
                 <div class="number">156</div>
                 <p>Active products in catalog</p>
+                <a href="products.php" class="btn" style="margin-top: 1rem;">Manage Products</a>
             </div>
             <div class="dashboard-card">
+                <div class="icon"><i class="fas fa-shopping-cart"></i></div>
                 <h3>Total Orders</h3>
                 <div class="number">89</div>
                 <p>Orders this month</p>
+                <a href="orders.php" class="btn" style="margin-top: 1rem;">View Orders</a>
             </div>
             <div class="dashboard-card">
+                <div class="icon"><i class="fas fa-pound-sign"></i></div>
                 <h3>Revenue</h3>
-                <div class="number">$12,450</div>
+                <div class="number">£12,450</div>
                 <p>This month's revenue</p>
+                <a href="#" class="btn" style="margin-top: 1rem;">View Reports</a>
             </div>
             <div class="dashboard-card">
+                <div class="icon"><i class="fas fa-users"></i></div>
                 <h3>Customers</h3>
                 <div class="number">234</div>
                 <p>Registered customers</p>
+                <a href="customers.php" class="btn" style="margin-top: 1rem;">View Customers</a>
             </div>
         </div>
 
         <div class="recent-section">
-            <h2>Recent Orders</h2>
-            <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
-                <thead>
-                    <tr style="background: #f8f8f8;">
-                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #ddd;">Order ID</th>
-                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #ddd;">Customer</th>
-                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #ddd;">Product</th>
-                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #ddd;">Amount</th>
-                        <th style="padding: 1rem; text-align: left; border-bottom: 1px solid #ddd;">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td style="padding: 1rem; border-bottom: 1px solid #eee;">#1001</td>
-                        <td style="padding: 1rem; border-bottom: 1px solid #eee;">Sarah Johnson</td>
-                        <td style="padding: 1rem; border-bottom: 1px solid #eee;">Diamond Solitaire Ring</td>
-                        <td style="padding: 1rem; border-bottom: 1px solid #eee;">$299</td>
-                        <td style="padding: 1rem; border-bottom: 1px solid #eee;"><span style="background: #28a745; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">Completed</span></td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 1rem; border-bottom: 1px solid #eee;">#1002</td>
-                        <td style="padding: 1rem; border-bottom: 1px solid #eee;">Michael Brown</td>
-                        <td style="padding: 1rem; border-bottom: 1px solid #eee;">Gold Chain Necklace</td>
-                        <td style="padding: 1rem; border-bottom: 1px solid #eee;">$159</td>
-                        <td style="padding: 1rem; border-bottom: 1px solid #eee;"><span style="background: #ffc107; color: black; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">Processing</span></td>
-                    </tr>
-                    <tr>
-                        <td style="padding: 1rem; border-bottom: 1px solid #eee;">#1003</td>
-                        <td style="padding: 1rem; border-bottom: 1px solid #eee;">Emma Davis</td>
-                        <td style="padding: 1rem; border-bottom: 1px solid #eee;">Pearl Drop Earrings</td>
-                        <td style="padding: 1rem; border-bottom: 1px solid #eee;">$89</td>
-                        <td style="padding: 1rem; border-bottom: 1px solid #eee;"><span style="background: #17a2b8; color: white; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem;">Shipped</span></td>
-                    </tr>
-                </tbody>
-            </table>
+            <h2><i class="fas fa-clock"></i> Recent Orders</h2>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer</th>
+                            <th>Product</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>#1001</strong></td>
+                            <td>Sarah Johnson</td>
+                            <td>Diamond Solitaire Ring</td>
+                            <td><strong>£299</strong></td>
+                            <td><span class="status-badge status-completed">Completed</span></td>
+                            <td><a href="#" class="btn" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;">View</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>#1002</strong></td>
+                            <td>Michael Brown</td>
+                            <td>Gold Chain Necklace</td>
+                            <td><strong>£159</strong></td>
+                            <td><span class="status-badge status-processing">Processing</span></td>
+                            <td><a href="#" class="btn" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;">View</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>#1003</strong></td>
+                            <td>Emma Davis</td>
+                            <td>Pearl Drop Earrings</td>
+                            <td><strong>£89</strong></td>
+                            <td><span class="status-badge status-shipped">Shipped</span></td>
+                            <td><a href="#" class="btn" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;">View</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </main>
 </body>

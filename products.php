@@ -174,7 +174,14 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
                                 
                                 <!-- Product Image -->
                                 <a href="product.php?slug=<?= $product['slug'] ?>" class="product-image">
-                                    <?= htmlspecialchars(substr($product['name'], 0, 3)) ?>
+                                    <?php if ($product['main_image']): ?>
+                                        <img class="main-img" src="<?= htmlspecialchars($product['main_image']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
+                                        <?php if ($product['hover_image']): ?>
+                                            <img class="hover-img" src="<?= htmlspecialchars($product['hover_image']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <div class="main-img placeholder"><?= htmlspecialchars(substr($product['name'], 0, 3)) ?></div>
+                                    <?php endif; ?>
                                 </a>
                                 
                                 <!-- Product Info -->

@@ -9,9 +9,14 @@ if (!$slug) {
     exit;
 }
 
-$stmt = $pdo->prepare("SELECT p.*, pi.image_url FROM products p LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 WHERE p.slug = ? AND p.is_active = 1");
+$stmt = $pdo->prepare("SELECT p.* FROM products p WHERE p.slug = ? AND p.is_active = 1");
 $stmt->execute([$slug]);
 $product = $stmt->fetch();
+
+// Get all product images
+$images_stmt = $pdo->prepare("SELECT * FROM product_images WHERE product_id = ? ORDER BY is_primary DESC, sort_order ASC");
+$images_stmt->execute([$product['id']]);
+$product_images = $images_stmt->fetchAll();
 
 if (!$product) {
     header('Location: products.php');
@@ -23,8 +28,8 @@ $page_description = $product['short_description'] ?? substr($product['descriptio
 ?>
 
 <style>
-.product-detail { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; }
-.product-image { aspect-ratio: 1; background: #f8f8f8; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 4rem; color: #C27BA0; }
+.breadcrumb { margin: 2rem auto 1rem; max-width: 1200px; padding: 0 1rem; }
+.breadcrumb a { color: #666; text-decoration: none; }
 .product-info h1 { font-size: 2rem; margin-bottom: 1rem; }
 .product-price { font-size: 1.5rem; color: #C27BA0; font-weight: 600; margin-bottom: 1rem; }
 .product-description { line-height: 1.6; margin-bottom: 2rem; }
@@ -35,9 +40,6 @@ $page_description = $product['short_description'] ?? substr($product['descriptio
 .btn-primary { background: #222; color: white; }
 .btn-primary:hover { background: #C27BA0; }
 .btn-secondary { background: transparent; border: 1px solid #ddd; }
-.breadcrumb { margin-bottom: 2rem; }
-.breadcrumb a { color: #666; text-decoration: none; }
-@media (max-width: 768px) { .product-detail { grid-template-columns: 1fr; gap: 2rem; } }
 </style>
 
 <main>
@@ -45,12 +47,37 @@ $page_description = $product['short_description'] ?? substr($product['descriptio
         <a href="index.php">Home</a> / <a href="products.php">Products</a> / <?= htmlspecialchars($product['name']) ?>
     </div>
 
-    <div class="product-detail">
-        <div class="product-image">
-            <?= $product['image_url'] ? "<img src='{$product['image_url']}' alt='{$product['name']}' style='width:100%;height:100%;object-fit:cover;border-radius:8px;'>" : '💎' ?>
+    <div class="product-detail-container">
+        <div class="product-images">
+            <div class="main-image-container">
+                <?php if (!empty($product_images)): ?>
+                    <img class="main-image" id="mainImage" src="<?= htmlspecialchars($product_images[0]['image_url']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
+                <?php else: ?>
+                    <div class="main-image" id="mainImage">💎</div>
+                <?php endif; ?>
+            </div>
+            <div class="image-thumbnails">
+                <?php if (!empty($product_images)): ?>
+                    <?php foreach ($product_images as $index => $image): ?>
+                        <div class="thumbnail <?= $index === 0 ? 'active' : '' ?>" onclick="changeImage(this, '<?= htmlspecialchars($image['image_url']) ?>')">
+                            <img src="<?= htmlspecialchars($image['image_url']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <div class="thumbnail active" onclick="changeImage(this)">
+                        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;">💎</div>
+                    </div>
+                    <div class="thumbnail" onclick="changeImage(this)">
+                        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;">✨</div>
+                    </div>
+                    <div class="thumbnail" onclick="changeImage(this)">
+                        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:24px;">💍</div>
+                    </div>
+                <?php endif; ?>
+            </div>
         </div>
         
-        <div class="product-info">
+        <div class="product-details">
             <h1><?= htmlspecialchars($product['name']) ?></h1>
             <div class="product-price">£<?= number_format($product['price'], 2) ?></div>
             
@@ -76,6 +103,20 @@ $page_description = $product['short_description'] ?? substr($product['descriptio
 </main>
 
 <script>
+function changeImage(thumbnail, imageUrl) {
+    // Remove active class from all thumbnails
+    document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
+    // Add active class to clicked thumbnail
+    thumbnail.classList.add('active');
+    // Update main image
+    const mainImage = document.getElementById('mainImage');
+    if (imageUrl) {
+        mainImage.src = imageUrl;
+    } else {
+        mainImage.innerHTML = thumbnail.innerHTML;
+    }
+}
+
 function addToCart(id) {
     event.target.textContent = 'Added!';
     setTimeout(() => event.target.textContent = 'Add to Cart', 1500);
