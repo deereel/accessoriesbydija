@@ -4,26 +4,26 @@ $page_title = 'All Products | Accessories by Dija';
 include 'includes/header.php';
 
 // Build query based on filters
-$where = ["is_active = 1"];
+$where = ["p.is_active = 1"];
 $params = [];
 
 if (isset($_GET['material']) && $_GET['material']) {
-    $where[] = "material = ?";
+    $where[] = "p.material = ?";
     $params[] = $_GET['material'];
 }
 
 if (isset($_GET['gender']) && $_GET['gender']) {
-    $where[] = "gender = ?";
+    $where[] = "p.gender = ?";
     $params[] = $_GET['gender'];
 }
 
 if (isset($_GET['price_min']) && $_GET['price_min']) {
-    $where[] = "price >= ?";
+    $where[] = "p.price >= ?";
     $params[] = $_GET['price_min'];
 }
 
 if (isset($_GET['price_max']) && $_GET['price_max']) {
-    $where[] = "price <= ?";
+    $where[] = "p.price <= ?";
     $params[] = $_GET['price_max'];
 } elseif (isset($_GET['price_min']) && $_GET['price_min'] && !isset($_GET['price_max'])) {
     // Handle "300+" case where only min is set
@@ -31,11 +31,16 @@ if (isset($_GET['price_max']) && $_GET['price_max']) {
 }
 
 if (isset($_GET['featured']) && $_GET['featured']) {
-    $where[] = "is_featured = 1";
+    $where[] = "p.is_featured = 1";
 }
 
 try {
-    $sql = "SELECT * FROM products WHERE " . implode(" AND ", $where) . " ORDER BY created_at DESC";
+    $sql = "SELECT p.*, 
+                   (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1) as main_image, 
+                   (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 0 ORDER BY sort_order ASC LIMIT 1) as hover_image 
+            FROM products p 
+            WHERE " . implode(" AND ", $where) . " 
+            ORDER BY p.created_at DESC";
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -86,7 +91,8 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
 .product-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
 
 .wishlist-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: white; border: none; border-radius: 50%; padding: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; }
-.product-image { aspect-ratio: 1; background: #f5f5f5; display: flex; align-items: center; justify-content: center; color: #999; font-size: 0.875rem; }
+.product-image { aspect-ratio: 1; background: #f5f5f5; display: block; position: relative; overflow: hidden; }
+.product-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .product-info { padding: 1rem; }
 .product-info h3 { font-size: 0.875rem; font-weight: 500; margin-bottom: 0.25rem; }
 .product-info p { font-size: 0.75rem; color: #666; margin-bottom: 0.5rem; }

@@ -115,6 +115,7 @@ require_once 'config/cache.php';
                         <a href="category.php?cat=women&sub=bangles">Bangles/Cuffs</a>
                         <a href="category.php?cat=women&sub=anklets">Anklets</a>
                         <a href="category.php?cat=women&sub=earrings">Earrings</a>
+                        <a href="category.php?cat=women&sub=watches">Watches</a>
                     </div>
                     <div class="promo-banner">
                         <div class="placeholder-banner">Women's Collection</div>

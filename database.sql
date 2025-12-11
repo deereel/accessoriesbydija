@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS products (
     dimensions VARCHAR(100),
     material VARCHAR(100),
     stone_type VARCHAR(100),
+    category VARCHAR(100),
     gender ENUM('men', 'women', 'unisex') DEFAULT 'unisex',
     is_featured BOOLEAN DEFAULT FALSE,
     is_active BOOLEAN DEFAULT TRUE,

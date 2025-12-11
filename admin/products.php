@@ -17,63 +17,90 @@ if ($_POST) {
         $stmt->execute([$_POST['product_name'], $slug, $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], $_POST['weight'], $_POST['material'], $_POST['stone_type'], $_POST['gender'], isset($_POST['is_featured']) ? 1 : 0, isset($_POST['is_active']) ? 1 : 0]);
         $product_id = $pdo->lastInsertId();
 
-        // Handle image uploads
-        handleImageUploads($product_id);
+        $uploads_dir = '../assets/images/products';
+        if (!is_dir($uploads_dir)) {
+            mkdir($uploads_dir, 0777, true);
+        }
 
+        // Handle main image upload
+        if (isset($_FILES['main_image']) && $_FILES['main_image']['error'] === UPLOAD_ERR_OK) {
+            $file_name = uniqid() . '-' . basename($_FILES['main_image']['name']);
+            $destination = "$uploads_dir/$file_name";
+            if (move_uploaded_file($_FILES['main_image']['tmp_name'], $destination)) {
+                $image_url = "assets/images/products/$file_name";
+                $img_stmt = $pdo->prepare("INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, ?)");
+                $img_stmt->execute([$product_id, $image_url, 1]);
+            }
+        }
+
+        // Handle additional images upload
+        if (isset($_FILES['additional_images'])) {
+            foreach ($_FILES['additional_images']['tmp_name'] as $key => $tmp_name) {
+                if ($_FILES['additional_images']['error'][$key] === UPLOAD_ERR_OK) {
+                    $file_name = uniqid() . '-' . basename($_FILES['additional_images']['name'][$key]);
+                    $destination = "$uploads_dir/$file_name";
+                    if (move_uploaded_file($tmp_name, $destination)) {
+                        $image_url = "assets/images/products/$file_name";
+                        $img_stmt = $pdo->prepare("INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, ?)");
+                        $img_stmt->execute([$product_id, $image_url, 0]);
+                    }
+                }
+            }
+        }
         $success = "Product added successfully!";
     } elseif ($action === 'update_product') {
+        $product_id = $_POST['product_id'];
         $stmt = $pdo->prepare("UPDATE products SET name=?, description=?, sku=?, price=?, stock_quantity=?, weight=?, material=?, stone_type=?, gender=?, is_featured=?, is_active=? WHERE id=?");
-        $stmt->execute([$_POST['product_name'], $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], $_POST['weight'], $_POST['material'], $_POST['stone_type'], $_POST['gender'], isset($_POST['is_featured']) ? 1 : 0, isset($_POST['is_active']) ? 1 : 0, $_POST['product_id']]);
+        $stmt->execute([$_POST['product_name'], $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], $_POST['weight'], $_POST['material'], $_POST['stone_type'], $_POST['gender'], isset($_POST['is_featured']) ? 1 : 0, isset($_POST['is_active']) ? 1 : 0, $product_id]);
 
-        // Handle image uploads
-        handleImageUploads($_POST['product_id']);
+        $uploads_dir = '../assets/images/products';
+        if (!is_dir($uploads_dir)) {
+            mkdir($uploads_dir, 0777, true);
+        }
 
+        // Handle main image upload
+        if (isset($_FILES['main_image']) && $_FILES['main_image']['error'] === UPLOAD_ERR_OK) {
+            // Find and delete old primary image
+            $find_old_primary_stmt = $pdo->prepare("SELECT id, image_url FROM product_images WHERE product_id = ? AND is_primary = 1");
+            $find_old_primary_stmt->execute([$product_id]);
+            $old_primary = $find_old_primary_stmt->fetch();
+
+            if ($old_primary) {
+                if (file_exists('../' . $old_primary['image_url'])) {
+                    unlink('../' . $old_primary['image_url']);
+                }
+                $delete_old_primary_stmt = $pdo->prepare("DELETE FROM product_images WHERE id = ?");
+                $delete_old_primary_stmt->execute([$old_primary['id']]);
+            }
+
+            $file_name = uniqid() . '-' . basename($_FILES['main_image']['name']);
+            $destination = "$uploads_dir/$file_name";
+            if (move_uploaded_file($_FILES['main_image']['tmp_name'], $destination)) {
+                $image_url = "assets/images/products/$file_name";
+                $img_stmt = $pdo->prepare("INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, ?)");
+                $img_stmt->execute([$product_id, $image_url, 1]);
+            }
+        }
+
+        // Handle additional images upload
+        if (isset($_FILES['additional_images'])) {
+            foreach ($_FILES['additional_images']['tmp_name'] as $key => $tmp_name) {
+                if ($_FILES['additional_images']['error'][$key] === UPLOAD_ERR_OK) {
+                    $file_name = uniqid() . '-' . basename($_FILES['additional_images']['name'][$key]);
+                    $destination = "$uploads_dir/$file_name";
+                    if (move_uploaded_file($tmp_name, $destination)) {
+                        $image_url = "assets/images/products/$file_name";
+                        $img_stmt = $pdo->prepare("INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, ?)");
+                        $img_stmt->execute([$product_id, $image_url, 0]);
+                    }
+                }
+            }
+        }
         $success = "Product updated successfully!";
     } elseif ($action === 'delete_product') {
         $stmt = $pdo->prepare("DELETE FROM products WHERE id=?");
         $stmt->execute([$_POST['product_id']]);
         $success = "Product deleted successfully!";
-    }
-}
-
-function handleImageUploads($product_id) {
-    $upload_dir = '../assets/images/products/';
-    if (!is_dir($upload_dir)) {
-        mkdir($upload_dir, 0755, true);
-    }
-
-    // Handle main image
-    if (isset($_FILES['main_image']) && $_FILES['main_image']['error'] === UPLOAD_ERR_OK) {
-        $main_image_name = uniqid() . '_' . basename($_FILES['main_image']['name']);
-        $main_image_path = $upload_dir . $main_image_name;
-
-        if (move_uploaded_file($_FILES['main_image']['tmp_name'], $main_image_path)) {
-            // First, set all existing images for this product as not primary
-            $stmt = $GLOBALS['pdo']->prepare("UPDATE product_images SET is_primary = 0 WHERE product_id = ?");
-            $stmt->execute([$product_id]);
-
-            // Insert main image as primary
-            $stmt = $GLOBALS['pdo']->prepare("INSERT INTO product_images (product_id, image_url, is_primary, sort_order) VALUES (?, ?, 1, 0)");
-            $stmt->execute([$product_id, 'assets/images/products/' . $main_image_name]);
-        }
-    }
-
-    // Handle additional images
-    if (isset($_FILES['additional_images'])) {
-        $sort_order = 1; // Start from 1 since main image is 0
-
-        foreach ($_FILES['additional_images']['tmp_name'] as $key => $tmp_name) {
-            if ($_FILES['additional_images']['error'][$key] === UPLOAD_ERR_OK) {
-                $additional_image_name = uniqid() . '_' . basename($_FILES['additional_images']['name'][$key]);
-                $additional_image_path = $upload_dir . $additional_image_name;
-
-                if (move_uploaded_file($tmp_name, $additional_image_path)) {
-                    $stmt = $GLOBALS['pdo']->prepare("INSERT INTO product_images (product_id, image_url, is_primary, sort_order) VALUES (?, ?, 0, ?)");
-                    $stmt->execute([$product_id, 'assets/images/products/' . $additional_image_name, $sort_order]);
-                    $sort_order++;
-                }
-            }
-        }
     }
 }
 
@@ -123,6 +150,11 @@ $products = $stmt->fetchAll();
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         .close { float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
         .close:hover { color: #C27BA0; }
+        .image-preview-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+        #main-image-preview-container .img-preview-wrapper { border: 2px solid #C27BA0; }
+        .img-preview-wrapper { position: relative; }
+        .img-preview { width: 100px; height: 100px; object-fit: cover; border-radius: 4px; }
+        .delete-img-btn { position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; cursor: pointer; width: 20px; height: 20px; font-size: 12px; line-height: 20px; text-align: center; }
     </style>
 </head>
 <body>
@@ -217,12 +249,12 @@ $products = $stmt->fetchAll();
             <form id="productForm" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="action" id="formAction" value="add_product">
                 <input type="hidden" name="product_id" id="productId">
-                
+
                 <div class="form-group">
                     <label for="product_name">Product Name</label>
                     <input type="text" id="product_name" name="product_name" required>
                 </div>
-                
+
                 <div class="form-row">
                     <div class="form-group">
                         <label for="sku">SKU</label>
@@ -233,7 +265,7 @@ $products = $stmt->fetchAll();
                         <input type="number" id="price" name="price" step="0.01" required>
                     </div>
                 </div>
-                
+
                 <div class="form-row">
                     <div class="form-group">
                         <label for="stock">Stock Quantity</label>
@@ -244,24 +276,19 @@ $products = $stmt->fetchAll();
                         <input type="number" id="weight" name="weight" step="0.1">
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="description">Description</label>
                     <textarea id="description" name="description" rows="3" required></textarea>
                 </div>
-                
+
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="category">Category</label>
-                        <select id="category" name="category" required>
-                            <option value="">Select Category</option>
-                            <option value="women-rings">Women > Rings</option>
-                            <option value="women-earrings">Women > Earrings</option>
-                            <option value="women-necklaces">Women > Necklaces</option>
-                            <option value="women-bracelets">Women > Bracelets</option>
-                            <option value="men-rings">Men > Rings</option>
-                            <option value="men-bracelets">Men > Bracelets</option>
-                            <option value="men-necklaces">Men > Necklaces</option>
+                        <label for="gender">Gender</label>
+                        <select id="gender" name="gender" required onchange="updateCategoryOptions()">
+                            <option value="unisex">Unisex</option>
+                            <option value="women">Women</option>
+                            <option value="men">Men</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -275,8 +302,15 @@ $products = $stmt->fetchAll();
                         </select>
                     </div>
                 </div>
-                
+
                 <div class="form-row">
+                    <div class="form-group">
+                        <label for="category">Category</label>
+                        <select id="category" name="category" required>
+                            <option value="">Select Category</option>
+                            <!-- Options will be populated by JavaScript -->
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label for="stone_type">Stone Type</label>
                         <select id="stone_type" name="stone_type">
@@ -288,27 +322,8 @@ $products = $stmt->fetchAll();
                             <option value="Pearl">Pearl</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label for="gender">Gender</label>
-                        <select id="gender" name="gender" required>
-                            <option value="unisex">Unisex</option>
-                            <option value="women">Women</option>
-                            <option value="men">Men</option>
-                        </select>
-                    </div>
                 </div>
-                
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="main_image">Main Image</label>
-                        <input type="file" id="main_image" name="main_image" accept="image/*">
-                    </div>
-                    <div class="form-group">
-                        <label for="additional_images">Additional Images</label>
-                        <input type="file" id="additional_images" name="additional_images[]" accept="image/*" multiple>
-                    </div>
-                </div>
-                
+
                 <div class="form-row">
                     <div class="form-group">
                         <label>
@@ -323,7 +338,19 @@ $products = $stmt->fetchAll();
                         </label>
                     </div>
                 </div>
-                
+
+                <div class="form-group">
+                    <label for="main_image">Main Image</label>
+                    <input type="file" id="main_image" name="main_image" accept="image/*">
+                    <div id="main-image-preview-container" class="image-preview-container"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="additional_images">Additional Images</label>
+                    <input type="file" id="additional_images" name="additional_images[]" multiple accept="image/*">
+                    <div id="additional-images-preview-container" class="image-preview-container"></div>
+                </div>
+
                 <div style="text-align: right; margin-top: 20px;">
                     <button type="button" class="btn" onclick="closeModal()">Cancel</button>
                     <button type="submit" class="btn btn-success">Save Product</button>
@@ -333,18 +360,75 @@ $products = $stmt->fetchAll();
     </div>
 
     <script>
+        // Category options based on gender
+        const categoryOptions = {
+            women: [
+                { value: 'rings', label: 'Rings' },
+                { value: 'earrings', label: 'Earrings' },
+                { value: 'necklaces', label: 'Necklaces' },
+                { value: 'bracelets', label: 'Bracelets' },
+                { value: 'bangles', label: 'Bangles/Cuffs' },
+                { value: 'anklets', label: 'Anklets' },
+                { value: 'watches', label: 'Watches' }
+            ],
+            men: [
+                { value: 'rings', label: 'Rings' },
+                { value: 'bracelets', label: 'Bracelets' },
+                { value: 'necklaces', label: 'Necklaces' },
+                { value: 'chains', label: 'Chains' },
+                { value: 'watches', label: 'Watches' },
+                { value: 'cufflinks', label: 'Cufflinks' }
+            ],
+            unisex: [
+                { value: 'rings', label: 'Rings' },
+                { value: 'earrings', label: 'Earrings' },
+                { value: 'necklaces', label: 'Necklaces' },
+                { value: 'bracelets', label: 'Bracelets' },
+                { value: 'bangles', label: 'Bangles/Cuffs' },
+                { value: 'anklets', label: 'Anklets' },
+                { value: 'chains', label: 'Chains' },
+                { value: 'watches', label: 'Watches' },
+                { value: 'cufflinks', label: 'Cufflinks' }
+            ]
+        };
+
+        function updateCategoryOptions() {
+            const genderSelect = document.getElementById('gender');
+            const categorySelect = document.getElementById('category');
+            const selectedGender = genderSelect.value;
+
+            // Clear existing options
+            categorySelect.innerHTML = '<option value="">Select Category</option>';
+
+            // Add new options based on selected gender
+            if (selectedGender && categoryOptions[selectedGender]) {
+                categoryOptions[selectedGender].forEach(option => {
+                    const optionElement = document.createElement('option');
+                    optionElement.value = selectedGender + '-' + option.value;
+                    optionElement.textContent = option.label;
+                    categorySelect.appendChild(optionElement);
+                });
+            }
+        }
+
         function openAddModal() {
             document.getElementById('modalTitle').textContent = 'Add Product';
             document.getElementById('formAction').value = 'add_product';
             document.getElementById('productForm').reset();
             document.getElementById('is_active').checked = true;
+            updateCategoryOptions(); // Initialize category options
             document.getElementById('productModal').style.display = 'block';
         }
-        
+
         function editProduct(id) {
             fetch(`get_product.php?id=${id}`)
                 .then(response => response.json())
-                .then(product => {
+                .then(data => {
+                    if (!data.success) {
+                        alert(data.error);
+                        return;
+                    }
+                    const product = data.product;
                     document.getElementById('modalTitle').textContent = 'Edit Product';
                     document.getElementById('formAction').value = 'update_product';
                     document.getElementById('productId').value = product.id;
@@ -359,10 +443,52 @@ $products = $stmt->fetchAll();
                     document.getElementById('gender').value = product.gender;
                     document.getElementById('is_featured').checked = product.is_featured == 1;
                     document.getElementById('is_active').checked = product.is_active == 1;
+
+                    // Update category options based on gender and set the selected category
+                    updateCategoryOptions();
+                    setTimeout(() => {
+                        document.getElementById('category').value = product.category || '';
+                    }, 10);
+
+                    // Display existing images
+                    const mainImagePreviewContainer = document.getElementById('main-image-preview-container');
+                    const additionalImagesPreviewContainer = document.getElementById('additional-images-preview-container');
+                    mainImagePreviewContainer.innerHTML = '';
+                    additionalImagesPreviewContainer.innerHTML = '';
+
+                    if (product.images && product.images.length > 0) {
+                        product.images.forEach(image => {
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'img-preview-wrapper';
+                            
+                            const img = document.createElement('img');
+                            img.src = '../' + image.image_url;
+                            img.className = 'img-preview';
+                            
+                            const deleteBtn = document.createElement('button');
+                            deleteBtn.innerHTML = '&times;';
+                            deleteBtn.className = 'delete-img-btn';
+                            deleteBtn.onclick = () => deleteImage(image.id, wrapper);
+
+                            wrapper.appendChild(img);
+                            wrapper.appendChild(deleteBtn);
+
+                            if (image.is_primary == 1) {
+                                mainImagePreviewContainer.appendChild(wrapper);
+                            } else {
+                                additionalImagesPreviewContainer.appendChild(wrapper);
+                            }
+                        });
+                    }
+
                     document.getElementById('productModal').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error fetching product:', error);
+                    alert('Could not fetch product details.');
                 });
         }
-        
+
         function deleteProduct(id) {
             if (confirm('Are you sure you want to delete this product?')) {
                 const form = document.createElement('form');
@@ -372,7 +498,7 @@ $products = $stmt->fetchAll();
                 form.submit();
             }
         }
-        
+
         function toggleFeatured(id) {
             fetch('toggle_featured.php', {
                 method: 'POST',
@@ -391,11 +517,11 @@ $products = $stmt->fetchAll();
                 alert('Error toggling featured status');
             });
         }
-        
+
         function closeModal() {
             document.getElementById('productModal').style.display = 'none';
         }
-        
+
         // Close modal when clicking outside
         window.onclick = function(event) {
             const modal = document.getElementById('productModal');
@@ -403,15 +529,38 @@ $products = $stmt->fetchAll();
                 modal.style.display = 'none';
             }
         }
-        
+
         // Search and filter functionality
         document.getElementById('search-input').addEventListener('input', filterProducts);
         document.getElementById('category-filter').addEventListener('change', filterProducts);
         document.getElementById('status-filter').addEventListener('change', filterProducts);
-        
+
         function filterProducts() {
             // Filter functionality to be implemented
             console.log('Filtering products...');
+        }
+
+        function deleteImage(imageId, elementToRemove) {
+            if (!confirm('Are you sure you want to delete this image?')) {
+                return;
+            }
+            fetch('delete_image.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `image_id=${imageId}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    elementToRemove.remove();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while deleting the image.');
+            });
         }
     </script>
 </body>
