@@ -168,10 +168,11 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
                     <div class="swiper-slide">
                         <div class="product-grid">
                             <?php foreach ($chunk as $product): ?>
-                            <div class="product-card"
-                                 data-price="<?= $product['price'] ?>"
-                                 data-type="jewelry"
-                                 data-name="<?= htmlspecialchars($product['name']) ?>">
+                               <div class="product-card"
+                                   data-product-id="<?= $product['id'] ?>"
+                                   data-price="<?= $product['price'] ?>"
+                                   data-type="jewelry"
+                                   data-name="<?= htmlspecialchars($product['name']) ?>">
                                 
                                 <!-- Wishlist Button -->
                                 <button class="wishlist-btn">
@@ -196,7 +197,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
                                     <p><?= htmlspecialchars(substr($product['description'] ?? '', 0, 50)) ?>...</p>
                                     <div class="product-footer">
                                         <span class="product-price" data-price="<?= $product['price'] ?>">£<?= number_format($product['price'], 2) ?></span>
-                                        <button class="cart-btn">Add to Cart</button>
+                                        <button class="cart-btn add-to-cart" data-product-id="<?= $product['id'] ?>">Add to Cart</button>
                                     </div>
                                 </div>
                             </div>
@@ -285,9 +286,41 @@ function clearFilters() {
 
 // Cart functionality
 document.querySelectorAll('.cart-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        this.textContent = 'Added!';
-        setTimeout(() => this.textContent = 'Add to Cart', 1000);
+    btn.addEventListener('click', async function() {
+        const productId = this.dataset.productId || this.closest('.product-card')?.dataset.productId;
+        if (!productId) return;
+
+        const card = this.closest('.product-card');
+        const name = card?.dataset.name || '';
+        const price = parseFloat(card?.dataset.price || 0);
+        const image = card?.querySelector('.main-img')?.getAttribute('src') || '';
+
+        const originalText = this.textContent;
+        this.textContent = 'Adding...';
+
+        try {
+            const res = await fetch('/api/cart.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product_id: productId, product_name: name, price: price, image: image, quantity: 1 })
+            });
+            const data = await res.json();
+            if (data.success) {
+                this.textContent = 'Added!';
+                if (window.cartHandler && typeof window.cartHandler.updateCartCount === 'function') {
+                    window.cartHandler.updateCartCount();
+                }
+            } else {
+                this.textContent = originalText;
+                alert(data.message || 'Failed to add to cart');
+            }
+        } catch (err) {
+            console.error(err);
+            this.textContent = originalText;
+            alert('Error adding to cart');
+        }
+
+        setTimeout(() => this.textContent = originalText, 1500);
     });
 });
 

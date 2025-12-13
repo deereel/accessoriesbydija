@@ -179,19 +179,51 @@ function generateSampleProducts(category, subcategory) {
 let cart = JSON.parse(localStorage.getItem('cart')) || [];
 
 function addToCart(productId) {
-    const existingItem = cart.find(item => item.id === productId);
-    
-    if (existingItem) {
-        existingItem.quantity += 1;
-    } else {
-        cart.push({ id: productId, quantity: 1 });
-    }
-    
-    localStorage.setItem('cart', JSON.stringify(cart));
-    updateCartCount();
-    
-    // Show success message
-    showNotification('Product added to cart!');
+    // Try server-side add first (if API available), otherwise fall back to localStorage
+    (async () => {
+        try {
+            const res = await fetch('/api/cart.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product_id: productId, quantity: 1 })
+            });
+
+            const data = await res.json();
+            if (data && data.success) {
+                // If CartHandler exists, update its count; otherwise reload cart from server
+                if (window.cartHandler && typeof window.cartHandler.updateCartCount === 'function') {
+                    window.cartHandler.updateCartCount();
+                } else {
+                    // quick fetch to refresh header count
+                    try {
+                        const cRes = await fetch('/api/cart.php');
+                        const cData = await cRes.json();
+                        const countEl = document.querySelector('.cart-count');
+                        if (countEl && cData.items) {
+                            const total = cData.items.reduce((s,i) => s + (i.quantity||0), 0);
+                            countEl.textContent = total;
+                        }
+                    } catch (e) {}
+                }
+
+                showNotification('Product added to cart!');
+                return;
+            }
+        } catch (e) {
+            // ignore and fallback to localStorage
+        }
+
+        // Fallback: use localStorage cart
+        const existingItem = cart.find(item => item.id === productId);
+        if (existingItem) {
+            existingItem.quantity += 1;
+        } else {
+            cart.push({ id: productId, quantity: 1 });
+        }
+        localStorage.setItem('cart', JSON.stringify(cart));
+        updateCartCount();
+        showNotification('Product added to cart!');
+    })();
 }
 
 function updateCartCount() {

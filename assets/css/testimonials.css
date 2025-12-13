@@ -52,11 +52,28 @@
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #C27BA0 0%, #a66889 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     margin: 0 auto 1rem;
+    overflow: hidden;
+    position: relative;
+}
+
+.testimonial-avatar .avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.testimonial-avatar .avatar-initial {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #C27BA0 0%, #a66889 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: white;
     font-size: 1.5rem;
     font-weight: 600;

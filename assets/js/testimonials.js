@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function loadTestimonials() {
     const container = document.getElementById('testimonials-slider');
+    if (!container) return; // No testimonials section on this page
     
     try {
         const response = await fetch('api/testimonials.php');
@@ -54,12 +55,22 @@ function displayFallbackTestimonials() {
 
 function displayTestimonials(testimonials) {
     const container = document.getElementById('testimonials-slider');
-    
+    if (!container) {
+        console.warn('displayTestimonials: #testimonials-slider not found in DOM');
+        return;
+    }
+
+    const wrapper = container.querySelector('.swiper-wrapper');
+    if (!wrapper) {
+        console.warn('displayTestimonials: .swiper-wrapper not found inside #testimonials-slider');
+        return;
+    }
+
     const html = testimonials.map(testimonial => `
         <div class="swiper-slide">
             <div class="testimonial-card">
                 <div class="testimonial-avatar">
-                    ${getInitials(testimonial.customer_name)}
+                    ${getAvatarHTML(testimonial)}
                 </div>
                 <div class="testimonial-rating">
                     ${generateStars(testimonial.rating)}
@@ -77,7 +88,18 @@ function displayTestimonials(testimonials) {
         </div>
     `).join('');
     
-    container.querySelector('.swiper-wrapper').innerHTML = html;
+    wrapper.innerHTML = html;
+}
+
+function getAvatarHTML(testimonial) {
+    if (testimonial.client_image) {
+        // Display the base64 image from database
+        return `<img src="${testimonial.client_image}" alt="${testimonial.customer_name}" class="avatar-image">`;
+    } else {
+        // Display first letter as fallback
+        const initial = testimonial.customer_name.charAt(0).toUpperCase();
+        return `<div class="avatar-initial">${initial}</div>`;
+    }
 }
 
 function getInitials(name) {

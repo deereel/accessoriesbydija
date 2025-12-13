@@ -117,9 +117,34 @@ function changeImage(thumbnail, imageUrl) {
     }
 }
 
-function addToCart(id) {
-    event.target.textContent = 'Added!';
-    setTimeout(() => event.target.textContent = 'Add to Cart', 1500);
+async function addToCart(id) {
+    const btn = event.target;
+    const original = btn.textContent;
+    btn.textContent = 'Adding...';
+
+    try {
+        const res = await fetch('/api/cart.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ product_id: id, product_name: '<?= addslashes($product['name']) ?>', price: <?= floatval($product['price']) ?>, image: '<?= addslashes($product_images[0]['image_url'] ?? '') ?>', quantity: 1 })
+        });
+        const data = await res.json();
+        if (data.success) {
+            btn.textContent = 'Added!';
+            if (window.cartHandler && typeof window.cartHandler.updateCartCount === 'function') {
+                window.cartHandler.updateCartCount();
+            }
+        } else {
+            btn.textContent = original;
+            alert(data.message || 'Failed to add to cart');
+        }
+    } catch (err) {
+        console.error(err);
+        btn.textContent = original;
+        alert('Error adding to cart');
+    }
+
+    setTimeout(() => btn.textContent = original, 1500);
 }
 
 function toggleWishlist(id) {

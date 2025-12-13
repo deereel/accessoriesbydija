@@ -11,14 +11,47 @@ if ($_POST) {
     $action = $_POST['action'] ?? '';
     
     if ($action === 'add_testimonial') {
-        $stmt = $pdo->prepare("INSERT INTO testimonials (customer_name, email, rating, title, content, product_id, is_featured, is_approved) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$_POST['customer_name'], $_POST['email'], $_POST['rating'], $_POST['title'], $_POST['content'], $_POST['product_id'] ?: null, isset($_POST['is_featured']) ? 1 : 0, isset($_POST['is_approved']) ? 1 : 0]);
+        $client_image = null;
+        
+        // Handle image upload - convert to base64
+        if (isset($_FILES['client_image']) && $_FILES['client_image']['error'] === UPLOAD_ERR_OK) {
+            $file_extension = strtolower(pathinfo($_FILES['client_image']['name'], PATHINFO_EXTENSION));
+            $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            
+            if (in_array($file_extension, $allowed_extensions)) {
+                // Read file and convert to base64
+                $image_data = file_get_contents($_FILES['client_image']['tmp_name']);
+                $mime_type = $_FILES['client_image']['type'];
+                $base64_image = 'data:' . $mime_type . ';base64,' . base64_encode($image_data);
+                $client_image = $base64_image;
+            }
+        }
+        
+        $stmt = $pdo->prepare("INSERT INTO testimonials (customer_name, email, rating, title, content, product_id, client_image, is_featured, is_approved) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$_POST['customer_name'], $_POST['email'], $_POST['rating'], $_POST['title'], $_POST['content'], $_POST['product_id'] ?: null, $client_image, isset($_POST['is_featured']) ? 1 : 0, isset($_POST['is_approved']) ? 1 : 0]);
         $success = "Testimonial added successfully!";
     } elseif ($action === 'update_testimonial') {
-        $stmt = $pdo->prepare("UPDATE testimonials SET customer_name=?, email=?, rating=?, title=?, content=?, product_id=?, is_featured=?, is_approved=? WHERE id=?");
-        $stmt->execute([$_POST['customer_name'], $_POST['email'], $_POST['rating'], $_POST['title'], $_POST['content'], $_POST['product_id'] ?: null, isset($_POST['is_featured']) ? 1 : 0, isset($_POST['is_approved']) ? 1 : 0, $_POST['testimonial_id']]);
+        $client_image = $_POST['existing_image'] ?? null;
+        
+        // Handle image upload - convert to base64
+        if (isset($_FILES['client_image']) && $_FILES['client_image']['error'] === UPLOAD_ERR_OK) {
+            $file_extension = strtolower(pathinfo($_FILES['client_image']['name'], PATHINFO_EXTENSION));
+            $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            
+            if (in_array($file_extension, $allowed_extensions)) {
+                // Read file and convert to base64
+                $image_data = file_get_contents($_FILES['client_image']['tmp_name']);
+                $mime_type = $_FILES['client_image']['type'];
+                $base64_image = 'data:' . $mime_type . ';base64,' . base64_encode($image_data);
+                $client_image = $base64_image;
+            }
+        }
+        
+        $stmt = $pdo->prepare("UPDATE testimonials SET customer_name=?, email=?, rating=?, title=?, content=?, product_id=?, client_image=?, is_featured=?, is_approved=? WHERE id=?");
+        $stmt->execute([$_POST['customer_name'], $_POST['email'], $_POST['rating'], $_POST['title'], $_POST['content'], $_POST['product_id'] ?: null, $client_image, isset($_POST['is_featured']) ? 1 : 0, isset($_POST['is_approved']) ? 1 : 0, $_POST['testimonial_id']]);
         $success = "Testimonial updated successfully!";
     } elseif ($action === 'delete_testimonial') {
+        // Delete testimonial (image is stored in DB, so no file cleanup needed)
         $stmt = $pdo->prepare("DELETE FROM testimonials WHERE id=?");
         $stmt->execute([$_POST['testimonial_id']]);
         $success = "Testimonial deleted successfully!";
@@ -66,6 +99,11 @@ $products = $stmt->fetchAll();
         .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         .close { float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .client-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 10px; vertical-align: middle; }
+        .client-initial { width: 40px; height: 40px; border-radius: 50%; background: #C27BA0; color: white; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; margin-right: 10px; vertical-align: middle; }
+        .image-preview { max-width: 150px; max-height: 150px; margin-top: 10px; border-radius: 8px; display: none; }
+        .image-preview.show { display: block; }
+        .remove-image { color: #dc3545; cursor: pointer; font-size: 12px; margin-left: 10px; }
     </style>
 </head>
 <body>
@@ -107,6 +145,11 @@ $products = $stmt->fetchAll();
                 <?php foreach ($testimonials as $testimonial): ?>
                 <tr>
                     <td>
+                        <?php if ($testimonial['client_image']): ?>
+                            <img src="<?php echo htmlspecialchars($testimonial['client_image']); ?>" alt="<?php echo htmlspecialchars($testimonial['customer_name']); ?>" class="client-avatar">
+                        <?php else: ?>
+                            <span class="client-initial"><?php echo strtoupper(substr($testimonial['customer_name'], 0, 1)); ?></span>
+                        <?php endif; ?>
                         <strong><?php echo htmlspecialchars($testimonial['customer_name']); ?></strong>
                         <?php if ($testimonial['is_featured']): ?>
                             <span class="status-badge featured-badge">Featured</span>
@@ -142,9 +185,18 @@ $products = $stmt->fetchAll();
         <div class="modal-content">
             <span class="close" onclick="closeModal()">&times;</span>
             <h2 id="modalTitle">Add Testimonial</h2>
-            <form id="testimonialForm" method="POST">
+            <form id="testimonialForm" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="action" id="formAction" value="add_testimonial">
                 <input type="hidden" name="testimonial_id" id="testimonialId">
+                <input type="hidden" name="existing_image" id="existingImage">
+                
+                <div class="form-group">
+                    <label for="client_image">Client Picture</label>
+                    <input type="file" id="client_image" name="client_image" accept="image/*" onchange="previewImage(this)">
+                    <img id="imagePreview" class="image-preview" src="" alt="Preview">
+                    <span id="removeImage" class="remove-image" style="display: none;" onclick="removeImagePreview()">Remove Image</span>
+                    <small style="display: block; margin-top: 5px; color: #666;">If no image is uploaded, the first letter of the client's name will be displayed.</small>
+                </div>
                 
                 <div class="form-row">
                     <div class="form-group">
@@ -213,17 +265,82 @@ $products = $stmt->fetchAll();
     </div>
 
     <script>
+        function previewImage(input) {
+            const preview = document.getElementById('imagePreview');
+            const removeBtn = document.getElementById('removeImage');
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.classList.add('show');
+                    removeBtn.style.display = 'inline';
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+        
+        function removeImagePreview() {
+            document.getElementById('client_image').value = '';
+            document.getElementById('imagePreview').classList.remove('show');
+            document.getElementById('removeImage').style.display = 'none';
+            document.getElementById('existingImage').value = '';
+        }
+        
         function openAddModal() {
             document.getElementById('modalTitle').textContent = 'Add Testimonial';
             document.getElementById('formAction').value = 'add_testimonial';
             document.getElementById('testimonialForm').reset();
             document.getElementById('is_approved').checked = true;
+            document.getElementById('imagePreview').classList.remove('show');
+            document.getElementById('removeImage').style.display = 'none';
+            document.getElementById('existingImage').value = '';
             document.getElementById('testimonialModal').style.display = 'block';
         }
         
         function editTestimonial(id) {
-            // Implementation for editing testimonials
-            alert('Edit testimonial ' + id + ' - Feature to be implemented');
+            // Fetch testimonial data
+            fetch('get_testimonial.php?id=' + id)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Error: ' + data.error);
+                        return;
+                    }
+                    
+                    // Populate the form with testimonial data
+                    document.getElementById('modalTitle').textContent = 'Edit Testimonial';
+                    document.getElementById('formAction').value = 'update_testimonial';
+                    document.getElementById('testimonialId').value = data.id;
+                    document.getElementById('customer_name').value = data.customer_name;
+                    document.getElementById('email').value = data.email || '';
+                    document.getElementById('rating').value = data.rating;
+                    document.getElementById('title').value = data.title || '';
+                    document.getElementById('content').value = data.content;
+                    document.getElementById('product_id').value = data.product_id || '';
+                    document.getElementById('is_featured').checked = data.is_featured == 1;
+                    document.getElementById('is_approved').checked = data.is_approved == 1;
+                    
+                    // Handle existing image
+                    const preview = document.getElementById('imagePreview');
+                    const removeBtn = document.getElementById('removeImage');
+                    document.getElementById('existingImage').value = data.client_image || '';
+                    
+                    if (data.client_image) {
+                        preview.src = data.client_image; // Base64 data URL
+                        preview.classList.add('show');
+                        removeBtn.style.display = 'inline';
+                    } else {
+                        preview.classList.remove('show');
+                        removeBtn.style.display = 'none';
+                    }
+                    
+                    // Open the modal
+                    document.getElementById('testimonialModal').style.display = 'block';
+                })
+                .catch(error => {
+                    alert('Error fetching testimonial: ' + error);
+                });
         }
         
         function deleteTestimonial(id) {
