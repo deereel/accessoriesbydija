@@ -108,12 +108,29 @@ function handleCheckoutSessionCompleted($event, $pdo) {
             return; // Order not found
         }
 
-        // SECURITY: Verify amount matches (in pence)
+        // SECURITY: Verify amount matches (in pence for GBP)
         $expected_amount = intval($order['total_amount'] * 100);
         if ($session->amount_total !== $expected_amount) {
             // Amount mismatch - potential fraud
-            // TODO: Log security incident
+            error_log('Stripe amount mismatch for order_id=' . $order_id . ': expected=' . $expected_amount . ', received=' . $session->amount_total);
             return;
+        }
+
+        // Verify order integrity: check if discount and total are reasonable
+        $itemsStmt = $pdo->prepare("SELECT SUM(quantity * unit_price) as item_subtotal FROM order_items WHERE order_id = ?");
+        $itemsStmt->execute([$order_id]);
+        $itemResult = $itemsStmt->fetch();
+        $item_subtotal = $itemResult ? floatval($itemResult['item_subtotal'] ?? 0) : 0;
+        
+        // If order items exist, verify totals are consistent
+        if ($item_subtotal > 0) {
+            $calculated_total = $item_subtotal + floatval($order['shipping_amount']) - floatval($order['discount_amount']);
+            $calculated_total = round($calculated_total, 2);
+            
+            // Allow small tolerance for rounding
+            if (abs($calculated_total - floatval($order['total_amount'])) > 0.01) {
+                error_log("Order amount mismatch for order_id={$order_id}: calculated={$calculated_total}, recorded={$order['total_amount']}");
+            }
         }
 
         // Check if already processed (idempotent)
@@ -122,8 +139,9 @@ function handleCheckoutSessionCompleted($event, $pdo) {
         }
 
         // Update order status to paid
-        $stmt = $pdo->prepare("UPDATE orders SET status = ?, notes = ? WHERE id = ?");
+        $stmt = $pdo->prepare("UPDATE orders SET status = ?, payment_status = ?, notes = ? WHERE id = ?");
         $stmt->execute([
+            'processing',
             'paid',
             'Paid via Stripe. Session: ' . $session->id,
             $order_id

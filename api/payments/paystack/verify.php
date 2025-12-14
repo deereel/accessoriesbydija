@@ -112,7 +112,7 @@ try {
         exit;
     }
 
-    // SECURITY: Verify amount matches exactly (in kobo)
+    // SECURITY: Verify amount matches exactly (in kobo for GBP currency)
     $expected_amount = intval($order['total_amount'] * 100);
     if ($transaction['amount'] !== $expected_amount) {
         // Amount mismatch - potential fraud attempt
@@ -121,17 +121,41 @@ try {
         exit;
     }
 
-    // TODO: Verify currency is correct
+    // Verify currency is correct
+    if ($transaction['currency'] !== 'GBP') {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Payment currency mismatch. Expected GBP']);
+        exit;
+    }
+
+    // Verify order integrity: check if discount and total are reasonable
+    // Fetch order items to recalculate subtotal
+    $itemsStmt = $pdo->prepare("SELECT SUM(quantity * unit_price) as item_subtotal FROM order_items WHERE order_id = ?");
+    $itemsStmt->execute([$order['id']]);
+    $itemResult = $itemsStmt->fetch();
+    $item_subtotal = $itemResult ? floatval($itemResult['item_subtotal'] ?? 0) : 0;
+    
+    // If order items exist, verify totals are consistent
+    if ($item_subtotal > 0) {
+        $calculated_total = $item_subtotal + floatval($order['shipping_amount']) - floatval($order['discount_amount']);
+        $calculated_total = round($calculated_total, 2);
+        
+        // Allow small tolerance for rounding
+        if (abs($calculated_total - floatval($order['total_amount'])) > 0.01) {
+            error_log("Order amount mismatch for order_id={$order['id']}: calculated={$calculated_total}, recorded={$order['total_amount']}");
+            // Log but don't fail - may be legitimate rounding difference
+        }
+    }
 
     // Update order status to paid
-    $stmt = $pdo->prepare("UPDATE orders SET status = ?, notes = ? WHERE id = ?");
+    $stmt = $pdo->prepare("UPDATE orders SET status = ?, payment_status = ?, notes = ? WHERE id = ?");
     $stmt->execute([
+        'processing',  // Set to processing after payment confirmed
         'paid',
         'Paid via Paystack. Reference: ' . $reference,
         $order['id']
     ]);
 
-    // TODO: Create order_items records from pending order
     // TODO: Update inventory/stock levels
     // TODO: Send confirmation email to customer
 

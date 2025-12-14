@@ -1,3 +1,4 @@
+<?php ?>
     </main>
   </div>
 </div>

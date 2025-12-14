@@ -109,9 +109,27 @@ try {
         exit;
     }
 
+    // Verify order integrity: check if discount and total are reasonable
+    $itemsStmt = $pdo->prepare("SELECT SUM(quantity * unit_price) as item_subtotal FROM order_items WHERE order_id = ?");
+    $itemsStmt->execute([$order['id']]);
+    $itemResult = $itemsStmt->fetch();
+    $item_subtotal = $itemResult ? floatval($itemResult['item_subtotal'] ?? 0) : 0;
+    
+    // If order items exist, verify totals are consistent
+    if ($item_subtotal > 0) {
+        $calculated_total = $item_subtotal + floatval($order['shipping_amount']) - floatval($order['discount_amount']);
+        $calculated_total = round($calculated_total, 2);
+        
+        // Allow small tolerance for rounding
+        if (abs($calculated_total - floatval($order['total_amount'])) > 0.01) {
+            error_log("Order amount mismatch for order_id={$order['id']}: calculated={$calculated_total}, recorded={$order['total_amount']}");
+        }
+    }
+
     // Update order status to paid
-    $stmt = $pdo->prepare("UPDATE orders SET status = ?, notes = ? WHERE id = ?");
+    $stmt = $pdo->prepare("UPDATE orders SET status = ?, payment_status = ?, notes = ? WHERE id = ?");
     $stmt->execute([
+        'processing',
         'paid',
         'Paid via Remita. RRR: ' . $rrr . ' | Transaction: ' . ($transaction['transactionId'] ?? 'N/A'),
         $order['id']

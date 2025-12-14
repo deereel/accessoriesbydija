@@ -46,6 +46,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['customer_name'] = $customer['first_name'] . ' ' . $customer['last_name'];
         $_SESSION['customer_email'] = $customer['email'];
 
+        // Determine redirect if provided by client (validate to prevent open redirects)
+        $redirect = null;
+        if (!empty($data['redirect'])) {
+            $candidate = trim($data['redirect']);
+            // Only allow relative paths within site (no scheme or host)
+            if (strpos($candidate, 'http://') === false && strpos($candidate, 'https://') === false && strpos($candidate, '//') === false) {
+                // Basic normalization: strip leading slashes
+                $redirect = ltrim($candidate, '/');
+            }
+        }
+
         // If there is a session cart, migrate it into DB
         if (isset($_SESSION['cart']) && is_array($_SESSION['cart']) && count($_SESSION['cart']) > 0) {
             foreach ($_SESSION['cart'] as $item) {
@@ -80,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$token, $customer['id']]);
         }
         
-        echo json_encode([
+        $resp = [
             'success' => true,
             'message' => 'Login successful',
             'customer' => [
@@ -88,7 +99,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'name' => $customer['first_name'] . ' ' . $customer['last_name'],
                 'email' => $customer['email']
             ]
-        ]);
+        ];
+        if ($redirect) $resp['redirect'] = $redirect;
+        echo json_encode($resp);
         
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);

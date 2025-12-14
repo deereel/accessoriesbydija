@@ -2,11 +2,7 @@
 session_start();
 require_once 'config/database.php';
 
-// Check if user has items in cart
-if (empty($_SESSION['cart']) && !isset($_COOKIE['DIJACart']) && !isset($_COOKIE['cart'])) {
-    header('Location: cart.php');
-    exit;
-}
+// Checkout access: do not force-redirect from server — client-side will load guest cart from localStorage.
 
 $customer_id = $_SESSION['customer_id'] ?? null;
 $addresses = [];
@@ -57,6 +53,8 @@ foreach ($cart_items as $item) {
     $subtotal += $item['price'] * $item['quantity'];
 }
 
+// Allow page to render for both guests and logged-in users; client-side will handle empty-cart UX.
+
 // Shipping cost (example: £5)
 $shipping_cost = 5;
 
@@ -65,15 +63,12 @@ $discount = 0;
 $discount_code = '';
 
 $total = $subtotal + $shipping_cost - $discount;
+
+$page_title = 'Checkout - Dija Accessories'; 
+$page_description = 'Complete your order and choose shipping/payment options.'; 
+include 'includes/header.php';
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Checkout - Dija Accessories</title>
-    <link href="assets/css/style.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
     <style>
         .checkout-container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
         .checkout-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; }
@@ -99,13 +94,20 @@ $total = $subtotal + $shipping_cost - $discount;
         .summary-row { display: flex; justify-content: space-between; margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid #eee; }
         .summary-row.total { font-weight: 700; font-size: 1.2rem; color: #c487a5; border: none; margin-top: 0.5rem; }
         .summary-row.discount { color: #28a745; }
+        .progress { position: relative; width: 100%; height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; margin-top:8px; }
+        .progress-bar { height: 100%; width: 0%; background: #ef4444; transition: width 0.3s ease; }
+        .bg-green { background: #10b981 !important; }
+        .bg-yellow { background: #f59e0b !important; }
+        .bg-red { background: #ef4444 !important; }
+        .progress-label { font-size: 13px; color: #666; margin-bottom: 8px; }
+        .progress-note { font-size: 12px; color: #666; margin-top: 6px; }
         
         .promo-input-group { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
         .promo-input-group input { flex: 1; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; }
         .promo-input-group button { padding: 0.75rem 1rem; background: #c487a5; color: white; border: none; border-radius: 4px; cursor: pointer; }
         .promo-input-group button:hover { background: #a66889; }
         
-        .btn-checkout { width: 100%; padding: 1rem; background: #c487a5; color: white; border: none; border-radius: 6px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 1.5rem; }
+        .btn-checkout { display: block; width: 100%; text-align: center; background: #c487a5; color: #fff; border: none; padding: 14px 18px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 1rem; margin-top: 1.5rem; }
         .btn-checkout:hover { background: #a66889; }
         .btn-checkout:disabled { background: #ccc; cursor: not-allowed; }
         
@@ -121,12 +123,12 @@ $total = $subtotal + $shipping_cost - $discount;
         .cart-item-name { font-weight: 500; }
         .cart-item-qty { color: #666; font-size: 0.9rem; }
     </style>
-</head>
-<body>
-    <?php include 'includes/header.php'; ?>
 
     <div class="checkout-container">
-        <h1 style="margin-bottom: 2rem;"><i class="fas fa-shopping-cart"></i> Checkout</h1>
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:2rem;">
+            <h1 style="margin:0; display:inline-flex; align-items:center;"><i class="fas fa-shopping-cart" style="margin-right:8px;"></i> Checkout</h1>
+            <a href="products.php" class="btn-outline" style="padding:8px 12px; border-radius:6px; border:1px solid #ddd; color:#222; text-decoration:none;">Continue Shopping</a>
+        </div>
 
         <div class="checkout-grid">
             <!-- Left Column: Checkout Form -->
@@ -149,20 +151,21 @@ $total = $subtotal + $shipping_cost - $discount;
 
                     <?php if (!empty($addresses)): ?>
                     <div style="margin-bottom: 1.5rem;">
-                        <h4 style="margin-bottom: 1rem;">Select Address</h4>
-                        <?php foreach ($addresses as $addr): ?>
-                        <label class="address-card" onclick="selectAddress(<?php echo $addr['id']; ?>)">
-                            <input type="radio" name="address_id" value="<?php echo $addr['id']; ?>" 
-                                   <?php echo $addr['is_default'] ? 'checked' : ''; ?>>
-                            <div>
-                                <strong><?php echo htmlspecialchars($addr['full_name']); ?></strong><br>
-                                <?php echo htmlspecialchars($addr['address_line_1']); ?>
-                                <?php if ($addr['address_line_2']): ?><br><?php echo htmlspecialchars($addr['address_line_2']); ?><?php endif; ?>
-                                <br><?php echo htmlspecialchars($addr['city'] . ', ' . $addr['state'] . ' ' . $addr['postal_code'] . ' ' . $addr['country']); ?>
-                                <br>Phone: <?php echo htmlspecialchars($addr['phone']); ?>
-                            </div>
-                        </label>
-                        <?php endforeach; ?>
+                        <label for="address-select-dropdown" style="display: block; font-weight: 500; margin-bottom: 0.5rem;">Select Address</label>
+                        <select id="address-select-dropdown" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;">
+                            <option value="">-- Select an address --</option>
+                            <?php foreach ($addresses as $addr): ?>
+                                <?php
+                                    $full_name = $addr['full_name'] ?? trim((($addr['first_name'] ?? '') . ' ' . ($addr['last_name'] ?? '')));
+                                    $line1 = $addr['address_line_1'] ?? '';
+                                    $city = $addr['city'] ?? '';
+                                    $state = $addr['state'] ?? '';
+                                    $country = $addr['country'] ?? '';
+                                    $label = htmlspecialchars($full_name . ' - ' . $line1 . ', ' . $city . ', ' . $state . ', ' . $country);
+                                ?>
+                                <option value="<?php echo $addr['id']; ?>" <?php echo (!empty($addr['is_default']) ? 'selected' : ''); ?>><?php echo $label; ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
                     <hr style="margin: 1.5rem 0;">
                     <?php endif; ?>
@@ -215,6 +218,11 @@ $total = $subtotal + $shipping_cost - $discount;
                                 <input type="text" id="country" name="country" value="United Kingdom" required>
                             </div>
                         </div>
+                        <?php if ($customer_id): ?>
+                        <button type="button" id="save-address-btn-checkout" class="btn-primary" style="margin-top:8px;">Save Address</button>
+                        <?php else: ?>
+                        <button type="button" id="use-address-btn-checkout" class="btn-primary" style="margin-top:8px;">Use this address</button>
+                        <?php endif; ?>
                     </form>
                 </div>
 
@@ -243,6 +251,16 @@ $total = $subtotal + $shipping_cost - $discount;
 
             <!-- Right Column: Order Summary -->
             <div>
+                <!-- Free Shipping Progress (moved from cart) -->
+                <div class="checkout-section" id="shipping-progress-card" style="margin-bottom:16px;">
+                    <div class="section-title"><i class="fas fa-truck" style="margin-right:8px;"></i>Free Shipping</div>
+                    <div>
+                        <div class="progress-label" id="shipping-progress-text">Add more to qualify for free shipping</div>
+                        <div class="progress"><div id="shipping-progress-bar" class="progress-bar"></div></div>
+                        <div class="progress-note" id="shipping-info-text">Free shipping thresholds apply based on destination.</div>
+                    </div>
+                </div>
+
                 <div class="checkout-section order-summary">
                     <div class="section-title">Order Summary</div>
 
@@ -289,7 +307,8 @@ $total = $subtotal + $shipping_cost - $discount;
 
     <script>
         const SHIPPING_COST = <?php echo $shipping_cost; ?>;
-        let currentDiscount = 0;
+        let currentDiscountPercent = 0;
+        let currentDiscountAbsolute = 0; // GBP absolute discount
 
         // Load cart items from database or localStorage
         async function loadCartItems() {
@@ -300,16 +319,17 @@ $total = $subtotal + $shipping_cost - $discount;
                 if (data.success && data.items) {
                     const itemsHtml = data.items.map(item => `
                         <div class="cart-item">
-                            <span class="cart-item-name">${escapeHtml(item.name)}</span>
-                            <span class="cart-item-qty">x${item.quantity}</span>
+                            <span class="cart-item-name">${escapeHtml(item.name || item.product_name || ('Product #' + (item.product_id || '')))} x${item.quantity}</span>
                             <span>£${(item.price * item.quantity).toFixed(2)}</span>
                         </div>
                     `).join('');
                     
-                    document.getElementById('cart-items-summary').innerHTML = itemsHtml;
-                    updateOrderTotal(data.items);
+                        document.getElementById('cart-items-summary').innerHTML = itemsHtml;
+                        // Store current items for promo re-validation
+                        __currentCartItems = data.items.map(it => ({ name: it.name || it.product_name || ('Product #' + (it.product_id||'')), quantity: it.quantity, price: parseFloat(it.price||0) }));
+                        updateOrderTotal(__currentCartItems);
                 } else {
-                    loadCartFromLocalStorage();
+                        loadCartFromLocalStorage();
                 }
             } catch (error) {
                 console.error('Error loading cart:', error);
@@ -320,31 +340,65 @@ $total = $subtotal + $shipping_cost - $discount;
         function loadCartFromLocalStorage() {
             const cartStr = localStorage.getItem('DIJACart') || localStorage.getItem('cart');
             if (!cartStr) return;
-            
+
             const cart = JSON.parse(cartStr);
-            // Simple display - in production, fetch product details
-            const itemsHtml = cart.map((item, idx) => `
+            // Build items array with price if available and render
+            const items = cart.map((item) => {
+                return {
+                    product_id: item.product_id || item.id,
+                    name: item.product_name || `Product #${item.product_id || item.id}`,
+                    quantity: item.quantity || 1,
+                    price: parseFloat(item.price || 0),
+                    sku: item.sku || 'N/A'  // Will be overridden by API response
+                };
+            });
+
+            const itemsHtml = items.map(it => `
                 <div class="cart-item">
-                    <span class="cart-item-name">Product #${item.product_id}</span>
-                    <span class="cart-item-qty">x${item.quantity}</span>
+                    <span class="cart-item-name">${escapeHtml(it.name)} x${it.quantity}</span>
+                    <span>£${(it.price * it.quantity).toFixed(2)}</span>
                 </div>
             `).join('');
-            
+
             document.getElementById('cart-items-summary').innerHTML = itemsHtml;
+            __currentCartItems = items;
+            updateOrderTotal(__currentCartItems);
         }
 
         function updateOrderTotal(items = []) {
             let subtotal = 0;
             items.forEach(item => {
-                subtotal += item.price * item.quantity;
+                subtotal += parseFloat(item.price || 0) * (item.quantity || 1);
             });
-            
-            const discountAmount = subtotal * (currentDiscount / 100);
+
+                // Determine discount amount: prefer absolute value if available, else percent
+                let discountAmount = 0;
+                if (currentDiscountAbsolute && currentDiscountAbsolute > 0) {
+                    discountAmount = parseFloat(currentDiscountAbsolute) || 0;
+                } else if (currentDiscountPercent && currentDiscountPercent > 0) {
+                    discountAmount = subtotal * (parseFloat(currentDiscountPercent) / 100);
+                }
+
+            // Cap discount to subtotal
+            discountAmount = Math.min(discountAmount, subtotal);
+
             const total = subtotal + SHIPPING_COST - discountAmount;
-            
+
+            // Update displays and data attributes
             document.getElementById('subtotal-display').textContent = '£' + subtotal.toFixed(2);
+            document.getElementById('subtotal-display').setAttribute('data-price', String(subtotal));
             document.getElementById('discount-display').textContent = '-£' + discountAmount.toFixed(2);
+            document.getElementById('discount-display').setAttribute('data-price', String(-discountAmount));
             document.getElementById('total-display').textContent = '£' + total.toFixed(2);
+            document.getElementById('total-display').setAttribute('data-price', String(total));
+
+            // Show or hide discount row
+            const discRow = document.getElementById('discount-row');
+            if (discountAmount > 0) {
+                discRow.style.display = 'flex';
+            } else {
+                discRow.style.display = 'none';
+            }
         }
 
         function toggleAddressForm() {
@@ -352,8 +406,9 @@ $total = $subtotal + $shipping_cost - $discount;
             form.style.display = form.style.display === 'none' ? 'block' : 'none';
         }
 
-        function selectAddress(addressId) {
-            document.querySelector(`input[value="${addressId}"]`).checked = true;
+        function getSelectedAddressId() {
+            const dropdown = document.getElementById('address-select-dropdown');
+            return dropdown ? dropdown.value : null;
         }
 
         function selectPaymentMethod(method) {
@@ -363,6 +418,9 @@ $total = $subtotal + $shipping_cost - $discount;
             event.target.closest('.payment-option').classList.add('selected');
         }
 
+        // Keep the current cart items in scope so promo re-calculation uses them
+        let __currentCartItems = [];
+
         async function applyPromoCode() {
             const code = document.getElementById('promo_code').value.trim();
             if (!code) return;
@@ -371,21 +429,33 @@ $total = $subtotal + $shipping_cost - $discount;
                 const response = await fetch('/api/promo/validate.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code })
+                    body: JSON.stringify({ code, subtotal: parseFloat((document.getElementById('subtotal-display')?.textContent || '£0').replace(/[^0-9.]/g,'')) || 0 })
                 });
                 
                 const data = await response.json();
                 const messageDiv = document.getElementById('promo-message');
                 
-                if (data.valid) {
-                    currentDiscount = data.discount_percent || 0;
-                    document.getElementById('discount-row').style.display = 'flex';
-                    messageDiv.innerHTML = `<div class="success-message">✓ Promo code applied! ${data.discount_percent}% off</div>`;
-                    updateOrderTotal();
+                if (data.success) {
+                    // API returns 'type' ('percent'|'amount'), 'value' and 'discount' (absolute GBP)
+                    if (data.type === 'percent') {
+                        currentDiscountPercent = parseFloat(data.value) || 0;
+                        currentDiscountAbsolute = parseFloat(data.discount) || 0;
+                        messageDiv.innerHTML = `<div class="success-message">✓ Promo code applied! ${currentDiscountPercent}% off</div>`;
+                    } else {
+                        currentDiscountPercent = 0;
+                        currentDiscountAbsolute = parseFloat(data.discount) || 0;
+                        messageDiv.innerHTML = `<div class="success-message">✓ Promo code applied! -£${currentDiscountAbsolute.toFixed(2)}</div>`;
+                    }
+                    // Store promo absolute/percent and recalc using current items
+                    currentDiscountPercent = data.type === 'percent' ? parseFloat(data.value) || 0 : 0;
+                    currentDiscountAbsolute = parseFloat(data.discount) || 0;
+                    // Recalculate using stored items
+                    updateOrderTotal(__currentCartItems.length ? __currentCartItems : undefined);
                 } else {
                     messageDiv.innerHTML = `<div class="error-message">✗ ${data.message || 'Invalid promo code'}</div>`;
-                    currentDiscount = 0;
-                    document.getElementById('discount-row').style.display = 'none';
+                    currentDiscountPercent = 0;
+                    currentDiscountAbsolute = 0;
+                    updateOrderTotal(__currentCartItems.length ? __currentCartItems : undefined);
                 }
             } catch (error) {
                 console.error('Error validating promo:', error);
@@ -395,10 +465,21 @@ $total = $subtotal + $shipping_cost - $discount;
         async function placeOrder() {
             const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
             const email = document.getElementById('email').value;
-            const addressId = document.querySelector('input[name="address_id"]:checked')?.value;
+            const addressId = getSelectedAddressId();
+            const isLoggedIn = <?php echo $customer_id ? 'true' : 'false'; ?>;
             
-            if (!email || (!addressId && !validateAddressForm())) {
-                alert('Please fill in all required fields');
+            if (!email) {
+                alert('Please enter an email address');
+                return;
+            }
+            
+            if (!isLoggedIn && !validateAddressForm()) {
+                alert('Please fill in all required address fields for guest checkout');
+                return;
+            }
+            
+            if (isLoggedIn && !addressId) {
+                alert('Please select or add a shipping address');
                 return;
             }
             
@@ -406,15 +487,59 @@ $total = $subtotal + $shipping_cost - $discount;
             document.getElementById('place-order-btn').textContent = 'Processing...';
             
             try {
+                // Calculate client-side discount for server verification
+                const subtotal = parseFloat((document.getElementById('subtotal-display')?.getAttribute('data-price') || '0')) || 0;
+                let clientDiscount = 0;
+                if (currentDiscountAbsolute && currentDiscountAbsolute > 0) {
+                    clientDiscount = parseFloat(currentDiscountAbsolute) || 0;
+                } else if (currentDiscountPercent && currentDiscountPercent > 0) {
+                    clientDiscount = subtotal * (parseFloat(currentDiscountPercent) / 100);
+                }
+                clientDiscount = Math.min(clientDiscount, subtotal);
+                
+                // Build order payload
+                const orderPayload = {
+                    email,
+                    payment_method: paymentMethod,
+                    promo_code: document.getElementById('promo_code').value || null,
+                    client_discount: Math.round(clientDiscount * 100) / 100  // Round to 2 decimals
+                };
+                
+                // For logged-in customers
+                if (isLoggedIn) {
+                    orderPayload.address_id = addressId;
+                } else {
+                    // For guest checkout, collect cart items and address
+                    orderPayload.cart_items = __currentCartItems.map(item => ({
+                        product_id: item.product_id,
+                        product_name: item.name || item.product_name,
+                        quantity: item.quantity,
+                        price: item.price,
+                        sku: item.sku || 'N/A'
+                    }));
+                    
+                    // Extract address from form
+                    const fullName = document.getElementById('full_name')?.value || '';
+                    const nameParts = fullName.trim().split(/\s+/);
+                    const firstName = nameParts[0] || '';
+                    const lastName = nameParts.slice(1).join(' ') || '';
+                    
+                    orderPayload.guest_address = {
+                        first_name: firstName,
+                        last_name: lastName,
+                        address_line_1: document.getElementById('address_line_1')?.value || '',
+                        address_line_2: document.getElementById('address_line_2')?.value || '',
+                        city: document.getElementById('city')?.value || '',
+                        state: document.getElementById('state')?.value || '',
+                        postal_code: document.getElementById('postal_code')?.value || '',
+                        country: document.getElementById('country')?.value || ''
+                    };
+                }
+                
                 const response = await fetch('/api/orders/create.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email,
-                        address_id: addressId,
-                        payment_method: paymentMethod,
-                        promo_code: document.getElementById('promo_code').value
-                    })
+                    body: JSON.stringify(orderPayload)
                 });
                 
                 const data = await response.json();
@@ -453,7 +578,128 @@ $total = $subtotal + $shipping_cost - $discount;
         }
 
         // Load cart on page load
-        document.addEventListener('DOMContentLoaded', loadCartItems);
+        document.addEventListener('DOMContentLoaded', function(){
+            loadCartItems();
+            bindSaveAddressCheckout();
+               // Update shipping progress after cart loads
+               setTimeout(() => { if (typeof updateShippingProgress === 'function') updateShippingProgress(); }, 200);
+        });
+
+            // Shipping meter implementation (adapted from cart)
+            function getShippingThresholdNGN(country, state){
+                const AFRICAN_COUNTRIES = [
+                    'Algeria','Angola','Benin','Botswana','Burkina Faso','Burundi','Cameroon','Cape Verde','Central African Republic','Chad','Comoros','Congo','Democratic Republic of the Congo','Djibouti','Egypt','Equatorial Guinea','Eritrea','Eswatini','Ethiopia','Gabon','Gambia','Ghana','Guinea','Guinea-Bissau','Ivory Coast','Kenya','Lesotho','Liberia','Libya','Madagascar','Malawi','Mali','Mauritania','Mauritius','Morocco','Mozambique','Namibia','Niger','Nigeria','Rwanda','Sao Tome and Principe','Senegal','Seychelles','Sierra Leone','Somalia','South Africa','South Sudan','Sudan','Tanzania','Togo','Tunisia','Uganda','Zambia','Zimbabwe'
+                ];
+                if (country === 'Nigeria' && state === 'Lagos') return 150000;
+                if (country === 'Nigeria') return 250000;
+                if (AFRICAN_COUNTRIES.includes(country)) return 600000;
+                return 800000;
+            }
+
+            function updateShippingProgress(){
+                const bar = document.getElementById('shipping-progress-bar');
+                const text = document.getElementById('shipping-progress-text');
+                const info = document.getElementById('shipping-info-text');
+                const subtotalEl = document.getElementById('subtotal-display');
+                if (!bar || !text || !subtotalEl) return;
+
+                const subtotalGBP = parseFloat(subtotalEl.getAttribute('data-price') || '0') || 0;
+                const country = (document.getElementById('country')?.value) || 'United Kingdom';
+                const state = (document.getElementById('state')?.value) || '';
+
+                let rateNGN = 0;
+
+                let thresholdGBP = 0;
+                if (country === 'United Kingdom') {
+                    thresholdGBP = 300;
+                } else {
+                    const thresholdNGN = getShippingThresholdNGN(country, state);
+                    thresholdGBP = rateNGN > 0 ? (thresholdNGN / rateNGN) : 0;
+                }
+
+                let percent = 0;
+                if (thresholdGBP > 0) percent = Math.min((subtotalGBP / thresholdGBP) * 100, 100);
+                bar.style.width = percent + '%';
+                bar.className = 'progress-bar ' + (percent >= 100 ? 'bg-green' : percent >= 50 ? 'bg-yellow' : 'bg-red');
+
+                let symbol = '£';
+                let rateCurrent = 1;
+
+                const remainingDisp = Math.round(remainingGBP * rateCurrent).toLocaleString();
+
+                let locationText = country;
+                if (country === 'Nigeria') locationText = state === 'Lagos' ? 'Lagos' : 'other Nigerian states';
+                else if (country === 'United Kingdom') locationText = 'the United Kingdom';
+                else locationText = 'international delivery';
+
+                if (percent >= 100) {
+                    text.innerHTML = '🎉 You qualify for free shipping!';
+                    document.getElementById('shipping-display') && (document.getElementById('shipping-display').textContent = 'Free');
+                } else {
+                    text.innerHTML = `Add ${symbol} ${remainingDisp} more for free shipping to ${locationText}`;
+                    document.getElementById('shipping-display') && (document.getElementById('shipping-display').textContent = 'Depends on location');
+                }
+
+                if (info) {
+                    const thresholdDisp = Math.round(thresholdGBP * rateCurrent).toLocaleString();
+                    info.innerHTML = `📍 Current location: ${country} • Free shipping: ${symbol} ${thresholdDisp}+`;
+                }
+            }
+
+            // Recompute when address fields change
+            document.addEventListener('change', function(e){
+                if (e.target && (e.target.id === 'country' || e.target.id === 'state')) {
+                    updateShippingProgress();
+                }
+            });
+
+        // Save address button handler for checkout
+        function bindSaveAddressCheckout() {
+            const saveBtn = document.getElementById('save-address-btn-checkout');
+            const useBtn = document.getElementById('use-address-btn-checkout');
+            const isLoggedIn = <?php echo $customer_id ? 'true' : 'false'; ?>;
+
+            if (saveBtn) {
+                saveBtn.addEventListener('click', async function(){
+                    const payload = {
+                        type: 'shipping',
+                        first_name: (document.getElementById('full_name')?.value || '').split(' ')[0] || '',
+                        last_name: (document.getElementById('full_name')?.value || '').split(' ').slice(1).join(' ') || '',
+                        company: '',
+                        address_line_1: document.getElementById('address_line_1')?.value || '',
+                        address_line_2: document.getElementById('address_line_2')?.value || '',
+                        city: document.getElementById('city')?.value || '',
+                        state: document.getElementById('state')?.value || '',
+                        postal_code: document.getElementById('postal_code')?.value || '',
+                        country: document.getElementById('country')?.value || '',
+                        is_default: false
+                    };
+                    try {
+                        const res = await fetch('/api/account/save_address.php', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            alert('Address saved');
+                            // Optionally reload page to refresh dropdown
+                            location.reload();
+                        } else {
+                            alert(data.message || 'Failed to save address');
+                        }
+                    } catch (e) {
+                        console.error('Save address error', e);
+                        alert('Error saving address');
+                    }
+                });
+            }
+
+            if (useBtn) {
+                useBtn.addEventListener('click', function(){
+                    // Hide form and proceed — the form values will be used when placing order
+                    document.getElementById('address-form').style.display = 'none';
+                });
+            }
+        }
     </script>
 </body>
 </html>

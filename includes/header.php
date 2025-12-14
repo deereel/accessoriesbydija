@@ -49,19 +49,6 @@ require_once 'config/cache.php';
                     <i class="fas fa-shopping-bag"></i>
                     <span class="cart-count">0</span>
                 </a>
-                <div class="currency-selector">
-                    <button class="currency-btn" id="currency-btn">
-                        <span id="current-currency">GBP</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <div class="currency-dropdown" id="currency-dropdown">
-                        <div class="currency-option" data-currency="GBP">£ GBP</div>
-                        <div class="currency-option" data-currency="USD">$ USD</div>
-                        <div class="currency-option" data-currency="EUR">€ EUR</div>
-                        <div class="currency-option" data-currency="CNY">¥ CNY</div>
-                        <div class="currency-option" data-currency="NGN">₦ NGN</div>
-                    </div>
-                </div>
                 <div class="hamburger" id="hamburger">
                     <span></span>
                     <span></span>
@@ -81,9 +68,6 @@ require_once 'config/cache.php';
             </div>
             <div class="nav-item" data-menu="men">
                 <a href="category.php?cat=men">MEN <i class="fas fa-chevron-down"></i></a>
-            </div>
-            <div class="nav-item" data-menu="exclusives">
-                <a href="exclusives.php">EXCLUSIVES <i class="fas fa-chevron-down"></i></a>
             </div>
             <div class="nav-item" data-menu="gift">
                 <a href="gift-box.php">GIFT BOX <i class="fas fa-chevron-down"></i></a>
@@ -142,31 +126,17 @@ require_once 'config/cache.php';
                 </div>
             </div>
             
-            <!-- EXCLUSIVES Dropdown -->
-            <div class="dropdown-content" data-content="exclusives">
-                <div class="exclusives-layout">
-                    <div class="exclusives-links">
-                        <a href="luxury.php">Luxury Pieces</a>
-                        <a href="limited.php">Limited Editions</a>
-                        <a href="custom-jewelry.php">Customized Jewelry</a>
-                    </div>
-                    <div class="promo-banner">
-                        <div class="placeholder-banner">Exclusive Collection</div>
-                    </div>
-                </div>
-            </div>
-            
             <!-- GIFT BOX Dropdown -->
             <div class="dropdown-content" data-content="gift">
                 <div class="gift-layout">
                     <div class="gift-column">
-                        <a href="gift-boxes.php">Gift Boxes</a>
+                        <span class="disabled-link" aria-disabled="true">Gift Boxes — Coming soon</span>
                     </div>
                     <div class="gift-column">
-                        <a href="gift-cards.php">Gift Cards</a>
+                        <span class="disabled-link" aria-disabled="true">Gift Cards — Coming soon</span>
                     </div>
                     <div class="gift-column">
-                        <a href="holiday.php">Holiday Specials</a>
+                        <span class="disabled-link" aria-disabled="true">Holiday Specials — Coming soon</span>
                     </div>
                 </div>
             </div>
@@ -218,30 +188,5 @@ require_once 'config/cache.php';
             }
         });
         
-        // Currency selector
-        const currencyBtn = document.getElementById('currency-btn');
-        const currencyDropdown = document.getElementById('currency-dropdown');
-        
-        if (currencyBtn && currencyDropdown) {
-            currencyBtn.addEventListener('click', function() {
-                currencyDropdown.classList.toggle('active');
-            });
-        }
-        
-        // Currency options
-        document.querySelectorAll('.currency-option').forEach(option => {
-            option.addEventListener('click', function() {
-                const currency = this.dataset.currency;
-                document.getElementById('current-currency').textContent = currency;
-                currencyDropdown.classList.remove('active');
-            });
-        });
-        
-        // Close dropdowns when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.currency-selector')) {
-                currencyDropdown.classList.remove('active');
-            }
-        });
     });
     </script>

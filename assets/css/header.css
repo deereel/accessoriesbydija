@@ -28,6 +28,9 @@ body {
     margin: 0 auto;
 }
 
+/* Hide mobile-only close button on desktop */
+.mobile-close { display: none; }
+
 .search-container {
     position: relative;
     flex: 1;
@@ -134,64 +137,6 @@ body {
     transform: rotate(-45deg) translate(6px, -6px);
 }
 
-/* Currency Selector */
-.currency-selector {
-    position: relative;
-}
-
-.currency-btn {
-    background: none;
-    border: 1px solid #ddd;
-    padding: 8px 12px;
-    border-radius: 20px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 12px;
-    color: #222;
-    transition: all 0.3s;
-}
-
-.currency-btn:hover {
-    border-color: #C27BA0;
-    color: #C27BA0;
-}
-
-.currency-dropdown {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    background: white;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    min-width: 100px;
-    z-index: 1000;
-    display: none;
-}
-
-.currency-dropdown.active {
-    display: block;
-}
-
-.currency-option {
-    padding: 10px 15px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: background 0.3s;
-}
-
-.currency-option:hover {
-    background: #f5f5f5;
-    color: #C27BA0;
-}
-
-.currency-option.selected {
-    background: #C27BA0;
-    color: white;
-}
-
 .main-nav {
     display: flex;
     justify-content: center;
@@ -199,6 +144,14 @@ body {
     padding: 0 40px;
     background: white;
     border-top: 1px solid #f0f0f0;
+}
+
+/* Disabled link style for coming-soon items */
+.disabled-link {
+    color: #888;
+    cursor: default;
+    font-style: italic;
+    pointer-events: none;
 }
 
 .nav-item {
@@ -459,6 +412,7 @@ body {
     }
     
     .mobile-close {
+        display: block;
         align-self: flex-end;
         font-size: 24px;
         color: #222;

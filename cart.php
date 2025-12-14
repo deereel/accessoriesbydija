@@ -92,15 +92,7 @@ main { background: var(--bg); }
 
       <!-- Right: Summary -->
       <div>
-        <!-- Free Shipping Progress -->
-        <div class="card" style="margin-bottom:16px;">
-          <div class="card-header"><i class="fas fa-truck" style="margin-right:8px;"></i>Free Shipping</div>
-          <div class="card-body">
-            <div class="progress-label" id="shipping-progress-text">Add more to qualify for free shipping</div>
-            <div class="progress"><div id="shipping-progress-bar" class="progress-bar"></div></div>
-            <div class="progress-note" id="shipping-info-text">Free shipping: ₦150k+ (Lagos) • ₦250k+ (Other Nigerian states) • ₦600k+ (African countries) • ₦800k+ (Other countries) • £300+ (United Kingdom)</div>
-          </div>
-        </div>
+        <!-- Free Shipping Progress moved to checkout.php -->
 
         <!-- Order Summary -->
         <div class="card" id="cart-summary" style="margin-bottom:16px;">
@@ -112,189 +104,21 @@ main { background: var(--bg); }
               <li class="summary-item" id="promo-row" style="display:none;"><span>Discount</span><strong id="discount" class="summary-strong product-price" data-price="0">-£0.00</strong></li>
               <li class="summary-item"><span>Total</span><strong id="total" class="summary-strong product-price" data-price="0">£0.00</strong></li>
             </ul>
-            <div class="form-row" style="margin-top:10px;">
-              <div class="form-group">
-                <label for="promo-code">Promo Code</label>
-                <input type="text" id="promo-code" placeholder="Enter promo code" />
-              </div>
-              <div class="form-group" style="display:flex; align-items:flex-end; gap:8px;">
-                <button type="button" class="btn-outline" id="apply-promo">Apply</button>
-                <button type="button" class="btn-outline" id="remove-promo">Remove</button>
-              </div>
+            <div style="background:#f0f0f0; padding:12px; border-radius:6px; margin-top:12px; margin-bottom:12px; font-size:13px; color:#666;">
+              <i class="fas fa-tag" style="margin-right:8px;"></i>Promo codes can be applied at checkout
             </div>
-            <div id="promo-message" style="color:#b91c1c; font-size:13px; margin-top:6px;"></div>
+            <a href="products.php" class="btn-outline" style="display:block; text-align:center; margin-bottom:8px;">Continue Shopping</a>
             <button class="btn-primary" id="checkout-btn" style="margin-top:12px;">Proceed to Checkout</button>
           </div>
         </div>
 
-        <?php if ($is_logged_in): ?>
-        <!-- Saved Addresses for Logged-in Users -->
-        <div class="card" id="addresses-card" style="margin-bottom:16px;">
-          <div class="card-header">Saved Addresses</div>
-          <div class="card-body">
-            <div class="form-group">
-              <label for="address-select">Select Address</label>
-              <select id="address-select">
-                <option value="">Loading addresses...</option>
-              </select>
-            </div>
-            <button type="button" class="btn-outline" id="add-address-btn" style="margin-top:8px;">Add New Address</button>
-          </div>
-        </div>
-        <?php endif; ?>
-
-        <!-- Customer Information -->
-        <div class="card" id="customer-info-card" <?php echo $is_logged_in ? 'style="display:none;"' : ''; ?> >
-          <div class="card-header">Customer Information</div>
-          <div class="card-body">
-            <?php if ($is_logged_in): ?>
-            <div class="form-group">
-              <label for="address-name">Address Name</label>
-              <input type="text" id="address-name" placeholder="Home, Work, etc." />
-            </div>
-            <?php endif; ?>
-            <div class="form-group">
-              <label for="client-name">Full Name</label>
-              <input type="text" id="client-name" placeholder="Enter your full name" />
-            </div>
-            <div class="form-group">
-              <label for="client-phone">Phone Number</label>
-              <input type="tel" id="client-phone" placeholder="Enter your phone number" />
-            </div>
-            <div class="form-group">
-              <label for="shipping-address">Street Address</label>
-              <textarea id="shipping-address" rows="3" placeholder="Enter your street address"></textarea>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label for="city-input">City</label>
-                <input type="text" id="city-input" placeholder="Enter your city" />
-              </div>
-              <div class="form-group">
-                <label for="country-select">Country</label>
-                <select id="country-select">
-                  <option value="Nigeria" selected>Nigeria</option>
-                  <option value="United Kingdom">United Kingdom</option>
-                  <option value="United States">United States</option>
-                  <option value="Canada">Canada</option>
-                  <option value="Ghana">Ghana</option>
-                  <option value="Kenya">Kenya</option>
-                  <option value="South Africa">South Africa</option>
-                  <option value="Germany">Germany</option>
-                  <option value="France">France</option>
-                  <option value="Australia">Australia</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-group">
-              <label for="state-select">State/Province</label>
-              <select id="state-select">
-                <option value="">Select State</option>
-              </select>
-            </div>
-            <?php if ($is_logged_in): ?>
-            <button type="button" class="btn-primary" id="save-address-btn" style="margin-top:8px;">Save Address</button>
-            <?php endif; ?>
-          </div>
-        </div>
+        <!-- Address selection and creation moved to checkout.php -->
       </div>
     </div>
   </div>
 </main>
 
-<script>
-// Free shipping meter based on DeeReel thresholds; adapts to selected country/state.
-(function(){
-  const AFRICAN_COUNTRIES = [
-    'Algeria','Angola','Benin','Botswana','Burkina Faso','Burundi','Cameroon','Cape Verde','Central African Republic','Chad','Comoros','Congo','Democratic Republic of the Congo','Djibouti','Egypt','Equatorial Guinea','Eritrea','Eswatini','Ethiopia','Gabon','Gambia','Ghana','Guinea','Guinea-Bissau','Ivory Coast','Kenya','Lesotho','Liberia','Libya','Madagascar','Malawi','Mali','Mauritania','Mauritius','Morocco','Mozambique','Namibia','Niger','Nigeria','Rwanda','Sao Tome and Principe','Senegal','Seychelles','Sierra Leone','Somalia','South Africa','South Sudan','Sudan','Tanzania','Togo','Tunisia','Uganda','Zambia','Zimbabwe'
-  ];
-
-  function getShippingThresholdNGN(country, state){
-    if (country === 'Nigeria' && state === 'Lagos') return 150000;
-    if (country === 'Nigeria') return 250000;
-    if (AFRICAN_COUNTRIES.includes(country)) return 600000;
-    return 800000;
-  }
-
-  // Exported for cart-handler.js to call
-  window.updateShippingProgress = function(){
-    const bar = document.getElementById('shipping-progress-bar');
-    const text = document.getElementById('shipping-progress-text');
-    const info = document.getElementById('shipping-info-text');
-    const subtotalEl = document.getElementById('subtotal');
-    if (!bar || !text || !subtotalEl) return;
-
-    // Subtotal in GBP base stored in data-price by cart-handler
-    const subtotalGBP = parseFloat(subtotalEl.getAttribute('data-price') || '0') || 0;
-
-    const country = (document.getElementById('country-select')?.value) || 'Nigeria';
-    const state = (document.getElementById('state-select')?.value) || 'Lagos';
-
-    // Convert NGN thresholds to GBP using currency rates if available
-    let rateNGN = 0;
-    try {
-      rateNGN = window.currencyConverter?.rates?.NGN || 0;
-    } catch(e) { rateNGN = 0; }
-
-    let thresholdGBP = 0;
-    if (country === 'United Kingdom') {
-      thresholdGBP = 300; // £300 free shipping threshold in UK
-    } else {
-      const thresholdNGN = getShippingThresholdNGN(country, state);
-      thresholdGBP = rateNGN > 0 ? (thresholdNGN / rateNGN) : 0; // Convert NGN thresholds to GBP base
-    }
-
-    let percent = 0;
-    if (thresholdGBP > 0) percent = Math.min((subtotalGBP / thresholdGBP) * 100, 100);
-    bar.style.width = percent + '%';
-    bar.className = 'progress-bar ' + (percent >= 100 ? 'bg-green' : percent >= 50 ? 'bg-yellow' : 'bg-red');
-
-    // Remaining amount in current currency with symbol
-    let symbol = '£';
-    let rateCurrent = 1;
-    const cc = window.currencyConverter;
-    if (cc && cc.currentCurrency) {
-      symbol = cc.symbols?.[cc.currentCurrency] || symbol;
-      rateCurrent = cc.rates?.[cc.currentCurrency] || 1;
-    }
-
-    const remainingGBP = Math.max(thresholdGBP - subtotalGBP, 0);
-    const remainingDisp = Math.round(remainingGBP * rateCurrent).toLocaleString();
-
-    let locationText = country;
-    if (country === 'Nigeria') {
-      locationText = (state === 'Lagos') ? 'Lagos' : 'other Nigerian states';
-    } else if (AFRICAN_COUNTRIES.includes(country)) {
-      locationText = 'other African countries';
-    } else if (country === 'United Kingdom') {
-      locationText = 'the United Kingdom';
-    } else {
-      locationText = 'international delivery';
-    }
-
-    if (percent >= 100) {
-      text.innerHTML = '🎉 You qualify for free shipping!';
-      document.getElementById('shipping')?.classList.add('text-success');
-      document.getElementById('shipping') && (document.getElementById('shipping').textContent = 'Free');
-    } else {
-      text.innerHTML = `Add ${symbol} ${remainingDisp} more for free shipping to ${locationText}`;
-      document.getElementById('shipping') && (document.getElementById('shipping').textContent = 'Depends on location');
-    }
-
-    if (info) {
-      const thresholdDisp = Math.round(thresholdGBP * rateCurrent).toLocaleString();
-      info.innerHTML = `📍 Current location: ${country === 'Nigeria' ? (state || 'Nigeria') : country} • Free shipping: ${symbol} ${thresholdDisp}+`;
-    }
-  };
-
-  // Recompute when address fields change
-  document.addEventListener('change', function(e){
-    if (e.target && (e.target.id === 'country-select' || e.target.id === 'state-select')) {
-      window.updateShippingProgress();
-    }
-  });
-})();
-</script>
+<!-- Free shipping meter moved to checkout.php -->
 
 <script>
 // Promo code handling on cart page
@@ -329,7 +153,6 @@ main { background: var(--bg); }
     totalEl.textContent = `£${newTotal.toFixed(2)}`;
 
     if (window.currencyConverter) window.currencyConverter.convertAllPrices();
-    if (typeof updateShippingProgress === 'function') updateShippingProgress();
   }
 
   async function validateAndApply(code) {

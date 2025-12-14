@@ -8,6 +8,8 @@ if (isset($_SESSION['customer_id'])) {
     header('Location: account.php');
     exit;
 }
+// Get redirect URL if provided
+$redirect = $_GET['redirect'] ?? 'account.php';
 
 include 'includes/header.php';
 ?>
@@ -232,7 +234,8 @@ document.getElementById('signupForm').addEventListener('submit', async function(
         last_name: document.getElementById('last_name').value,
         email: document.getElementById('email').value,
         phone: document.getElementById('phone').value,
-        password: password
+        password: password,
+        redirect: (new URLSearchParams(window.location.search)).get('redirect') || 'account.php'
     };
     
     submitBtn.disabled = true;
@@ -249,13 +252,14 @@ document.getElementById('signupForm').addEventListener('submit', async function(
         
         const data = await response.json();
         
-        if (data.success) {
+            if (data.success) {
             successMsg.textContent = data.message;
             successMsg.style.display = 'block';
-            
+            // Prefer server-provided redirect when available
+            const dest = data.redirect ? data.redirect : (new URLSearchParams(window.location.search)).get('redirect') || 'account.php';
             setTimeout(() => {
-                window.location.href = 'account.php';
-            }, 1000);
+                window.location.href = dest;
+            }, 800);
         } else {
             errorMsg.textContent = data.message;
             errorMsg.style.display = 'block';

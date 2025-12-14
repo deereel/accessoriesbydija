@@ -68,6 +68,34 @@ class CartHandler {
                 setTimeout(() => { try { this.refreshPriceLines(); } catch (err) {} }, 0);
             }
         });
+
+        // Proceed to checkout button
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('#checkout-btn');
+            if (!btn) return;
+            e.preventDefault();
+            if (this.cartCount <= 0) {
+                this.showNotification('Your cart is empty', 'error');
+                return;
+            }
+            // If user is not logged in, redirect to login with return param
+            if (!this.isLoggedIn) {
+                // Ensure guest cart is persisted to localStorage before redirect
+                try {
+                    const guestItems = this.gatherCartFromDOM();
+                    if (Array.isArray(guestItems) && guestItems.length > 0) {
+                        this.saveGuestCart(guestItems);
+                    }
+                } catch (e) {
+                    console.warn('Failed to persist guest cart before redirect', e);
+                }
+                const returnTo = encodeURIComponent('checkout.php');
+                window.location.href = `/login.php?redirect=${returnTo}`;
+                return;
+            }
+            // Logged-in users go straight to checkout
+            window.location.href = '/checkout.php';
+        });
     }
 
     async addToCartFromButton(button) {
@@ -321,6 +349,21 @@ class CartHandler {
             return cart ? JSON.parse(cart) : [];
         }
         return [];
+    }
+
+    // Gather current cart items from DOM (useful before redirecting guests)
+    gatherCartFromDOM() {
+        const items = [];
+        const nodes = document.querySelectorAll('.cart-item');
+        nodes.forEach(node => {
+            const cartItemId = node.getAttribute('data-cart-item-id') || node.getAttribute('data-product-id') || null;
+            const price = parseFloat(node.getAttribute('data-price') || 0) || 0;
+            const qty = parseInt(node.querySelector('.quantity-input')?.value || 1);
+            const name = node.querySelector('.name')?.textContent?.trim() || '';
+            const image = node.querySelector('.thumb img')?.src || '';
+            items.push({ product_id: cartItemId, price, quantity: qty, product_name: name, image });
+        });
+        return items;
     }
 
     mergeGuestCart() {

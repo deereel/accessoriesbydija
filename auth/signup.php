@@ -51,8 +51,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['customer_id'] = $customer_id;
         $_SESSION['customer_name'] = $first_name . ' ' . $last_name;
         $_SESSION['customer_email'] = $email;
-        
-        echo json_encode([
+        // If client provided a redirect, validate and include it in response
+        $redirect = null;
+        if (!empty($data['redirect'])) {
+            $candidate = trim($data['redirect']);
+            if (strpos($candidate, 'http://') === false && strpos($candidate, 'https://') === false && strpos($candidate, '//') === false) {
+                $redirect = ltrim($candidate, '/');
+            }
+        }
+
+        $resp = [
             'success' => true,
             'message' => 'Account created successfully',
             'customer' => [
@@ -60,7 +68,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'name' => $first_name . ' ' . $last_name,
                 'email' => $email
             ]
-        ]);
+        ];
+        if ($redirect) $resp['redirect'] = $redirect;
+        echo json_encode($resp);
         
     } catch (PDOException $e) {
         echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);

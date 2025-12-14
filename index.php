@@ -22,7 +22,7 @@ include 'includes/header.php';
                 <div class="slide-content">
                     <h1>Luxury Redefined</h1>
                     <p>Handcrafted pieces that tell your unique story</p>
-                    <a href="exclusives.php" class="hero-btn">Explore Collections</a>
+                    <a href="category.php?cat=women" class="hero-btn">Explore Collections</a>
                 </div>
             </div>
             <div class="slide" data-bg="assets/images/hero-3.jpg">
