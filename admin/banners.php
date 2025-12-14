@@ -5,6 +5,9 @@ if (!isset($_SESSION['admin_logged_in'])) {
     exit;
 }
 
+$page_title = 'Banners Management';
+$active_nav = 'banners';
+
 // Handle banner operations
 if ($_POST) {
     $action = $_POST['action'] ?? '';
@@ -72,29 +75,26 @@ $banners = [
     </style>
 </head>
 <body>
-    <header class="admin-header">
-        <h1>Banner Management</h1>
-    </header>
 
-    <nav class="admin-nav">
-        <a href="index.php">Dashboard</a>
-        <a href="products.php">Products</a>
-        <a href="categories.php">Categories</a>
-        <a href="banners.php" style="background: rgba(255,255,255,0.2);">Banners</a>
-        <a href="testimonials.php">Testimonials</a>
-    </nav>
+<?php include '_layout_header.php'; ?>
 
     <?php if (isset($success)): ?>
-        <div class="success"><?php echo $success; ?></div>
+        <div class="card">
+            <div class="card-body" style="background:#d4edda; color:#155724;">
+                <?php echo $success; ?>
+            </div>
+        </div>
     <?php endif; ?>
 
-    <h2>Current Banners</h2>
-    <div class="banner-grid">
-        <?php foreach ($banners as $banner): ?>
-        <div class="banner-card">
-            <h3><?php echo htmlspecialchars($banner['title']); ?></h3>
-            <p><strong>Subtitle:</strong> <?php echo htmlspecialchars($banner['subtitle']); ?></p>
-            <p><strong>Description:</strong> <?php echo htmlspecialchars($banner['description']); ?></p>
+    <div class="card">
+        <div class="card-header"><i class="fas fa-image"></i> Current Banners</div>
+        <div class="card-body">
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; margin-bottom:20px;">
+                <?php foreach ($banners as $banner): ?>
+                <div style="border:1px solid #ddd; border-radius:8px; padding:16px;">
+                    <h3><?php echo htmlspecialchars($banner['title']); ?></h3>
+                    <p><strong>Subtitle:</strong> <?php echo htmlspecialchars($banner['subtitle']); ?></p>
+                    <p><strong>Description:</strong> <?php echo htmlspecialchars($banner['description']); ?></p>
             <p><strong>Image:</strong> <?php echo htmlspecialchars($banner['image']); ?></p>
             <p><strong>Link:</strong> <?php echo htmlspecialchars($banner['link']); ?></p>
             <p><strong>Button:</strong> <?php echo htmlspecialchars($banner['button_text']); ?></p>
@@ -107,7 +107,11 @@ $banners = [
         <?php endforeach; ?>
     </div>
 
-    <h2>Add New Banner</h2>
+    </div>
+
+    <div class="card">
+        <div class="card-header"><i class="fas fa-plus"></i> Add New Banner</div>
+        <div class="card-body">
     <form class="banner-form" method="POST">
         <input type="hidden" name="action" value="add_banner">
         
@@ -151,19 +155,8 @@ $banners = [
         
         <button type="submit" class="btn">Add Banner</button>
     </form>
+        </div>
+    </div>
+    </div>
 
-    <script>
-        function editBanner(id) {
-            // Edit banner functionality
-            alert('Edit banner ' + id + ' - Feature to be implemented');
-        }
-        
-        function deleteBanner(id) {
-            if (confirm('Are you sure you want to delete this banner?')) {
-                // Delete banner functionality
-                alert('Delete banner ' + id + ' - Feature to be implemented');
-            }
-        }
-    </script>
-</body>
-</html>
+<?php include '_layout_footer.php'; ?>

@@ -5,6 +5,9 @@ if (!isset($_SESSION['admin_logged_in'])) {
     exit;
 }
 
+$page_title = 'Testimonials Management';
+$active_nav = 'testimonials';
+
 require_once '../config/database.php';
 
 if ($_POST) {
@@ -107,29 +110,22 @@ $products = $stmt->fetchAll();
     </style>
 </head>
 <body>
-    <header class="admin-header">
-        <h1>Testimonials Management</h1>
-    </header>
 
-    <nav class="admin-nav">
-        <a href="index.php">Dashboard</a>
-        <a href="products.php">Products</a>
-        <a href="categories.php">Categories</a>
-        <a href="banners.php">Banners</a>
-        <a href="testimonials.php" class="active">Testimonials</a>
-    </nav>
+<?php include '_layout_header.php'; ?>
 
     <?php if (isset($success)): ?>
-        <div class="success"><?php echo $success; ?></div>
+        <div class="card">
+            <div class="card-body" style="background:#d4edda; color:#155724;">
+                <?php echo $success; ?>
+            </div>
+        </div>
     <?php endif; ?>
 
-    <div class="controls">
-        <h2>Customer Testimonials</h2>
-        <button class="btn btn-success" onclick="openAddModal()">+ Add Testimonial</button>
-    </div>
-
-    <div class="testimonials-table">
-        <table>
+    <div class="card">
+        <div class="card-header"><i class="fas fa-comments"></i> Customer Testimonials</div>
+        <div class="card-body">
+            <button class="btn btn-success" onclick="openAddModal()" style="margin-bottom:15px;"><i class="fas fa-plus"></i> Add Testimonial</button>
+            <table>
             <thead>
                 <tr>
                     <th>Customer</th>
@@ -178,7 +174,8 @@ $products = $stmt->fetchAll();
                 <?php endforeach; ?>
             </tbody>
         </table>
-    </div>
+            </div>
+        </div>
 
     <!-- Add/Edit Modal -->
     <div id="testimonialModal" class="modal">
@@ -364,5 +361,7 @@ $products = $stmt->fetchAll();
             }
         }
     </script>
-</body>
-</html>
+        </div>
+    </div>
+
+<?php include '_layout_footer.php'; ?>

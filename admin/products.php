@@ -5,6 +5,9 @@ if (!isset($_SESSION['admin_logged_in'])) {
     exit;
 }
 
+$page_title = 'Products Management';
+$active_nav = 'products';
+
 require_once '../config/database.php';
 
 // Handle product operations
@@ -109,136 +112,86 @@ $stmt = $pdo->query("SELECT * FROM products ORDER BY created_at DESC");
 $products = $stmt->fetchAll();
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product Management - Dija Accessories Admin</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f4f4f4; }
-        .admin-header { background: #333; color: white; padding: 1rem; margin: -20px -20px 20px; }
-        .admin-nav { background: #C27BA0; padding: 1rem; margin: -20px -20px 20px; }
-        .admin-nav a { color: white; text-decoration: none; margin-right: 2rem; padding: 0.5rem 1rem; border-radius: 4px; }
-        .admin-nav a:hover, .admin-nav a.active { background: rgba(255,255,255,0.2); }
-        .controls { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .search-box { display: flex; gap: 10px; }
-        .search-box input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
-        .products-table { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #f8f8f8; font-weight: 600; }
-        .product-image { width: 50px; height: 50px; background: #f0f0f0; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #666; }
-        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; }
-        .status-active { background: #d4edda; color: #155724; }
-        .status-inactive { background: #f8d7da; color: #721c24; }
-        .featured-badge { background: #fff3cd; color: #856404; }
-        .btn { padding: 6px 12px; background: #C27BA0; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 12px; margin-right: 5px; }
-        .btn:hover { background: #a66889; }
-        .btn-primary { background: #007bff; }
-        .btn-primary:hover { background: #0056b3; }
-        .btn-danger { background: #dc3545; }
-        .btn-danger:hover { background: #c82333; }
-        .btn-success { background: #28a745; }
-        .btn-success:hover { background: #1e7e34; }
-        .success { background: #d4edda; color: #155724; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
-        .modal-content { background: white; margin: 5% auto; padding: 20px; width: 80%; max-width: 600px; border-radius: 8px; max-height: 80vh; overflow-y: auto; }
-        .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
-        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        .close { float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
-        .close:hover { color: #C27BA0; }
-        .image-preview-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
-        #main-image-preview-container .img-preview-wrapper { border: 2px solid #C27BA0; }
-        .img-preview-wrapper { position: relative; }
-        .img-preview { width: 100px; height: 100px; object-fit: cover; border-radius: 4px; }
-        .delete-img-btn { position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; cursor: pointer; width: 20px; height: 20px; font-size: 12px; line-height: 20px; text-align: center; }
-    </style>
-</head>
-<body>
-    <header class="admin-header">
-        <h1>Product Management</h1>
-    </header>
-
-    <nav class="admin-nav">
-        <a href="index.php">Dashboard</a>
-        <a href="products.php" class="active">Products</a>
-        <a href="categories.php">Categories</a>
-        <a href="banners.php">Banners</a>
-        <a href="testimonials.php">Testimonials</a>
-    </nav>
+<?php include '_layout_header.php'; ?>
 
     <?php if (isset($success)): ?>
-        <div class="success"><?php echo $success; ?></div>
+        <div class="card">
+            <div class="card-body" style="background:#d4edda; color:#155724;">
+                <?php echo $success; ?>
+            </div>
+        </div>
     <?php endif; ?>
 
-    <div class="controls">
-        <div class="search-box">
-            <input type="text" placeholder="Search products..." id="search-input">
-            <select id="category-filter">
-                <option value="">All Categories</option>
-                <option value="women">Women</option>
-                <option value="men">Men</option>
-            </select>
-            <select id="status-filter">
-                <option value="">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-            </select>
+    <div class="card">
+        <div class="card-header">
+            <i class="fas fa-gem"></i> Products Management
+            <button class="btn" style="float:right; margin-top:-8px;" onclick="openAddModal()">+ Add Product</button>
         </div>
-        <button class="btn btn-success" onclick="openAddModal()">+ Add Product</button>
-    </div>
+        <div class="card-body">
+            <div style="margin-bottom:16px; display:flex; gap:10px;">
+                <input type="text" placeholder="Search products..." id="search-input" style="flex:1; padding:8px; border:1px solid #ddd; border-radius:4px;">
+                <select id="category-filter" style="padding:8px; border:1px solid #ddd; border-radius:4px;">
+                    <option value="">All Categories</option>
+                    <option value="women">Women</option>
+                    <option value="men">Men</option>
+                </select>
+                <select id="status-filter" style="padding:8px; border:1px solid #ddd; border-radius:4px;">
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
 
-    <div class="products-table">
-        <table>
-            <thead>
-                <tr>
-                    <th>Image</th>
-                    <th>Product</th>
-                    <th>SKU</th>
-                    <th>Price</th>
-                    <th>Stock</th>
-                    <th>Category</th>
-                    <th>Material</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($products as $product): ?>
-                <tr>
-                    <td>
-                        <div class="product-image"><?php echo substr($product['name'], 0, 3); ?></div>
-                    </td>
-                    <td>
-                        <strong><?php echo htmlspecialchars($product['name']); ?></strong>
-                        <?php if ($product['is_featured']): ?>
-                            <span class="status-badge featured-badge">Featured</span>
-                        <?php endif; ?>
-                    </td>
-                    <td><?php echo htmlspecialchars($product['sku']); ?></td>
-                    <td>£<?php echo number_format($product['price'], 2); ?></td>
-                    <td><?php echo htmlspecialchars($product['material'] ?? 'N/A'); ?></td>
-                    <td><?php echo $product['stock_quantity']; ?></td>
-                    <td><?php echo htmlspecialchars($product['material']); ?></td>
-                    <td>
-                        <span class="status-badge <?php echo $product['is_active'] ? 'status-active' : 'status-inactive'; ?>">
-                            <?php echo $product['is_active'] ? 'Active' : 'Inactive'; ?>
-                        </span>
-                    </td>
-                    <td>
-                        <button class="btn btn-primary" onclick="editProduct(<?php echo $product['id']; ?>)">Edit</button>
-                        <button class="btn" onclick="toggleFeatured(<?php echo $product['id']; ?>)">
-                            <?php echo $product['is_featured'] ? 'Unfeature' : 'Feature'; ?>
-                        </button>
-                        <button class="btn btn-danger" onclick="deleteProduct(<?php echo $product['id']; ?>)">Delete</button>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+            <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="background:#f5f5f5;">
+                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Image</th>
+                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Product</th>
+                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">SKU</th>
+                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Price</th>
+                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Stock</th>
+                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Material</th>
+                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Status</th>
+                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($products as $product): ?>
+                        <tr style="border-bottom:1px solid #eee;">
+                            <td style="padding:10px;">
+                                <div style="width:50px; height:50px; background:#f0f0f0; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:12px; color:#666;">
+                                    <?php echo substr($product['name'], 0, 3); ?>
+                                </div>
+                            </td>
+                            <td style="padding:10px;">
+                                <strong><?php echo htmlspecialchars($product['name']); ?></strong>
+                                <?php if ($product['is_featured']): ?>
+                                    <br><span style="background:#fff3cd; color:#856404; padding:2px 6px; border-radius:3px; font-size:11px;">Featured</span>
+                                <?php endif; ?>
+                            </td>
+                            <td style="padding:10px;"><?php echo htmlspecialchars($product['sku']); ?></td>
+                            <td style="padding:10px;">£<?php echo number_format($product['price'], 2); ?></td>
+                            <td style="padding:10px;"><?php echo $product['stock_quantity']; ?></td>
+                            <td style="padding:10px;"><?php echo htmlspecialchars($product['material']); ?></td>
+                            <td style="padding:10px;">
+                                <span style="background:<?php echo $product['is_active']?'#d4edda':'#f8d7da'; ?>; color:<?php echo $product['is_active']?'#155724':'#721c24'; ?>; padding:4px 8px; border-radius:3px; font-size:12px;">
+                                    <?php echo $product['is_active'] ? 'Active' : 'Inactive'; ?>
+                                </span>
+                            </td>
+                            <td style="padding:10px;">
+                                <button class="btn" style="background:#007bff; font-size:11px;" onclick="editProduct(<?php echo $product['id']; ?>)">Edit</button>
+                                <button class="btn" style="background:#ffc107; color:#000; font-size:11px;" onclick="toggleFeatured(<?php echo $product['id']; ?>)">
+                                    <?php echo $product['is_featured'] ? 'Unfeature' : 'Feature'; ?>
+                                </button>
+                                <button class="btn" style="background:#dc3545; font-size:11px;" onclick="deleteProduct(<?php echo $product['id']; ?>)">Delete</button>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <!-- Add/Edit Product Modal -->
@@ -575,5 +528,5 @@ $products = $stmt->fetchAll();
             });
         }
     </script>
-</body>
-</html>
+
+<?php include '_layout_footer.php'; ?>

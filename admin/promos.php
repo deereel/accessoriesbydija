@@ -5,6 +5,9 @@ if (!isset($_SESSION['admin_logged_in'])) {
     exit;
 }
 
+$page_title = 'Promo Codes Management';
+$active_nav = 'promos';
+
 require_once __DIR__ . '/../config/database.php';
 
 // Ensure promo_codes table exists
@@ -143,21 +146,12 @@ try {
 </style>
 </head>
 <body>
-<div class="layout">
-    <aside class="sidebar">
-        <h2>Admin</h2>
-        <a class="nav-link" href="index.php"><i class="fas fa-gauge"></i> Dashboard</a>
-        <a class="nav-link" href="products.php"><i class="fas fa-gem"></i> Products</a>
-        <a class="nav-link" href="orders.php"><i class="fas fa-shopping-cart"></i> Orders</a>
-        <a class="nav-link" href="customers.php"><i class="fas fa-users"></i> Customers</a>
-        <a class="nav-link" href="banners.php"><i class="fas fa-image"></i> Banners</a>
-        <a class="nav-link" href="testimonials.php"><i class="fas fa-comment"></i> Testimonials</a>
-        <a class="nav-link active" href="promos.php"><i class="fas fa-ticket"></i> Promo Codes</a>
-        <div style="margin-top:12px;"><a class="nav-link" href="?logout=1"><i class="fas fa-sign-out"></i> Logout</a></div>
-    </aside>
-    <main class="content">
-        <div class="card">
-            <div class="card-header">Create / Edit Promo</div>
+
+<?php include '_layout_header.php'; ?>
+
+<div class="content-wrapper" style="padding:20px;">
+    <div class="card">
+        <div class="card-header"><i class="fas fa-ticket"></i> Create / Edit Promo</div>
             <div class="card-body">
                 <?php if (!empty($errors)): ?>
                     <div class="alert error"><?php echo implode('<br>', array_map('htmlspecialchars', $errors)); ?></div>
@@ -275,8 +269,6 @@ try {
                 </div>
             </div>
         </div>
-    </main>
-</div>
 
 <script>
 function fillForm(id, code, type, value, minOrder, maxDisc, start, end, usageLimit, isActive) {
@@ -305,5 +297,7 @@ document.getElementById('reset-form').addEventListener('click', function(){
     document.getElementById('promo-id').value = '';
 });
 </script>
-</body>
-</html>
+    </div>
+</div>
+
+<?php include '_layout_footer.php'; ?>

@@ -41,7 +41,48 @@ if (!isset($_SESSION['admin_logged_in'])): ?>
 </html>
 <?php exit; endif; ?>
 
-<?php $page_title = 'Dashboard'; $active_nav = 'dashboard'; include __DIR__ . '/_layout_header.php'; ?>
+<?php
+require_once __DIR__ . '/../config/database.php';
+
+$page_title = 'Dashboard';
+$active_nav = 'dashboard';
+
+// Fetch dashboard statistics
+$total_products = 0;
+$total_orders = 0;
+$total_customers = 0;
+$monthly_revenue = 0;
+$recent_orders = [];
+
+try {
+    // Total products
+    $stmt = $pdo->query("SELECT COUNT(*) as count FROM products WHERE is_active = 1");
+    $total_products = $stmt->fetch()['count'] ?? 0;
+    
+    // Total orders
+    $stmt = $pdo->query("SELECT COUNT(*) as count FROM orders");
+    $total_orders = $stmt->fetch()['count'] ?? 0;
+    
+    // Total customers
+    $stmt = $pdo->query("SELECT COUNT(*) as count FROM customers");
+    $total_customers = $stmt->fetch()['count'] ?? 0;
+    
+    // Monthly revenue
+    $stmt = $pdo->query("SELECT COALESCE(SUM(total_amount), 0) as revenue FROM orders WHERE MONTH(created_at) = MONTH(NOW()) AND YEAR(created_at) = YEAR(NOW())");
+    $monthly_revenue = $stmt->fetch()['revenue'] ?? 0;
+    
+    // Recent orders
+    $stmt = $pdo->query("SELECT o.id, o.order_number, o.total_amount, o.status, o.created_at, c.first_name, c.last_name 
+                         FROM orders o 
+                         LEFT JOIN customers c ON o.customer_id = c.id 
+                         ORDER BY o.created_at DESC LIMIT 5");
+    $recent_orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (PDOException $e) {
+    // Database error - values will remain 0
+}
+
+include __DIR__ . '/_layout_header.php';
+?>
 
 <div class="card">
   <div class="card-header">Overview</div>
@@ -51,7 +92,7 @@ if (!isset($_SESSION['admin_logged_in'])): ?>
         <div class="card-body">
           <div style="font-size:24px; color:#c487a5;"><i class="fas fa-gem"></i></div>
           <h3 style="margin:8px 0 4px;">Total Products</h3>
-          <div style="font-size:28px; font-weight:700; color:#c487a5;">156</div>
+          <div style="font-size:28px; font-weight:700; color:#c487a5;"><?php echo intval($total_products); ?></div>
           <p style="color:#666;">Active products in catalog</p>
           <a href="/admin/products.php" class="btn">Manage Products</a>
         </div>
@@ -60,8 +101,8 @@ if (!isset($_SESSION['admin_logged_in'])): ?>
         <div class="card-body">
           <div style="font-size:24px; color:#c487a5;"><i class="fas fa-shopping-cart"></i></div>
           <h3 style="margin:8px 0 4px;">Total Orders</h3>
-          <div style="font-size:28px; font-weight:700; color:#c487a5;">89</div>
-          <p style="color:#666;">Orders this month</p>
+          <div style="font-size:28px; font-weight:700; color:#c487a5;"><?php echo intval($total_orders); ?></div>
+          <p style="color:#666;">All orders</p>
           <a href="/admin/orders.php" class="btn">View Orders</a>
         </div>
       </div>
@@ -69,7 +110,7 @@ if (!isset($_SESSION['admin_logged_in'])): ?>
         <div class="card-body">
           <div style="font-size:24px; color:#c487a5;"><i class="fas fa-pound-sign"></i></div>
           <h3 style="margin:8px 0 4px;">Revenue</h3>
-          <div style="font-size:28px; font-weight:700; color:#c487a5;">£12,450</div>
+          <div style="font-size:28px; font-weight:700; color:#c487a5;">£<?php echo number_format(floatval($monthly_revenue), 2); ?></div>
           <p style="color:#666;">This month's revenue</p>
           <a href="#" class="btn">View Reports</a>
         </div>
@@ -78,7 +119,7 @@ if (!isset($_SESSION['admin_logged_in'])): ?>
         <div class="card-body">
           <div style="font-size:24px; color:#c487a5;"><i class="fas fa-users"></i></div>
           <h3 style="margin:8px 0 4px;">Customers</h3>
-          <div style="font-size:28px; font-weight:700; color:#c487a5;">234</div>
+          <div style="font-size:28px; font-weight:700; color:#c487a5;"><?php echo intval($total_customers); ?></div>
           <p style="color:#666;">Registered customers</p>
           <a href="/admin/customers.php" class="btn">View Customers</a>
         </div>
@@ -96,37 +137,56 @@ if (!isset($_SESSION['admin_logged_in'])): ?>
           <tr>
             <th style="padding:10px; border-bottom:1px solid #eee; text-align:left;">Order ID</th>
             <th style="padding:10px; border-bottom:1px solid #eee; text-align:left;">Customer</th>
-            <th style="padding:10px; border-bottom:1px solid #eee; text-align:left;">Product</th>
             <th style="padding:10px; border-bottom:1px solid #eee; text-align:left;">Amount</th>
             <th style="padding:10px; border-bottom:1px solid #eee; text-align:left;">Status</th>
+            <th style="padding:10px; border-bottom:1px solid #eee; text-align:left;">Date</th>
             <th style="padding:10px; border-bottom:1px solid #eee; text-align:left;">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td><strong>#1001</strong></td>
-            <td>Sarah Johnson</td>
-            <td>Diamond Solitaire Ring</td>
-            <td><strong>£299</strong></td>
-            <td><span style="padding:4px 8px; border-radius:12px; background:#d4edda; color:#155724; font-size:12px;">Completed</span></td>
-            <td><a href="#" class="btn" style="padding:6px 10px; font-size:12px;">View</a></td>
-          </tr>
-          <tr>
-            <td><strong>#1002</strong></td>
-            <td>Michael Brown</td>
-            <td>Gold Chain Necklace</td>
-            <td><strong>£159</strong></td>
-            <td><span style="padding:4px 8px; border-radius:12px; background:#fff3cd; color:#856404; font-size:12px;">Processing</span></td>
-            <td><a href="#" class="btn" style="padding:6px 10px; font-size:12px;">View</a></td>
-          </tr>
-          <tr>
-            <td><strong>#1003</strong></td>
-            <td>Emma Davis</td>
-            <td>Pearl Drop Earrings</td>
-            <td><strong>£89</strong></td>
-            <td><span style="padding:4px 8px; border-radius:12px; background:#d1ecf1; color:#0c5460; font-size:12px;">Shipped</span></td>
-            <td><a href="#" class="btn" style="padding:6px 10px; font-size:12px;">View</a></td>
-          </tr>
+          <?php if (empty($recent_orders)): ?>
+            <tr><td colspan="6" style="padding:10px; text-align:center; color:#999;">No orders yet</td></tr>
+          <?php else: foreach ($recent_orders as $order): ?>
+            <tr>
+              <td style="padding:10px;"><strong><?php echo htmlspecialchars($order['order_number']); ?></strong></td>
+              <td style="padding:10px;">
+                <?php 
+                $customer_name = (!empty($order['first_name']) || !empty($order['last_name'])) 
+                    ? htmlspecialchars($order['first_name'] . ' ' . $order['last_name']) 
+                    : 'Guest';
+                echo $customer_name;
+                ?>
+              </td>
+              <td style="padding:10px;"><strong>£<?php echo number_format(floatval($order['total_amount']), 2); ?></strong></td>
+              <td style="padding:10px;">
+                <?php
+                $status = htmlspecialchars($order['status']);
+                $status_colors = [
+                    'completed' => '#d4edda',
+                    'processing' => '#fff3cd',
+                    'shipped' => '#d1ecf1',
+                    'pending' => '#fff3cd',
+                    'cancelled' => '#f8d7da'
+                ];
+                $status_text_colors = [
+                    'completed' => '#155724',
+                    'processing' => '#856404',
+                    'shipped' => '#0c5460',
+                    'pending' => '#856404',
+                    'cancelled' => '#721c24'
+                ];
+                $bg = $status_colors[$status] ?? '#f0f0f0';
+                $txt = $status_text_colors[$status] ?? '#666';
+                $display_status = ucfirst($status);
+                ?>
+                <span style="padding:4px 8px; border-radius:12px; background:<?php echo $bg; ?>; color:<?php echo $txt; ?>; font-size:12px;">
+                  <?php echo $display_status; ?>
+                </span>
+              </td>
+              <td style="padding:10px;"><?php echo date('M d, Y', strtotime($order['created_at'])); ?></td>
+              <td style="padding:10px;"><a href="#" class="btn" style="padding:6px 10px; font-size:12px;">View</a></td>
+            </tr>
+          <?php endforeach; endif; ?>
         </tbody>
       </table>
     </div>
