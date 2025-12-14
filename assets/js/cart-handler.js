@@ -10,6 +10,9 @@ class CartHandler {
         await this.checkLoginStatus();
         this.updateCartCount();
         this.bindEvents();
+        if (window.location.pathname.includes('/cart.php')) {
+            this.loadCartItems();
+        }
     }
 
     async checkLoginStatus() {
@@ -54,6 +57,15 @@ class CartHandler {
             if (e.target.matches('.remove-from-cart, .remove-item')) {
                 e.preventDefault();
                 this.removeFromCart(e.target);
+            }
+        });
+
+        // Refresh price lines when currency option is clicked (currency.js updates rates and UI)
+        document.addEventListener('click', (e) => {
+            const option = e.target.closest('.currency-option');
+            if (option) {
+                // Allow currency.js to update first, then refresh price lines
+                setTimeout(() => { try { this.refreshPriceLines(); } catch (err) {} }, 0);
             }
         });
     }
@@ -105,7 +117,7 @@ class CartHandler {
 
                 // If on cart page, reload cart items
                 if (window.location.pathname.includes('/cart.php')) {
-                    loadCartItems();
+                    this.loadCartItems();
                 }
             } else {
                 this.showNotification(result.message || 'Failed to add item to cart', 'error');
@@ -232,19 +244,35 @@ class CartHandler {
         cartItems.forEach(item => {
             const price = parseFloat(item.dataset.price || 0);
             const quantity = parseInt(item.querySelector('.quantity-input')?.value || 1);
-            subtotal += price * quantity;
+            const lineTotal = price * quantity;
+            subtotal += lineTotal;
+
+            // Update per-item price line display with currency symbol, no labels
+            const priceLine = item.querySelector('.price-line');
+            if (priceLine) {
+                priceLine.textContent = this.renderPriceLine ? this.renderPriceLine(price, quantity) : `${price} X ${quantity} = ${lineTotal}`;
+            }
         });
 
-        // Update subtotal display
+        // Update subtotal display (store as GBP base, currency.js will convert)
         const subtotalElement = document.getElementById('subtotal');
         if (subtotalElement) {
-            subtotalElement.textContent = `₦${subtotal.toLocaleString()}`;
+            subtotalElement.classList.add('product-price');
+            subtotalElement.setAttribute('data-price', String(subtotal));
+            subtotalElement.textContent = `£${subtotal.toFixed(2)}`;
         }
 
         // Update total display
         const totalElement = document.getElementById('total');
         if (totalElement) {
-            totalElement.textContent = `₦${subtotal.toLocaleString()}`;
+            totalElement.classList.add('product-price');
+            totalElement.setAttribute('data-price', String(subtotal));
+            totalElement.textContent = `£${subtotal.toFixed(2)}`;
+        }
+
+        // Trigger currency conversion after updating
+        if (window.currencyConverter) {
+            window.currencyConverter.convertAllPrices();
         }
 
         // Update shipping progress if function exists
@@ -307,6 +335,129 @@ class CartHandler {
                 localStorage.removeItem('DIJACart');
             }
         }
+    }
+
+    async loadCartItems() {
+        const container = document.getElementById('cart-items');
+        const emptyState = document.getElementById('empty-cart');
+        const checkoutBtn = document.getElementById('checkout-btn');
+        if (!container) return;
+
+        // Show loading
+        container.innerHTML = `
+            <div class="loading">
+                <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #C27BA0;"></i>
+                <p>Loading your cart...</p>
+            </div>
+        `;
+
+        try {
+            const cart = await this.getCart();
+            const items = Array.isArray(cart.items) ? cart.items : [];
+
+            if (!items.length) {
+                container.innerHTML = '';
+                if (emptyState) emptyState.style.display = 'block';
+                const subtotalEl = document.getElementById('subtotal');
+                const totalEl = document.getElementById('total');
+                if (subtotalEl) { subtotalEl.setAttribute('data-price','0'); subtotalEl.textContent = '£0.00'; }
+                if (totalEl) { totalEl.setAttribute('data-price','0'); totalEl.textContent = '£0.00'; }
+                if (checkoutBtn) checkoutBtn.disabled = true;
+                if (typeof updateShippingProgress === 'function') updateShippingProgress();
+                return;
+            }
+
+            if (emptyState) emptyState.style.display = 'none';
+            if (checkoutBtn) checkoutBtn.disabled = false;
+
+            let subtotal = 0;
+            const itemsHtml = items.map(item => {
+                const price = parseFloat(item.price || 0); // GBP base price from DB
+                const qty = parseInt(item.quantity || 1);
+                const lineTotal = price * qty;
+                subtotal += lineTotal;
+                const cartItemId = item.cart_item_id || item.id || item.product_id; // support both shapes
+                const name = item.product_name || item.name || 'Item';
+                const image = item.image || item.image_url || item.main_image || '';
+                const imageHtml = image ? `<img src="${image}" alt="${name}">` : '';
+                const color = item.color || '';
+                const size = item.size || '';
+                const width = item.width || '';
+                const variant = [color ? `Color: ${color}` : '', size ? `Size: ${size}` : '', width ? `Width: ${width}` : ''].filter(Boolean).join(' | ');
+                return `
+                    <div class="cart-item" data-cart-item-id="${cartItemId}" data-price="${price}">
+                        <div class="thumb">${imageHtml}</div>
+                        <div class="meta">
+                            <div class="name">${name}</div>
+                            ${variant ? `<div class="variant">${variant}</div>` : ''}
+                            <div class="row-bottom">
+                                <div class="qty-control">
+                                    <button class="qty-btn minus" aria-label="Decrease quantity">-</button>
+                                    <input type="number" class="quantity-input" value="${qty}" min="1" />
+                                    <button class="qty-btn plus" aria-label="Increase quantity">+</button>
+                                </div>
+                                <div class="price-line">${this.renderPriceLine ? this.renderPriceLine(price, qty) : `${price} X ${qty} = ${lineTotal}`}</div>
+                                <button class="remove-from-cart">Remove</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            container.innerHTML = itemsHtml;
+
+            // Update summary
+            const subtotalEl = document.getElementById('subtotal');
+            const totalEl = document.getElementById('total');
+            if (subtotalEl) { subtotalEl.classList.add('product-price'); subtotalEl.setAttribute('data-price', String(subtotal)); subtotalEl.textContent = `£${subtotal.toFixed(2)}`; }
+            if (totalEl) { totalEl.classList.add('product-price'); totalEl.setAttribute('data-price', String(subtotal)); totalEl.textContent = `£${subtotal.toFixed(2)}`; }
+
+            // Update currency for summary and then refresh price lines
+            if (window.currencyConverter) window.currencyConverter.convertAllPrices();
+            this.refreshPriceLines && this.refreshPriceLines();
+
+            // Ensure totals are accurate and shipping progress updates
+            this.updateCartTotals();
+        } catch (e) {
+            console.error('Error loading cart items:', e);
+            container.innerHTML = `
+                <div class="empty-cart">
+                    <p>Failed to load cart. Please refresh the page.</p>
+                </div>
+            `;
+        }
+    }
+// Helper: render price line using current currency rate, with currency symbol and no labels
+    renderPriceLine(unitGBP, qty) {
+        let rate = 1;
+        let symbol = '£';
+        try {
+            if (window.currencyConverter) {
+                const cc = window.currencyConverter;
+                if (cc.rates && cc.currentCurrency && cc.rates[cc.currentCurrency]) {
+                    rate = cc.rates[cc.currentCurrency];
+                }
+                if (cc.symbols && cc.currentCurrency && cc.symbols[cc.currentCurrency]) {
+                    symbol = cc.symbols[cc.currentCurrency];
+                }
+            }
+        } catch (e) {}
+        const unit = unitGBP * rate;
+        const total = unitGBP * qty * rate;
+        const fmt = (n) => Number(Math.round(n)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        return `${symbol} ${fmt(unit)} X ${qty} = ${symbol} ${fmt(total)}`;
+    }
+
+    refreshPriceLines() {
+        const items = document.querySelectorAll('.cart-item');
+        items.forEach(item => {
+            const unit = parseFloat(item.dataset.price || 0);
+            const qty = parseInt(item.querySelector('.quantity-input')?.value || 1);
+            const line = item.querySelector('.price-line');
+            if (line) {
+                line.textContent = this.renderPriceLine(unit, qty);
+            }
+        });
     }
 }
 

@@ -26,14 +26,29 @@ try {
 	if ($method === 'GET') {
 		$customer_id = current_customer_id();
 		if ($customer_id) {
-			$stmt = $pdo->prepare("SELECT c.id as cart_item_id, c.product_id, c.quantity, p.name as product_name, p.price FROM cart c JOIN products p ON p.id = c.product_id WHERE c.customer_id = ?");
+			$stmt = $pdo->prepare("SELECT c.id as cart_item_id, c.product_id, c.quantity, p.name as product_name, p.price,
+			(SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 ORDER BY is_primary DESC, sort_order ASC LIMIT 1) AS image_url
+			FROM cart c JOIN products p ON p.id = c.product_id WHERE c.customer_id = ?");
 			$stmt->execute([$customer_id]);
 			$items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 			json(['success' => true, 'items' => $items]);
 		}
 
-		// guest: return session cart
+		// guest: return session cart, ensure image is present
 		$items = isset($_SESSION['cart']) ? array_values($_SESSION['cart']) : [];
+		if (!empty($items)) {
+		foreach ($items as &$it) {
+		if (empty($it['image'])) {
+		$imgStmt = $pdo->prepare('SELECT image_url FROM product_images WHERE product_id = ? ORDER BY is_primary DESC, sort_order ASC LIMIT 1');
+		$imgStmt->execute([ (int)($it['product_id'] ?? 0) ]);
+		$row = $imgStmt->fetch(PDO::FETCH_ASSOC);
+		if ($row && isset($row['image_url'])) {
+		$it['image'] = $row['image_url'];
+		}
+		}
+		}
+		unset($it);
+		}
 		json(['success' => true, 'items' => $items]);
 	}
 
@@ -106,18 +121,34 @@ try {
 		// Guest: save to session
 		if (!isset($_SESSION['cart']) || !is_array($_SESSION['cart'])) $_SESSION['cart'] = [];
 		$key = (string)$product_id;
-		if (isset($_SESSION['cart'][$key])) {
-			$_SESSION['cart'][$key]['quantity'] += $quantity;
-		} else {
-			$_SESSION['cart'][$key] = [
-				'cart_item_id' => $key,
-				'product_id' => $product_id,
-				'product_name' => $product['name'],
-				'price' => (float)$product['price'],
-				'quantity' => $quantity
-			];
+		
+		// Determine image URL from input or DB
+		$image_url = isset($input['image']) && $input['image'] ? (string)$input['image'] : null;
+		if (!$image_url) {
+		$imgStmt = $pdo->prepare('SELECT image_url FROM product_images WHERE product_id = ? ORDER BY is_primary DESC, sort_order ASC LIMIT 1');
+		$imgStmt->execute([$product_id]);
+		$row = $imgStmt->fetch(PDO::FETCH_ASSOC);
+		if ($row && isset($row['image_url'])) {
+		$image_url = $row['image_url'];
 		}
-
+		}
+		
+		if (isset($_SESSION['cart'][$key])) {
+		$_SESSION['cart'][$key]['quantity'] += $quantity;
+		if (empty($_SESSION['cart'][$key]['image']) && $image_url) {
+		$_SESSION['cart'][$key]['image'] = $image_url;
+		}
+		} else {
+		$_SESSION['cart'][$key] = [
+		'cart_item_id' => $key,
+		'product_id' => $product_id,
+		'product_name' => $product['name'],
+		'price' => (float)$product['price'],
+		'quantity' => $quantity,
+		'image' => $image_url
+		];
+		}
+		
 		json(['success' => true, 'message' => 'Item added to cart (session)', 'cart' => array_values($_SESSION['cart'])]);
 	}
 

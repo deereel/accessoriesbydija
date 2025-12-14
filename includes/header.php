@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
 require_once 'config/security.php';
 require_once 'config/seo.php';
 require_once 'config/cache.php';
