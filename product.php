@@ -91,12 +91,15 @@ $page_description = $product['short_description'] ?? substr($product['descriptio
                 <?php if ($product['stone_type']): ?>
                 <span><strong>Stone:</strong> <?= htmlspecialchars($product['stone_type']) ?></span>
                 <?php endif; ?>
+                <?php if ($product['weight']): ?>
+                <span><strong>Weight:</strong> <?= htmlspecialchars($product['weight']) ?>g</span>
+                <?php endif; ?>
                 <span><strong>Stock:</strong> <?= $product['stock_quantity'] ?> available</span>
             </div>
             
             <div class="product-actions">
-                <button class="btn btn-primary" onclick="addToCart(<?= $product['id'] ?>)">Add to Cart</button>
-                <button class="btn btn-secondary" onclick="toggleWishlist(<?= $product['id'] ?>)">♡ Wishlist</button>
+                <button class="btn btn-primary add-to-cart" data-product-id="<?= $product['id'] ?>" data-price="<?= floatval($product['price']) ?>" data-product-name="<?= htmlspecialchars($product['name'], ENT_QUOTES) ?>" data-image="<?= htmlspecialchars($product_images[0]['image_url'] ?? '', ENT_QUOTES) ?>">Add to Cart</button>
+                <button class="btn btn-secondary" onclick="toggleWishlist(this, <?= $product['id'] ?>)">♡ Wishlist</button>
             </div>
         </div>
     </div>
@@ -117,8 +120,8 @@ function changeImage(thumbnail, imageUrl) {
     }
 }
 
-async function addToCart(id) {
-    const btn = event.target;
+async function addToCart(id, btn) {
+    // btn is passed from the onclick to reliably reference the clicked button
     const original = btn.textContent;
     btn.textContent = 'Adding...';
 
@@ -147,8 +150,8 @@ async function addToCart(id) {
     setTimeout(() => btn.textContent = original, 1500);
 }
 
-function toggleWishlist(id) {
-    const btn = event.target;
+function toggleWishlist(el, id) {
+    const btn = el;
     btn.textContent = btn.textContent === '♡ Wishlist' ? '♥ Added' : '♡ Wishlist';
 }
 </script>

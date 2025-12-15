@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once 'config/database.php';
+require_once 'includes/shipping-calculator.php';
 
 // Checkout access: do not force-redirect from server — client-side will load guest cart from localStorage.
 
@@ -8,16 +9,18 @@ $customer_id = $_SESSION['customer_id'] ?? null;
 $addresses = [];
 $customer_email = '';
 $customer_name = '';
+$customer_phone = '';
 
 // Fetch customer addresses if logged in
 if ($customer_id) {
     try {
-        $stmt = $pdo->prepare("SELECT first_name, last_name, email FROM customers WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT first_name, last_name, email, phone FROM customers WHERE id = ?");
         $stmt->execute([$customer_id]);
         $customer = $stmt->fetch();
         if ($customer) {
             $customer_name = $customer['first_name'] . ' ' . $customer['last_name'];
             $customer_email = $customer['email'];
+            $customer_phone = $customer['phone'] ?? '';
         }
 
         $stmt = $pdo->prepare("SELECT * FROM customer_addresses WHERE customer_id = ? ORDER BY is_default DESC");
@@ -55,8 +58,8 @@ foreach ($cart_items as $item) {
 
 // Allow page to render for both guests and logged-in users; client-side will handle empty-cart UX.
 
-// Shipping cost (example: £5)
-$shipping_cost = 5;
+// Default shipping cost (will be calculated dynamically on client side based on country)
+$shipping_cost = 5.00;
 
 // Check for promo code validation (via AJAX)
 $discount = 0;
@@ -136,6 +139,14 @@ include 'includes/header.php';
                 <!-- Contact Information -->
                 <div class="checkout-section">
                     <div class="section-title">Contact Information</div>
+                    <div class="form-group">
+                        <label for="full_name">Full Name *</label>
+                        <input type="text" id="contact_full_name" name="contact_full_name" value="<?php echo htmlspecialchars($customer_name); ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="contact_phone">Phone Number *</label>
+                        <input type="tel" id="contact_phone" name="contact_phone" value="<?php echo htmlspecialchars($customer_phone); ?>" required>
+                    </div>
                     <div class="form-group">
                         <label for="email">Email Address *</label>
                         <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($customer_email); ?>" required>
@@ -306,7 +317,7 @@ include 'includes/header.php';
     <?php include 'includes/footer.php'; ?>
 
     <script>
-        const SHIPPING_COST = <?php echo $shipping_cost; ?>;
+        let SHIPPING_COST = <?php echo $shipping_cost; ?>; // Start with default, will be updated dynamically
         let currentDiscountPercent = 0;
         let currentDiscountAbsolute = 0; // GBP absolute discount
 
@@ -326,7 +337,7 @@ include 'includes/header.php';
                     
                         document.getElementById('cart-items-summary').innerHTML = itemsHtml;
                         // Store current items for promo re-validation
-                        __currentCartItems = data.items.map(it => ({ name: it.name || it.product_name || ('Product #' + (it.product_id||'')), quantity: it.quantity, price: parseFloat(it.price||0) }));
+                        __currentCartItems = data.items.map(it => ({ name: it.name || it.product_name || ('Product #' + (it.product_id||'')), quantity: it.quantity, price: parseFloat(it.price||0), product_id: it.product_id }));
                         updateOrderTotal(__currentCartItems);
                 } else {
                         loadCartFromLocalStorage();
@@ -401,6 +412,48 @@ include 'includes/header.php';
             }
         }
 
+        // Calculate shipping based on country and cart items
+        async function updateShippingCost() {
+            const country = document.getElementById('country')?.value || 'United Kingdom';
+            const subtotalEl = document.getElementById('subtotal-display');
+            const subtotal = subtotalEl ? parseFloat(subtotalEl.getAttribute('data-price') || '0') : 0;
+            
+            // Build cart items array for weight calculation
+            const cartItems = __currentCartItems.map(item => ({
+                product_id: item.product_id,
+                quantity: item.quantity
+            }));
+            
+            try {
+                const response = await fetch('/api/shipping/calculate.php?' + new URLSearchParams({
+                    country: country,
+                    subtotal: subtotal,
+                    cart_items: JSON.stringify(cartItems)
+                }));
+                
+                const data = await response.json();
+                
+                if (data.success && data.fee !== null) {
+                    SHIPPING_COST = parseFloat(data.fee);
+                    if (data.fee === 0) {
+                        document.getElementById('shipping-display').textContent = 'FREE';
+                    } else {
+                        document.getElementById('shipping-display').textContent = '£' + SHIPPING_COST.toFixed(2);
+                    }
+                } else {
+                    // Country not found, show message
+                    SHIPPING_COST = 5.00; // Default
+                    document.getElementById('shipping-display').textContent = 'Depends on location';
+                }
+                
+                // Recalculate order total with new shipping cost
+                updateOrderTotal(__currentCartItems);
+            } catch (error) {
+                console.error('Error calculating shipping:', error);
+                // Keep current shipping cost on error
+            }
+        }
+
         function toggleAddressForm() {
             const form = document.getElementById('address-form');
             form.style.display = form.style.display === 'none' ? 'block' : 'none';
@@ -465,27 +518,29 @@ include 'includes/header.php';
         async function placeOrder() {
             const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
             const email = document.getElementById('email').value;
+            const contactName = document.getElementById('contact_full_name').value;
+            const contactPhone = document.getElementById('contact_phone').value;
             const addressId = getSelectedAddressId();
             const isLoggedIn = <?php echo $customer_id ? 'true' : 'false'; ?>;
-            
-            if (!email) {
-                alert('Please enter an email address');
+
+            if (!contactName || !contactPhone || !email) {
+                alert('Please fill in all contact information fields');
                 return;
             }
-            
+
             if (!isLoggedIn && !validateAddressForm()) {
                 alert('Please fill in all required address fields for guest checkout');
                 return;
             }
-            
+
             if (isLoggedIn && !addressId) {
                 alert('Please select or add a shipping address');
                 return;
             }
-            
+
             document.getElementById('place-order-btn').disabled = true;
             document.getElementById('place-order-btn').textContent = 'Processing...';
-            
+
             try {
                 // Calculate client-side discount for server verification
                 const subtotal = parseFloat((document.getElementById('subtotal-display')?.getAttribute('data-price') || '0')) || 0;
@@ -496,10 +551,12 @@ include 'includes/header.php';
                     clientDiscount = subtotal * (parseFloat(currentDiscountPercent) / 100);
                 }
                 clientDiscount = Math.min(clientDiscount, subtotal);
-                
+
                 // Build order payload
                 const orderPayload = {
                     email,
+                    contact_name: contactName,
+                    contact_phone: contactPhone,
                     payment_method: paymentMethod,
                     promo_code: document.getElementById('promo_code').value || null,
                     client_discount: Math.round(clientDiscount * 100) / 100  // Round to 2 decimals
@@ -583,20 +640,12 @@ include 'includes/header.php';
             bindSaveAddressCheckout();
                // Update shipping progress after cart loads
                setTimeout(() => { if (typeof updateShippingProgress === 'function') updateShippingProgress(); }, 200);
+               // Calculate initial shipping based on country
+               setTimeout(() => { updateShippingCost(); }, 200);
         });
 
-            // Shipping meter implementation (adapted from cart)
-            function getShippingThresholdNGN(country, state){
-                const AFRICAN_COUNTRIES = [
-                    'Algeria','Angola','Benin','Botswana','Burkina Faso','Burundi','Cameroon','Cape Verde','Central African Republic','Chad','Comoros','Congo','Democratic Republic of the Congo','Djibouti','Egypt','Equatorial Guinea','Eritrea','Eswatini','Ethiopia','Gabon','Gambia','Ghana','Guinea','Guinea-Bissau','Ivory Coast','Kenya','Lesotho','Liberia','Libya','Madagascar','Malawi','Mali','Mauritania','Mauritius','Morocco','Mozambique','Namibia','Niger','Nigeria','Rwanda','Sao Tome and Principe','Senegal','Seychelles','Sierra Leone','Somalia','South Africa','South Sudan','Sudan','Tanzania','Togo','Tunisia','Uganda','Zambia','Zimbabwe'
-                ];
-                if (country === 'Nigeria' && state === 'Lagos') return 150000;
-                if (country === 'Nigeria') return 250000;
-                if (AFRICAN_COUNTRIES.includes(country)) return 600000;
-                return 800000;
-            }
-
-            function updateShippingProgress(){
+            // Shipping meter implementation - server-backed thresholds
+            async function updateShippingProgress(){
                 const bar = document.getElementById('shipping-progress-bar');
                 const text = document.getElementById('shipping-progress-text');
                 const info = document.getElementById('shipping-info-text');
@@ -605,44 +654,62 @@ include 'includes/header.php';
 
                 const subtotalGBP = parseFloat(subtotalEl.getAttribute('data-price') || '0') || 0;
                 const country = (document.getElementById('country')?.value) || 'United Kingdom';
-                const state = (document.getElementById('state')?.value) || '';
 
-                let rateNGN = 0;
+                // Build cart items for weight calculation
+                const cartItems = (typeof __currentCartItems !== 'undefined' && Array.isArray(__currentCartItems)) ? __currentCartItems.map(i => ({ product_id: i.product_id, quantity: i.quantity })) : [];
 
-                let thresholdGBP = 0;
-                if (country === 'United Kingdom') {
-                    thresholdGBP = 300;
-                } else {
-                    const thresholdNGN = getShippingThresholdNGN(country, state);
-                    thresholdGBP = rateNGN > 0 ? (thresholdNGN / rateNGN) : 0;
-                }
+                try {
+                    const params = new URLSearchParams({
+                        country: country,
+                        subtotal: String(subtotalGBP),
+                        cart_items: JSON.stringify(cartItems)
+                    });
 
-                let percent = 0;
-                if (thresholdGBP > 0) percent = Math.min((subtotalGBP / thresholdGBP) * 100, 100);
-                bar.style.width = percent + '%';
-                bar.className = 'progress-bar ' + (percent >= 100 ? 'bg-green' : percent >= 50 ? 'bg-yellow' : 'bg-red');
+                    const res = await fetch('/api/shipping/calculate.php?' + params);
+                    const data = await res.json();
 
-                let symbol = '£';
-                let rateCurrent = 1;
+                    if (!data || !data.success) {
+                        // Fallback messaging
+                        bar.style.width = '0%';
+                        bar.className = 'progress-bar bg-red';
+                        text.innerHTML = 'Free shipping not available';
+                        info.innerHTML = 'Free shipping thresholds apply based on destination.';
+                        return;
+                    }
 
-                const remainingDisp = Math.round(remainingGBP * rateCurrent).toLocaleString();
+                    const threshold = data.free_shipping_threshold; // null means not applicable
+                    const isFree = data.is_free_shipping === true;
+                    const isFirstTime = data.is_first_time_customer === true;
 
-                let locationText = country;
-                if (country === 'Nigeria') locationText = state === 'Lagos' ? 'Lagos' : 'other Nigerian states';
-                else if (country === 'United Kingdom') locationText = 'the United Kingdom';
-                else locationText = 'international delivery';
+                    if (isFree) {
+                        bar.style.width = '100%';
+                        bar.className = 'progress-bar bg-green';
+                        text.innerHTML = '🎉 You qualify for free shipping!';
+                    } else if (threshold && threshold > 0) {
+                        const pct = Math.min((subtotalGBP / threshold) * 100, 100);
+                        bar.style.width = pct + '%';
+                        bar.className = 'progress-bar ' + (pct >= 100 ? 'bg-green' : pct >= 50 ? 'bg-yellow' : 'bg-red');
+                        const remaining = Math.max(threshold - subtotalGBP, 0);
+                        text.innerHTML = `Add £${remaining.toFixed(2)} more for free shipping`;
+                    } else {
+                        bar.style.width = '0%';
+                        bar.className = 'progress-bar bg-red';
+                        text.innerHTML = `Free shipping not available in ${country}`;
+                    }
 
-                if (percent >= 100) {
-                    text.innerHTML = '🎉 You qualify for free shipping!';
-                    document.getElementById('shipping-display') && (document.getElementById('shipping-display').textContent = 'Free');
-                } else {
-                    text.innerHTML = `Add ${symbol} ${remainingDisp} more for free shipping to ${locationText}`;
-                    document.getElementById('shipping-display') && (document.getElementById('shipping-display').textContent = 'Depends on location');
-                }
+                    if (info) {
+                        if (isFirstTime) {
+                            info.innerHTML = '📍 First-time customer • Free shipping: UK only at £100+';
+                        } else {
+                            info.innerHTML = '📍 Returning customer • Free shipping: All supported countries at £300+';
+                        }
+                    }
 
-                if (info) {
-                    const thresholdDisp = Math.round(thresholdGBP * rateCurrent).toLocaleString();
-                    info.innerHTML = `📍 Current location: ${country} • Free shipping: ${symbol} ${thresholdDisp}+`;
+                    // Sync shipping cost so total shows correctly if threshold crossed
+                    if (typeof updateShippingCost === 'function') updateShippingCost();
+
+                } catch (err) {
+                    console.error('updateShippingProgress error', err);
                 }
             }
 
@@ -650,6 +717,10 @@ include 'includes/header.php';
             document.addEventListener('change', function(e){
                 if (e.target && (e.target.id === 'country' || e.target.id === 'state')) {
                     updateShippingProgress();
+                    // Also update shipping cost when country changes
+                    if (e.target.id === 'country') {
+                        updateShippingCost();
+                    }
                 }
             });
 

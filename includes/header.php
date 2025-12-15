@@ -28,6 +28,18 @@ require_once 'config/cache.php';
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="assets/js/new-nav.js"></script>
+    <script>
+    // Lightweight client-side event tracker that posts to server for basic analytics
+    window.trackEvent = function(eventName, payload) {
+        try {
+            fetch('/api/analytics/collect.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ event: eventName, payload: payload || {} })
+            }).catch(function(){ /* ignore failures */ });
+        } catch (e) {}
+    };
+    </script>
 </head>
 <body>
     <header class="header">

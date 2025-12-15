@@ -19,6 +19,7 @@ session_start();
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../../config/database.php';
+require_once __DIR__ . '/../../../includes/email.php';
 
 // TODO: Get credentials from environment
 $REMITA_MERCHANT_ID = getenv('REMITA_MERCHANT_ID') ?: '';
@@ -138,6 +139,29 @@ try {
     // TODO: Create order_items from order
     // TODO: Update inventory
     // TODO: Send confirmation email
+
+    // Best-effort: send confirmation email and record analytics event for payment
+    try {
+        try {
+            send_order_confirmation_email($pdo, $order['id']);
+        } catch (Exception $e) {
+            error_log('Remita: failed to send confirmation email for order ' . $order['id'] . ': ' . $e->getMessage());
+        }
+
+        $aeStmt = $pdo->prepare('INSERT INTO analytics_events (event_name, payload, user_id, ip_address, created_at) VALUES (?, ?, ?, ?, NOW())');
+        $payload = json_encode([
+            'order_id' => (int)$order['id'],
+            'order_number' => $order['order_number'],
+            'total_amount' => (float)$order['total_amount'],
+            'provider' => 'remita',
+            'rrr' => $rrr
+        ]);
+        $userIdForEvent = $order['customer_id'] ?: null;
+        $clientIp = $_SERVER['REMOTE_ADDR'] ?? null;
+        $aeStmt->execute(['order_created', $payload, $userIdForEvent, $clientIp]);
+    } catch (Exception $e) {
+        error_log('Remita: failed to record analytics for order ' . $order['id'] . ': ' . $e->getMessage());
+    }
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         // Redirect scenario

@@ -38,6 +38,25 @@ $active_nav = isset($active_nav) ? $active_nav : '';
     .card { background:var(--card); border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,0.08); margin-bottom:16px; border:1px solid var(--border); }
     .card-header { padding:14px 18px; border-bottom:1px solid var(--border); font-weight:600; }
     .card-body { padding:18px; }
+    
+    /* Modal Styles */
+    .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+    .modal-content { background: var(--card); margin: 5% auto; padding: 20px; border-radius: 12px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+    .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; line-height: 20px; }
+    .close:hover, .close:focus { color: #000; }
+    
+    /* Form Styles */
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; margin-bottom: 6px; color: var(--txt); font-weight: 500; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-family: Arial, sans-serif; }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-row .form-group { margin-bottom: 0; }
+    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } }
+    
+    /* Button Styles */
+    .btn-success { background: #28a745; }
+    .btn-success:hover { background: #218838; }
   </style>
 </head>
 <body>

@@ -250,6 +250,38 @@ $is_paid = $order['status'] !== 'pending';
         </div>
     </div>
 
+    <script>
+    // Send client-side order_created analytics once (use localStorage to avoid duplicates on refresh)
+    document.addEventListener('DOMContentLoaded', function(){
+        try {
+            var orderId = <?php echo json_encode((int)$order_id); ?>;
+            var orderNumber = <?php echo json_encode($order['order_number']); ?>;
+            var total = <?php echo json_encode((float)$order['total_amount']); ?>;
+            var isPaid = <?php echo json_encode($is_paid ? true : false); ?>;
+            var items = <?php
+                $out = [];
+                foreach ($items as $it) {
+                    $out[] = [
+                        'product_id' => isset($it['product_id']) ? (int)$it['product_id'] : null,
+                        'name' => $it['name'] ?? '',
+                        'quantity' => isset($it['quantity']) ? (int)$it['quantity'] : 0,
+                        'unit_price' => isset($it['unit_price']) ? (float)$it['unit_price'] : (isset($it['price']) ? (float)$it['price'] : 0)
+                    ];
+                }
+                echo json_encode($out);
+            ?>;
+
+            var key = 'tracked_order_' + orderId;
+            if (!localStorage.getItem(key)) {
+                if (typeof window.trackEvent === 'function') {
+                    window.trackEvent('order_created', { order_id: orderId, order_number: orderNumber, total_amount: total, is_paid: isPaid, items: items });
+                }
+                try { localStorage.setItem(key, '1'); } catch(e) {}
+            }
+        } catch (e) { console.warn('order tracking failed', e); }
+    });
+    </script>
+
     <?php include 'includes/footer.php'; ?>
 </body>
 </html>

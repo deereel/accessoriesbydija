@@ -150,6 +150,7 @@ $products = $stmt->fetchAll();
                             <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Product</th>
                             <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">SKU</th>
                             <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Price</th>
+                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Weight</th>
                             <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Stock</th>
                             <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Material</th>
                             <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Status</th>
@@ -172,6 +173,7 @@ $products = $stmt->fetchAll();
                             </td>
                             <td style="padding:10px;"><?php echo htmlspecialchars($product['sku']); ?></td>
                             <td style="padding:10px;">£<?php echo number_format($product['price'], 2); ?></td>
+                            <td style="padding:10px;"><?php echo $product['weight'] ? htmlspecialchars($product['weight']) . 'g' : '-'; ?></td>
                             <td style="padding:10px;"><?php echo $product['stock_quantity']; ?></td>
                             <td style="padding:10px;"><?php echo htmlspecialchars($product['material']); ?></td>
                             <td style="padding:10px;">

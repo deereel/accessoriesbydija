@@ -78,22 +78,15 @@ class CartHandler {
                 this.showNotification('Your cart is empty', 'error');
                 return;
             }
-            // If user is not logged in, redirect to login with return param
-            if (!this.isLoggedIn) {
-                // Ensure guest cart is persisted to localStorage before redirect
-                try {
-                    const guestItems = this.gatherCartFromDOM();
-                    if (Array.isArray(guestItems) && guestItems.length > 0) {
-                        this.saveGuestCart(guestItems);
-                    }
-                } catch (e) {
-                    console.warn('Failed to persist guest cart before redirect', e);
+            // Persist guest cart to localStorage and allow guest checkout
+            try {
+                const guestItems = this.gatherCartFromDOM();
+                if (Array.isArray(guestItems) && guestItems.length > 0) {
+                    this.saveGuestCart(guestItems);
                 }
-                const returnTo = encodeURIComponent('checkout.php');
-                window.location.href = `/login.php?redirect=${returnTo}`;
-                return;
+            } catch (e) {
+                console.warn('Failed to persist guest cart', e);
             }
-            // Logged-in users go straight to checkout
             window.location.href = '/checkout.php';
         });
     }
@@ -142,6 +135,18 @@ class CartHandler {
             if (result.success) {
                 this.showNotification('Item added to cart!', 'success');
                 this.updateCartCount();
+
+                // Track add_to_cart event (non-blocking)
+                try {
+                    if (typeof window.trackEvent === 'function') {
+                        window.trackEvent('add_to_cart', {
+                            product_id: productData.product_id || productData.productId || null,
+                            product_name: productData.product_name || productData.productName || null,
+                            price: parseFloat(productData.price || 0),
+                            quantity: parseInt(productData.quantity || 1)
+                        });
+                    }
+                } catch (e) { console.warn('trackEvent failed', e); }
 
                 // If on cart page, reload cart items
                 if (window.location.pathname.includes('/cart.php')) {
@@ -422,6 +427,8 @@ class CartHandler {
                 const cartItemId = item.cart_item_id || item.id || item.product_id; // support both shapes
                 const name = item.product_name || item.name || 'Item';
                 const image = item.image || item.image_url || item.main_image || '';
+                const slug = item.slug || '';
+                const productLink = slug ? `/product.php?slug=${encodeURIComponent(slug)}` : '#';
                 const imageHtml = image ? `<img src="${image}" alt="${name}">` : '';
                 const color = item.color || '';
                 const size = item.size || '';
@@ -429,9 +436,9 @@ class CartHandler {
                 const variant = [color ? `Color: ${color}` : '', size ? `Size: ${size}` : '', width ? `Width: ${width}` : ''].filter(Boolean).join(' | ');
                 return `
                     <div class="cart-item" data-cart-item-id="${cartItemId}" data-price="${price}">
-                        <div class="thumb">${imageHtml}</div>
+                        <a href="${productLink}" class="thumb" style="text-decoration: none; color: inherit; display: block;">${imageHtml}</a>
                         <div class="meta">
-                            <div class="name">${name}</div>
+                            <a href="${productLink}" style="text-decoration: none; color: inherit;"><div class="name">${name}</div></a>
                             ${variant ? `<div class="variant">${variant}</div>` : ''}
                             <div class="row-bottom">
                                 <div class="qty-control">

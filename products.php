@@ -195,6 +195,9 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
                                 <div class="product-info">
                                     <h3><a href="product.php?slug=<?= $product['slug'] ?>" style="text-decoration:none;color:inherit;"><?= htmlspecialchars($product['name']) ?></a></h3>
                                     <p><?= htmlspecialchars(substr($product['description'] ?? '', 0, 50)) ?>...</p>
+                                    <?php if ($product['weight']): ?>
+                                    <p style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem;">⚖️ <?= htmlspecialchars($product['weight']) ?>g</p>
+                                    <?php endif; ?>
                                     <div class="product-footer">
                                         <span class="product-price" data-price="<?= $product['price'] ?>">£<?= number_format($product['price'], 2) ?></span>
                                         <button class="cart-btn add-to-cart" data-product-id="<?= $product['id'] ?>">Add to Cart</button>

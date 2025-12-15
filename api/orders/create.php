@@ -3,6 +3,8 @@ header('Content-Type: application/json');
 session_start();
 
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../includes/shipping-calculator.php';
+require_once __DIR__ . '/../../includes/email.php';
 
 /**
  * POST /api/orders/create.php
@@ -74,8 +76,10 @@ try {
     $address_id = $data['address_id'] ?? null;
     $cart_items = [];
     $subtotal = 0;
+    $country = null;
+    $guest_addr = null;
 
-    // Fetch cart items
+    // Fetch cart items and determine country
     if ($customer_id) {
         // Logged-in customer: fetch from database
         $stmt = $pdo->prepare("SELECT c.id, c.product_id, c.quantity, p.price, p.name, p.sku 
@@ -85,15 +89,20 @@ try {
         $stmt->execute([$customer_id]);
         $cart_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Validate address_id if provided
+        // Get country from address
         if ($address_id) {
-            $addrStmt = $pdo->prepare("SELECT id FROM customer_addresses WHERE id = ? AND customer_id = ?");
+            $addrStmt = $pdo->prepare("SELECT country FROM customer_addresses WHERE id = ? AND customer_id = ?");
             $addrStmt->execute([$address_id, $customer_id]);
-            if (!$addrStmt->fetch()) {
+            $addr = $addrStmt->fetch(PDO::FETCH_ASSOC);
+            if (!$addr) {
                 http_response_code(400);
                 echo json_encode(['success' => false, 'message' => 'Invalid address for this customer']);
                 exit;
             }
+            $country = $addr['country'] ?? 'United Kingdom';
+        } else {
+            // Default to UK if no address specified
+            $country = 'United Kingdom';
         }
     } else {
         // Guest checkout: use cart_items from request
@@ -121,6 +130,7 @@ try {
         }
         
         $cart_items = $data['cart_items'];
+        $country = $guest_addr['country'];
     }
 
     if (empty($cart_items)) {
@@ -211,8 +221,15 @@ try {
         }
     }
 
-    // Calculate totals
-    $shipping = 5.00; // Fixed shipping cost for now
+    // Calculate shipping based on country and total weight
+    $total_weight = calculateTotalWeight($cart_items, $pdo);
+    $shipping = calculateShippingFee($country, $total_weight, $subtotal, $customer_id, $pdo);
+    
+    // If country not recognized, use default for now (should be handled by client)
+    if ($shipping === null) {
+        $shipping = 5.00; // Default shipping if location not found
+    }
+    
     $total_amount = round($subtotal + $shipping - $discount, 2);
 
     // Generate unique order number
@@ -223,15 +240,17 @@ try {
 
     try {
         // Insert order
-        $stmt = $pdo->prepare("INSERT INTO orders 
-                               (customer_id, order_number, email, subtotal, shipping_amount, discount_amount, 
-                                total_amount, status, payment_method, address_id, notes, created_at) 
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-        
+        $stmt = $pdo->prepare("INSERT INTO orders
+                               (customer_id, order_number, email, contact_name, contact_phone, subtotal, shipping_amount, discount_amount,
+                                total_amount, status, payment_method, address_id, notes, created_at)
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+
         $stmt->execute([
             $customer_id,
             $order_number,
             $email,
+            $data['contact_name'] ?? null,
+            $data['contact_phone'] ?? null,
             $subtotal,
             $shipping,
             $discount,
@@ -303,6 +322,17 @@ try {
 
         // Commit transaction
         $pdo->commit();
+
+        // Send order confirmation email (best-effort)
+        try {
+            send_order_confirmation_email($pdo, $order_id);
+        } catch (Exception $e) {
+            error_log('Failed to send order confirmation email for order ' . $order_id . ': ' . $e->getMessage());
+        }
+
+        // NOTE: server-side analytics for order creation is recorded when payment
+        // is confirmed (payment provider webhook/verify handlers). Client-side
+        // order_created events are still emitted from the confirmation page.
 
         // Store order in session for payment verification
         $_SESSION['pending_order'] = [

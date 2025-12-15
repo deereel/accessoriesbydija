@@ -107,15 +107,21 @@ CREATE TABLE IF NOT EXISTS orders (
     subtotal DECIMAL(10,2) NOT NULL,
     tax_amount DECIMAL(10,2) DEFAULT 0,
     shipping_amount DECIMAL(10,2) DEFAULT 0,
+    discount_amount DECIMAL(10,2) DEFAULT 0,
     total_amount DECIMAL(10,2) NOT NULL,
     currency VARCHAR(3) DEFAULT 'USD',
     payment_status ENUM('pending', 'paid', 'failed', 'refunded') DEFAULT 'pending',
     payment_method VARCHAR(50),
     shipping_method VARCHAR(100),
+    email VARCHAR(255),
+    contact_name VARCHAR(255),
+    contact_phone VARCHAR(20),
+    address_id INT,
     notes TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
+    FOREIGN KEY (address_id) REFERENCES customer_addresses(id) ON DELETE SET NULL
 );
 
 -- Order items

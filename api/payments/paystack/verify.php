@@ -18,6 +18,7 @@ session_start();
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../../config/database.php';
+require_once __DIR__ . '/../../../includes/email.php';
 
 // TODO: Configure these from environment
 $PAYSTACK_SECRET_KEY = getenv('PAYSTACK_SECRET_KEY') ?: 'sk_test_your_secret_key_here';
@@ -158,6 +159,31 @@ try {
 
     // TODO: Update inventory/stock levels
     // TODO: Send confirmation email to customer
+
+    // Best-effort: send confirmation email and record analytics event for payment
+    try {
+        // Send confirmation email (best-effort)
+        try {
+            send_order_confirmation_email($pdo, $order['id']);
+        } catch (Exception $e) {
+            error_log('Paystack: failed to send confirmation email for order ' . $order['id'] . ': ' . $e->getMessage());
+        }
+
+        // Insert analytics event `order_created` (meaning: order confirmed/paid)
+        $aeStmt = $pdo->prepare('INSERT INTO analytics_events (event_name, payload, user_id, ip_address, created_at) VALUES (?, ?, ?, ?, NOW())');
+        $payload = json_encode([
+            'order_id' => (int)$order['id'],
+            'order_number' => $order['order_number'],
+            'total_amount' => (float)$order['total_amount'],
+            'provider' => 'paystack',
+            'reference' => $reference
+        ]);
+        $userIdForEvent = $order['customer_id'] ?: null;
+        $clientIp = $_SERVER['REMOTE_ADDR'] ?? null;
+        $aeStmt->execute(['order_created', $payload, $userIdForEvent, $clientIp]);
+    } catch (Exception $e) {
+        error_log('Paystack: failed to record analytics for order ' . $order['id'] . ': ' . $e->getMessage());
+    }
 
     echo json_encode([
         'success' => true,

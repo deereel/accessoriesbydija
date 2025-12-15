@@ -385,4 +385,17 @@ main { background: var(--bg); }
 })();
 </script>
 
+<script>
+// Allow guests to proceed to checkout; simply redirect to checkout page where guest flow is supported
+document.addEventListener('DOMContentLoaded', function(){
+  const checkoutBtn = document.getElementById('checkout-btn');
+  if (checkoutBtn) {
+    checkoutBtn.addEventListener('click', function(e){
+      // proceed to checkout; cart is handled via server or localStorage on checkout page
+      window.location.href = '/checkout.php';
+    });
+  }
+});
+</script>
+
 <?php include 'includes/footer.php'; ?>

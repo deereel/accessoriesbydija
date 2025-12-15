@@ -26,7 +26,7 @@ try {
 	if ($method === 'GET') {
 		$customer_id = current_customer_id();
 		if ($customer_id) {
-			$stmt = $pdo->prepare("SELECT c.id as cart_item_id, c.product_id, c.quantity, p.name as product_name, p.price,
+			$stmt = $pdo->prepare("SELECT c.id as cart_item_id, c.product_id, c.quantity, p.name as product_name, p.price, p.slug,
 			(SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 ORDER BY is_primary DESC, sort_order ASC LIMIT 1) AS image_url
 			FROM cart c JOIN products p ON p.id = c.product_id WHERE c.customer_id = ?");
 			$stmt->execute([$customer_id]);
@@ -94,8 +94,8 @@ try {
 
 		if (!$product_id) json(['success' => false, 'message' => 'Product ID missing']);
 
-		// Verify product exists and price/name
-		$stmt = $pdo->prepare('SELECT id, name, price FROM products WHERE id = ? AND is_active = 1');
+		// Verify product exists and price/name/slug
+		$stmt = $pdo->prepare('SELECT id, name, price, slug FROM products WHERE id = ? AND is_active = 1');
 		$stmt->execute([$product_id]);
 		$product = $stmt->fetch(PDO::FETCH_ASSOC);
 		if (!$product) json(['success' => false, 'message' => 'Product not found']);
@@ -144,6 +144,7 @@ try {
 		'product_id' => $product_id,
 		'product_name' => $product['name'],
 		'price' => (float)$product['price'],
+		'slug' => $product['slug'] ?? '',
 		'quantity' => $quantity,
 		'image' => $image_url
 		];

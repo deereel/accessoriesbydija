@@ -19,6 +19,7 @@
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../../../config/database.php';
+require_once __DIR__ . '/../../../includes/email.php';
 
 // TODO: Get webhook signing secret from environment
 $STRIPE_WEBHOOK_SECRET = getenv('STRIPE_WEBHOOK_SECRET') ?: 'whsec_your_webhook_secret_here';
@@ -150,6 +151,29 @@ function handleCheckoutSessionCompleted($event, $pdo) {
         // TODO: Create order_items from session
         // TODO: Update inventory
         // TODO: Send confirmation email
+
+        // Best-effort: send confirmation email and record analytics event
+        try {
+            try {
+                send_order_confirmation_email($pdo, $order_id);
+            } catch (Exception $e) {
+                error_log('Stripe: failed to send confirmation email for order ' . $order_id . ': ' . $e->getMessage());
+            }
+
+            $aeStmt = $pdo->prepare('INSERT INTO analytics_events (event_name, payload, user_id, ip_address, created_at) VALUES (?, ?, ?, ?, NOW())');
+            $payload = json_encode([
+                'order_id' => (int)$order_id,
+                'order_number' => $order['order_number'] ?? null,
+                'total_amount' => (float)$order['total_amount'] ?? null,
+                'provider' => 'stripe',
+                'session_id' => $session->id
+            ]);
+            $userIdForEvent = $order['customer_id'] ?? null;
+            $clientIp = $_SERVER['REMOTE_ADDR'] ?? null;
+            $aeStmt->execute(['order_created', $payload, $userIdForEvent, $clientIp]);
+        } catch (Exception $e) {
+            error_log('Stripe: failed to record analytics for order ' . $order_id . ': ' . $e->getMessage());
+        }
 
     } catch (PDOException $e) {
         // Log error but don't fail webhook
