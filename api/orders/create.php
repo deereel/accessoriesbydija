@@ -270,7 +270,16 @@ try {
         
         foreach ($cart_items as $item) {
             $product_id = intval($item['product_id']);
-            $product_name = isset($item['product_name']) ? trim($item['product_name']) : 'Unknown Product';
+            
+            // Always fetch the canonical product name from the products table to ensure it's correct
+            $p_stmt = $pdo->prepare("SELECT name FROM products WHERE id = ?");
+            $p_stmt->execute([$product_id]);
+            $product_data = $p_stmt->fetch(PDO::FETCH_ASSOC);
+
+            // Use the fetched name, or fallback to the cart item name (which can be 'name' or 'product_name'), or finally 'Unknown'
+            $product_name = $product_data['name'] ?? ($item['name'] ?? ($item['product_name'] ?? 'Unknown Product'));
+            $product_name = trim($product_name);
+
             $product_sku = isset($item['sku']) ? trim($item['sku']) : 'N/A';
             $quantity = intval($item['quantity']);
             $unit_price = round(floatval($item['price']), 2);

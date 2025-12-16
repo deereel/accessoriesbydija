@@ -5,7 +5,23 @@ if (!isset($_SESSION['admin_logged_in'])) {
     exit;
 }
 
-// Expected: $page_title (optional), $active_nav (dashboard|products|categories|orders|customers|banners|testimonials|promos)
+// Access Control
+$user_role = isset($_SESSION['admin_role']) ? $_SESSION['admin_role'] : '';
+$current_page = basename($_SERVER['PHP_SELF']);
+
+// Pages inaccessible to certain roles
+$restricted_pages = [
+    'staff' => ['inventory.php', 'testimonials.php', 'settings.php', 'banners.php', 'categories.php'],
+    'admin' => ['users.php', 'database.php'],
+];
+
+if (isset($restricted_pages[$user_role]) && in_array($current_page, $restricted_pages[$user_role])) {
+    // For the current user role, if the page is in their restricted list, redirect.
+    header('Location: index.php');
+    exit;
+}
+
+// Expected: $page_title (optional), $active_nav (dashboard|inventory|reports|products|categories|orders|customers|banners|testimonials|settings)
 $page_title = isset($page_title) ? $page_title : 'Admin - Dija Accessories';
 $active_nav = isset($active_nav) ? $active_nav : '';
 ?>
@@ -64,13 +80,26 @@ $active_nav = isset($active_nav) ? $active_nav : '';
   <aside class="sidebar">
     <h2>Dija Admin</h2>
     <a class="nav-link <?php echo $active_nav==='dashboard'?'active':''; ?>" href="/admin/index.php"><i class="fas fa-gauge"></i> <span>Dashboard</span></a>
+    <a class="nav-link <?php echo $active_nav==='reports'?'active':''; ?>" href="/admin/reports.php"><i class="fas fa-chart-pie"></i> <span>Reports</span></a>
+    
+    <?php if (isset($user_role) && in_array($user_role, ['admin', 'superadmin'])): ?>
+    <a class="nav-link <?php echo $active_nav==='inventory'?'active':''; ?>" href="/admin/inventory.php"><i class="fas fa-boxes"></i> <span>Inventory</span></a>
+    <?php endif; ?>
     <a class="nav-link <?php echo $active_nav==='products'?'active':''; ?>" href="/admin/products.php"><i class="fas fa-gem"></i> <span>Products</span></a>
+    
+    <?php if (isset($user_role) && in_array($user_role, ['admin', 'superadmin'])): ?>
     <a class="nav-link <?php echo $active_nav==='categories'?'active':''; ?>" href="/admin/categories.php"><i class="fas fa-list"></i> <span>Categories</span></a>
+    <?php endif; ?>
+
     <a class="nav-link <?php echo $active_nav==='orders'?'active':''; ?>" href="/admin/orders.php"><i class="fas fa-shopping-cart"></i> <span>Orders</span></a>
     <a class="nav-link <?php echo $active_nav==='customers'?'active':''; ?>" href="/admin/customers.php"><i class="fas fa-users"></i> <span>Customers</span></a>
+    
+    <?php if (isset($user_role) && in_array($user_role, ['admin', 'superadmin'])): ?>
     <a class="nav-link <?php echo $active_nav==='banners'?'active':''; ?>" href="/admin/banners.php"><i class="fas fa-image"></i> <span>Banners</span></a>
     <a class="nav-link <?php echo $active_nav==='testimonials'?'active':''; ?>" href="/admin/testimonials.php"><i class="fas fa-comment"></i> <span>Testimonials</span></a>
-    <a class="nav-link <?php echo $active_nav==='promos'?'active':''; ?>" href="/admin/promos.php"><i class="fas fa-ticket"></i> <span>Promo Codes</span></a>
+    <a class="nav-link <?php echo $active_nav==='settings'?'active':''; ?>" href="/admin/settings.php"><i class="fas fa-cogs"></i> <span>Settings</span></a>
+    <?php endif; ?>
+    
     <div style="margin-top:12px;"><a class="nav-link" href="/admin/index.php?logout=1"><i class="fas fa-right-from-bracket"></i> <span>Logout</span></a></div>
   </aside>
   <div class="content">

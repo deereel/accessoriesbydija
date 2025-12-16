@@ -1,13 +1,52 @@
 <?php
 session_start();
 
-// Simple admin authentication
-if (!isset($_SESSION['admin_logged_in'])) {
-    if (($_POST['username'] ?? '') === 'admin' && ($_POST['password'] ?? '') === 'admin123') {
-        $_SESSION['admin_logged_in'] = true;
-    } else {
-        if ($_POST) { $error = 'Invalid credentials'; }
+// Database-driven admin authentication
+if (!isset($_SESSION['admin_logged_in']) && isset($_POST['username'])) {
+    require_once __DIR__ . '/../config/database.php';
+    
+    $username = $_POST['username'];
+    $password = $_POST['password'];
+    $error = null;
+
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM admin_users WHERE username = :username OR email = :username");
+        $stmt->execute([':username' => $username]);
+        $user = $stmt->fetch();
+
+        if ($user && password_verify($password, $user['password_hash'])) {
+            if ($user['is_active']) {
+                session_regenerate_id(true);
+                $_SESSION['admin_logged_in'] = true;
+                $_SESSION['admin_user_id'] = $user['id'];
+                $_SESSION['admin_username'] = $user['username'];
+                $_SESSION['admin_full_name'] = $user['full_name'];
+                $_SESSION['admin_role'] = $user['role'];
+
+                // Update last login timestamp
+                $update_stmt = $pdo->prepare("UPDATE admin_users SET last_login = CURRENT_TIMESTAMP WHERE id = ?");
+                $update_stmt->execute([$user['id']]);
+                
+                header('Location: index.php');
+                exit;
+            } else {
+                $error = 'Your account is inactive.';
+            }
+        } else {
+            $error = 'Invalid username or password.';
+        }
+    } catch (PDOException $e) {
+        $error = 'A database error occurred. Please try again later.';
     }
+}
+
+// Handle logout
+if (isset($_GET['logout'])) {
+    if(session_status() === PHP_SESSION_ACTIVE) {
+        session_destroy();
+    }
+    header('Location: index.php');
+    exit;
 }
 
 if (!isset($_SESSION['admin_logged_in'])): ?>
@@ -35,7 +74,7 @@ if (!isset($_SESSION['admin_logged_in'])): ?>
       <input type="password" name="password" placeholder="Password" required>
       <button type="submit">Login</button>
     </form>
-    <p style="text-align:center; color:#666; margin-top:1rem;">Default: admin / admin123</p>
+    <p style="text-align:center; color:#666; margin-top:1rem; font-size:12px;">Please use your assigned administrator credentials to log in.</p>
   </div>
 </body>
 </html>
