@@ -219,17 +219,17 @@ body {
     gap: 20px;
 }
 
-.product-card {
+.new-products-grid .product-card {
     text-align: center;
     cursor: pointer;
     transition: transform 0.3s;
 }
 
-.product-card:hover {
+.new-products-grid .product-card:hover {
     transform: translateY(-5px);
 }
 
-.product-card:hover .placeholder-img {
+.new-products-grid .product-card:hover .placeholder-img {
     background: #f0f0f0;
 }
 
@@ -248,13 +248,13 @@ body {
     border-radius: 8px;
 }
 
-.product-card h4 {
+.new-products-grid .product-card h4 {
     font-size: 16px;
     margin-bottom: 8px;
     color: #222;
 }
 
-.product-card .price {
+.new-products-grid .product-card .price {
     font-size: 18px;
     font-weight: 600;
     color: #C27BA0;
@@ -291,6 +291,9 @@ body {
 
 .promo-banner {
     height: 300px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
 }
 
 .placeholder-banner {
@@ -457,4 +460,30 @@ body {
         grid-template-columns: 1fr;
         gap: 20px;
     }
+}
+
+.promo-banner-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.promo-banner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.3); /* semi-transparent black overlay */
+    text-align: center;
+}
+
+.promo-banner-overlay h2 {
+    color: white;
+    font-size: 24px;
+    font-weight: 600;
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.5);
 }

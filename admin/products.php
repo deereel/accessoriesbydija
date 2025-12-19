@@ -52,8 +52,15 @@ if (isset($_SESSION['admin_role']) && in_array($_SESSION['admin_role'], ['admin'
         if ($action === 'add_product') {
             $slug = strtolower(str_replace(' ', '-', $_POST['product_name']));
             $stmt = $pdo->prepare("INSERT INTO products (name, slug, description, sku, price, stock_quantity, weight, material, stone_type, gender, is_featured, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$_POST['product_name'], $slug, $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], $_POST['weight'], $_POST['material'], $_POST['stone_type'], $_POST['gender'], $_POST['category'], isset($_POST['is_featured']) ? 1 : 0, isset($_POST['is_active']) ? 1 : 0]);
+            $stmt->execute([$_POST['product_name'], $slug, $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], $_POST['weight'], $_POST['material'], $_POST['stone_type'], $_POST['gender'], isset($_POST['is_featured']) ? 1 : 0, isset($_POST['is_active']) ? 1 : 0]);
             $product_id = $pdo->lastInsertId();
+
+            // Handle category assignment
+            if (!empty($_POST['category'])) {
+                $category_id = (int)$_POST['category'];
+                $cat_stmt = $pdo->prepare("INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)");
+                $cat_stmt->execute([$product_id, $category_id]);
+            }
 
             $uploads_dir = '../assets/images/products';
             if (!is_dir($uploads_dir)) {
@@ -90,6 +97,15 @@ if (isset($_SESSION['admin_role']) && in_array($_SESSION['admin_role'], ['admin'
             $product_id = (int)$_POST['product_id'];
             $stmt = $pdo->prepare("UPDATE products SET name=?, description=?, sku=?, price=?, stock_quantity=?, weight=?, material=?, stone_type=?, gender=?, is_featured=?, is_active=? WHERE id=?");
             $stmt->execute([$_POST['product_name'], $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], $_POST['weight'], $_POST['material'], $_POST['stone_type'], $_POST['gender'], isset($_POST['is_featured']) ? 1 : 0, isset($_POST['is_active']) ? 1 : 0, $product_id]);
+
+            // Handle category update
+            $del_cat_stmt = $pdo->prepare("DELETE FROM product_categories WHERE product_id = ?");
+            $del_cat_stmt->execute([$product_id]);
+            if (!empty($_POST['category'])) {
+                $category_id = (int)$_POST['category'];
+                $cat_stmt = $pdo->prepare("INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)");
+                $cat_stmt->execute([$product_id, $category_id]);
+            }
 
             $uploads_dir = '../assets/images/products';
             if (!is_dir($uploads_dir)) {
@@ -187,7 +203,7 @@ $categories_from_db = $pdo->query("SELECT id, name FROM categories ORDER BY name
             <a href="products.php" class="btn" style="float:right; margin-top:-8px; margin-right:10px; background:#6c757d;">Clear Filters</a>
         </div>
         <div class="card-body">
-            <div style="margin-bottom:16px; display:flex; gap:10px;">
+            <form method="GET" action="products.php" style="margin-bottom:16px; display:flex; gap:10px;">
                 <input type="text" name="search" placeholder="Search products..." value="<?php echo htmlspecialchars($_GET['search'] ?? ''); ?>" style="flex:1; padding:8px; border:1px solid #ddd; border-radius:4px;">
                 <select name="gender" style="padding:8px; border:1px solid #ddd; border-radius:4px;">
                     <option value="">All Genders</option>
@@ -197,13 +213,23 @@ $categories_from_db = $pdo->query("SELECT id, name FROM categories ORDER BY name
                 </select>
                 <select name="status" style="padding:8px; border:1px solid #ddd; border-radius:4px;">
                     <option value="">All Status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
+                    <option value="active" <?php echo ($_GET['status'] ?? '') === 'active' ? 'selected' : ''; ?>>Active</option>
+                    <option value="inactive" <?php echo ($_GET['status'] ?? '') === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
                 </select>
                 <button type="submit" class="btn">Filter</button>
+            </form>
+
+            <!-- Success/Error Messages -->
+            <div style="margin-bottom: 15px;">
+                <?php if (isset($error)): ?>
+                    <div class="alert alert-danger"><?php echo $error; ?></div>
+                <?php endif; ?>
+                <?php if (isset($success)): ?>
+                    <div class="alert alert-success"><?php echo $success; ?></div>
+                <?php endif; ?>
             </div>
 
-            <div style="overflow-x:auto;">
+            <div class="table-container">
                 <table style="width:100%; border-collapse:collapse;">
                     <thead>
                         <tr style="background:#f5f5f5;">
@@ -266,14 +292,20 @@ $categories_from_db = $pdo->query("SELECT id, name FROM categories ORDER BY name
             <!-- Pagination Controls -->
             <div style="margin-top:20px; text-align:center;">
                 <?php if ($total_pages > 1): ?>
+                    <?php
+                    // Build query string without page parameter
+                    $query_params = $_GET;
+                    unset($query_params['page']);
+                    $query_string = http_build_query($query_params);
+                    ?>
                     <?php if ($page > 1): ?>
-                        <a href="?page=<?php echo $page - 1; ?>&<?php echo http_build_query($_GET, '', '&'); ?>" class="btn" style="margin-right:5px;">Previous</a>
+                        <a href="?page=<?php echo $page - 1; ?>&<?php echo $query_string; ?>" class="btn" style="margin-right:5px;">Previous</a>
                     <?php endif; ?>
                     <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                        <a href="?page=<?php echo $i; ?>&<?php echo http_build_query($_GET, '', '&'); ?>" class="btn <?php echo ($i === $page) ? 'btn-success' : ''; ?>" style="margin-right:5px;"><?php echo $i; ?></a>
+                        <a href="?page=<?php echo $i; ?>&<?php echo $query_string; ?>" class="btn <?php echo ($i === $page) ? 'btn-success' : ''; ?>" style="margin-right:5px;"><?php echo $i; ?></a>
                     <?php endfor; ?>
                     <?php if ($page < $total_pages): ?>
-                        <a href="?page=<?php echo $page + 1; ?>&<?php echo http_build_query($_GET, '', '&'); ?>" class="btn">Next</a>
+                        <a href="?page=<?php echo $page + 1; ?>&<?php echo $query_string; ?>" class="btn">Next</a>
                     <?php endif; ?>
                 <?php endif; ?>
             </div>
@@ -336,7 +368,9 @@ $categories_from_db = $pdo->query("SELECT id, name FROM categories ORDER BY name
                         <label for="category">Category</label>
                         <select id="category" name="category" required>
                             <option value="">Select Category</option>
-                            <!-- Options will be populated by JavaScript -->
+                            <?php foreach ($categories_from_db as $cat): ?>
+                                <option value="<?php echo $cat['id']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
+                            <?php endforeach; ?>
                         </select>
                     </div>
                 </div>
@@ -432,20 +466,10 @@ $categories_from_db = $pdo->query("SELECT id, name FROM categories ORDER BY name
             document.getElementById('modalTitle').textContent = 'Add Product';
             document.getElementById('formAction').value = 'add_product';
             document.getElementById('productForm').reset();
-            document.getElementById('productId').value = ''; // Clear product ID for new product
+            document.getElementById('productId').value = '';
             document.getElementById('is_active').checked = true;
-            document.getElementById('is_featured').checked = false; // Default to not featured
-            populateCategoryDropdown(); // Populate category dropdown
-            document.getElementById('existingImagesSection').style.display = 'none'; // Hide existing images section
-            document.getElementById('productModal').style.display = 'block';
-        }
-
-        function openAddModal() {
-            document.getElementById('modalTitle').textContent = 'Add Product';
-            document.getElementById('formAction').value = 'add_product';
-            document.getElementById('productForm').reset();
-            document.getElementById('is_active').checked = true;
-            updateCategoryOptions(); // Initialize category options
+            document.getElementById('is_featured').checked = false;
+            document.getElementById('existingImagesSection').style.display = 'none';
             document.getElementById('productModal').style.display = 'block';
         }
 
@@ -473,11 +497,8 @@ $categories_from_db = $pdo->query("SELECT id, name FROM categories ORDER BY name
                     document.getElementById('is_featured').checked = product.is_featured == 1;
                     document.getElementById('is_active').checked = product.is_active == 1;
 
-                    // Update category options based on gender and set the selected category
-                    updateCategoryOptions();
-                    setTimeout(() => {
-                        document.getElementById('category').value = product.category || '';
-                    }, 10);
+                    // Set the selected category
+                    document.getElementById('category').value = product.category_id || '';
 
                     // Display existing images
                     const existingImagesSection = document.getElementById('existingImagesSection');

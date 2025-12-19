@@ -13,6 +13,39 @@
     letter-spacing: 1px;
 }
 
+/* New 4x2 Featured Grid */
+.featured-grid-4x2 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* 4 columns */
+    gap: 2rem;
+    max-width: 1200px; /* Adjust as needed */
+    margin: 0 auto;
+    overflow: hidden; /* Hide extra items if more than 8 are loaded */
+    grid-auto-rows: minmax(auto, auto); /* Ensure rows adjust to content */
+}
+
+.featured-grid-4x2 .featured-card:nth-child(n+9) {
+    display: none; /* Hide items beyond the 8th for a 4x2 visual */
+}
+
+@media (max-width: 1200px) { /* Adjust breakpoint as needed for responsiveness */
+    .featured-grid-4x2 {
+        grid-template-columns: repeat(3, 1fr); /* 3 columns on smaller screens */
+    }
+    .featured-grid-4x2 .featured-card:nth-child(n+7) { /* Hide after 6th for 3x2 */
+        display: none;
+    }
+}
+
+@media (max-width: 768px) { /* Adjust breakpoint as needed for responsiveness */
+    .featured-grid-4x2 {
+        grid-template-columns: repeat(2, 1fr); /* 2 columns on mobile */
+    }
+    .featured-grid-4x2 .featured-card:nth-child(n+5) { /* Hide after 4th for 2x2 */
+        display: none;
+    }
+}
+
 .featured-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));

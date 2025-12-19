@@ -174,7 +174,7 @@ include 'includes/header.php';
     <section class="featured-products">
         <div class="container">
             <h2>Featured Products</h2>
-            <div class="featured-grid" id="featured-products">
+            <div class="featured-grid-4x2" id="featured-products">
                 <!-- Products loaded via JavaScript -->
             </div>
             <div style="text-align: center; margin-top: 2rem;">

@@ -26,44 +26,45 @@ async function loadFeaturedProducts() {
 
 function displayFeaturedProducts(products) {
     const container = document.getElementById('featured-products');
-    
-    const html = products.map(product => `
-        <div class="featured-card" data-product-id="${product.id}">
-            <div class="featured-image">
-                <a href="product.php?slug=${product.slug}">
-                ${product.image_url ? 
-                    `<img src="${product.image_url}" alt="${product.name}" loading="lazy">` :
-                    `<div class="featured-placeholder">💎</div>`
+    container.innerHTML = '';
+
+    // Ensure only up to 8 products are displayed for a 4x2 grid initially
+    const productsToDisplay = products.slice(0, 8); // Take first 8 products
+
+    productsToDisplay.forEach(product => {
+        const productCard = document.createElement('div');
+        productCard.className = 'product-card';
+        productCard.setAttribute('data-product-id', product.id);
+        productCard.setAttribute('data-price', product.price);
+        productCard.setAttribute('data-name', product.name);
+
+        productCard.innerHTML = `
+            <!-- Wishlist Button -->
+            <button class="wishlist-btn">
+                <i class="far fa-heart"></i>
+            </button>
+
+            <!-- Product Image -->
+            <a href="product.php?slug=${product.slug}" class="product-image">
+                ${product.image_url ?
+                    `<img class="main-img" src="${product.image_url}" alt="${product.name}" loading="lazy">` :
+                    `<div class="main-img placeholder">${product.name.substring(0, 3)}</div>`
                 }
-                </a>
-                <button class="wishlist-btn" onclick="toggleWishlist(${product.id})">
-                    <i class="far fa-heart"></i>
-                </button>
-            </div>
-            <div class="featured-info">
+            </a>
+
+            <!-- Product Info -->
+            <div class="product-info">
                 <h3><a href="product.php?slug=${product.slug}" style="text-decoration:none;color:inherit;">${product.name}</a></h3>
-                <p class="featured-description">${product.short_description || product.description?.substring(0, 80) + '...' || ''}</p>
-                <div class="featured-footer">
-                    <span class="featured-price"><span class="currency-symbol">£</span><span class="price-amount" data-price="${parseFloat(product.price).toFixed(2)}">${parseFloat(product.price).toFixed(2)}</span></span>
-                    <div class="featured-actions">
-                        <button class="action-btn add-to-cart" onclick="addToCart(${product.id})">
-                            Add to Bag
-                        </button>
-                        <button class="action-btn quick-view" onclick="quickView(${product.id})">
-                            Quick View
-                        </button>
-                    </div>
+                <p>${product.description ? product.description.substring(0, 50) + '...' : ''}</p>
+                ${product.weight ? `<p style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem;">⚖️ ${product.weight}g</p>` : ''}
+                <div class="product-footer">
+                    <span class="product-price" data-price="${product.price}">£${parseFloat(product.price).toFixed(2)}</span>
+                    <button class="cart-btn add-to-cart" data-product-id="${product.id}">Add to Cart</button>
                 </div>
             </div>
-        </div>
-    `).join('');
-    
-    container.innerHTML = html;
-    
-    // Update prices after loading products
-    if (window.currencyConverter) {
-        window.currencyConverter.convertAllPrices();
-    }
+        `;
+        container.appendChild(productCard);
+    });
 }
 
 function addToCart(productId) {

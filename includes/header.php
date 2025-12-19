@@ -76,10 +76,10 @@ require_once 'config/cache.php';
                 <a href="new-arrivals.php">NEW <i class="fas fa-chevron-down"></i></a>
             </div>
             <div class="nav-item" data-menu="women">
-                <a href="category.php?cat=women">WOMEN <i class="fas fa-chevron-down"></i></a>
+                <a href="products.php?gender=women">WOMEN <i class="fas fa-chevron-down"></i></a>
             </div>
             <div class="nav-item" data-menu="men">
-                <a href="category.php?cat=men">MEN <i class="fas fa-chevron-down"></i></a>
+                <a href="products.php?gender=men">MEN <i class="fas fa-chevron-down"></i></a>
             </div>
             <div class="nav-item" data-menu="gift">
                 <a href="gift-box.php">GIFT BOX <i class="fas fa-chevron-down"></i></a>
@@ -107,16 +107,19 @@ require_once 'config/cache.php';
             <div class="dropdown-content" data-content="women">
                 <div class="category-layout">
                     <div class="category-list">
-                        <a href="category.php?cat=women&sub=rings">Rings</a>
-                        <a href="category.php?cat=women&sub=bracelets">Bracelets</a>
-                        <a href="category.php?cat=women&sub=necklaces">Necklaces</a>
-                        <a href="category.php?cat=women&sub=bangles">Bangles/Cuffs</a>
-                        <a href="category.php?cat=women&sub=anklets">Anklets</a>
-                        <a href="category.php?cat=women&sub=earrings">Earrings</a>
-                        <a href="category.php?cat=women&sub=watches">Watches</a>
+                        <a href="products.php?gender=women&category=rings">Rings</a>
+                        <a href="products.php?gender=women&category=bracelets">Bracelets</a>
+                        <a href="products.php?gender=women&category=necklaces">Necklaces</a>
+                        <a href="products.php?gender=women&category=bangles">Bangles/Cuffs</a>
+                        <a href="products.php?gender=women&category=anklets">Anklets</a>
+                        <a href="products.php?gender=women&category=earrings">Earrings</a>
+                        <a href="products.php?gender=women&category=watches">Watches</a>
                     </div>
                     <div class="promo-banner">
-                        <div class="placeholder-banner">Women's Collection</div>
+                        <img src="assets/images/women-menu.jpg" alt="Women's Collection" class="promo-banner-img">
+                        <div class="promo-banner-overlay">
+                            <h2>Women's Collection</h2>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -125,15 +128,18 @@ require_once 'config/cache.php';
             <div class="dropdown-content" data-content="men">
                 <div class="category-layout">
                     <div class="category-list">
-                        <a href="category.php?cat=men&sub=rings">Rings</a>
-                        <a href="category.php?cat=men&sub=bracelets">Bracelets</a>
-                        <a href="category.php?cat=men&sub=necklaces">Necklaces</a>
-                        <a href="category.php?cat=men&sub=chains">Chains</a>
-                        <a href="category.php?cat=men&sub=watches">Watches</a>
-                        <a href="category.php?cat=men&sub=cufflinks">Cufflinks</a>
+                        <a href="products.php?gender=men&category=rings">Rings</a>
+                        <a href="products.php?gender=men&category=bracelets">Bracelets</a>
+                        <a href="products.php?gender=men&category=necklaces">Necklaces</a>
+                        <a href="products.php?gender=men&category=chains">Chains</a>
+                        <a href="products.php?gender=men&category=watches">Watches</a>
+                        <a href="products.php?gender=men&category=cufflinks">Cufflinks</a>
                     </div>
                     <div class="promo-banner">
-                        <div class="placeholder-banner">Men's Collection</div>
+                        <img src="assets/images/men-menu.jpg" alt="Men's Collection" class="promo-banner-img">
+                        <div class="promo-banner-overlay">
+                            <h2>Men's Collection</h2>
+                        </div>
                     </div>
                 </div>
             </div>

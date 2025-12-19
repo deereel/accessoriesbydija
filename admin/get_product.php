@@ -26,6 +26,13 @@ if (isset($_GET['id'])) {
 
             $product['images'] = $images;
 
+            // Get product categories
+            $cat_stmt = $pdo->prepare("SELECT category_id FROM product_categories WHERE product_id = ?");
+            $cat_stmt->execute([$product_id]);
+            $categories = $cat_stmt->fetchAll(PDO::FETCH_COLUMN);
+            $product['category_ids'] = $categories;
+            $product['category_id'] = !empty($categories) ? $categories[0] : null; // For backward compatibility
+
             echo json_encode(['success' => true, 'product' => $product]);
         } else {
             echo json_encode(['success' => false, 'error' => 'Product not found']);
