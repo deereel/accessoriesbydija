@@ -11,9 +11,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = trim($data['email'] ?? '');
     $password = $data['password'] ?? '';
     $phone = trim($data['phone'] ?? '');
-    
+    $security_question_pair_id = $data['security_question_pair_id'] ?? null;
+    $security_answer_1 = trim($data['security_answer_1'] ?? '');
+    $security_answer_2 = trim($data['security_answer_2'] ?? '');
+
     // Validation
-    if (empty($first_name) || empty($last_name) || empty($email) || empty($password)) {
+    if (empty($first_name) || empty($last_name) || empty($email) || empty($password) || empty($security_question_pair_id) || empty($security_answer_1) || empty($security_answer_2)) {
         echo json_encode(['success' => false, 'message' => 'All required fields must be filled']);
         exit;
     }
@@ -38,12 +41,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         
-        // Hash password
+        // Hash password and security answers
         $password_hash = password_hash($password, PASSWORD_DEFAULT);
+        $security_answer_1_hash = password_hash($security_answer_1, PASSWORD_DEFAULT);
+        $security_answer_2_hash = password_hash($security_answer_2, PASSWORD_DEFAULT);
         
         // Insert new customer
-        $stmt = $pdo->prepare("INSERT INTO customers (first_name, last_name, email, phone, password_hash) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$first_name, $last_name, $email, $phone, $password_hash]);
+        $stmt = $pdo->prepare(
+            "INSERT INTO customers (first_name, last_name, email, phone, password_hash, security_question_pair_id, security_answer_1_hash, security_answer_2_hash) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        );
+        $stmt->execute([
+            $first_name, 
+            $last_name, 
+            $email, 
+            $phone, 
+            $password_hash, 
+            $security_question_pair_id, 
+            $security_answer_1_hash, 
+            $security_answer_2_hash
+        ]);
         
         $customer_id = $pdo->lastInsertId();
         
@@ -51,29 +68,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['customer_id'] = $customer_id;
         $_SESSION['customer_name'] = $first_name . ' ' . $last_name;
         $_SESSION['customer_email'] = $email;
-        // If client provided a redirect, validate and include it in response
-        $redirect = null;
+
+        $redirect = 'account.php';
         if (!empty($data['redirect'])) {
             $candidate = trim($data['redirect']);
-            if (strpos($candidate, 'http://') === false && strpos($candidate, 'https://') === false && strpos($candidate, '//') === false) {
+            if (strpos($candidate, 'http') !== 0 && strpos($candidate, '//') !== 0) {
                 $redirect = ltrim($candidate, '/');
             }
         }
 
-        $resp = [
+        echo json_encode([
             'success' => true,
             'message' => 'Account created successfully',
-            'customer' => [
-                'id' => $customer_id,
-                'name' => $first_name . ' ' . $last_name,
-                'email' => $email
-            ]
-        ];
-        if ($redirect) $resp['redirect'] = $redirect;
-        echo json_encode($resp);
+            'redirect' => $redirect
+        ]);
         
     } catch (PDOException $e) {
-        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+        // Log error properly in a real application
+        echo json_encode(['success' => false, 'message' => 'An internal error occurred.']);
     }
 } else {
     echo json_encode(['success' => false, 'message' => 'Invalid request method']);

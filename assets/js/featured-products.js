@@ -1,6 +1,8 @@
 // Featured Products JavaScript
 document.addEventListener('DOMContentLoaded', function() {
     loadFeaturedProducts();
+    // Poll for stock updates every 5 seconds to reflect real-time changes
+    setInterval(updateStockBadges, 5000);
 });
 
 async function loadFeaturedProducts() {
@@ -21,6 +23,56 @@ async function loadFeaturedProducts() {
     } catch (error) {
         console.error('Error loading featured products:', error);
         container.innerHTML = '<p style="text-align: center; color: #666;">Error loading products.</p>';
+    }
+}
+
+// Poll for stock updates without reloading entire page
+async function updateStockBadges() {
+    const productCards = document.querySelectorAll('.product-card[data-product-id]');
+    if (productCards.length === 0) return;
+    
+    const productIds = Array.from(productCards).map(card => card.getAttribute('data-product-id'));
+    
+    try {
+        const response = await fetch('api/check-stock-levels.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ product_ids: productIds })
+        });
+        
+        const data = await response.json();
+        if (!data.success) return;
+        
+        // Update each product card with fresh stock data
+        Object.entries(data.stocks || {}).forEach(([productId, stockData]) => {
+            const card = document.querySelector(`.product-card[data-product-id="${productId}"]`);
+            if (card) {
+                const stockBadge = card.querySelector('.stock-badge');
+                const addBtn = card.querySelector('.add-to-cart');
+                
+                if (stockBadge && stockData.stock_quantity !== undefined) {
+                    const qty = parseInt(stockData.stock_quantity);
+                    let badgeHtml;
+                    
+                    if (qty <= 0) {
+                        badgeHtml = '<span style="color: #d32f2f; background-color: #ffebee; padding: 4px 8px; border-radius: 4px; display: inline-block;">Out of Stock</span>';
+                        if (addBtn) addBtn.disabled = true;
+                    } else if (qty < 10) {
+                        badgeHtml = `<span style="color: #f57c00; background-color: #fff3e0; padding: 4px 8px; border-radius: 4px; display: inline-block;">Only ${qty} left</span>`;
+                        if (addBtn) addBtn.disabled = false;
+                    } else {
+                        badgeHtml = '<span style="color: #388e3c; background-color: #e8f5e9; padding: 4px 8px; border-radius: 4px; display: inline-block;">In Stock</span>';
+                        if (addBtn) addBtn.disabled = false;
+                    }
+                    
+                    stockBadge.innerHTML = badgeHtml;
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Error updating stock badges:', error);
     }
 }
 
@@ -59,7 +111,16 @@ function displayFeaturedProducts(products) {
                 ${product.weight ? `<p style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem;">⚖️ ${product.weight}g</p>` : ''}
                 <div class="product-footer">
                     <span class="product-price" data-price="${product.price}">£${parseFloat(product.price).toFixed(2)}</span>
-                    <button class="cart-btn add-to-cart" data-product-id="${product.id}">Add to Cart</button>
+                    <button class="cart-btn add-to-cart" data-product-id="${product.id}" ${product.stock_quantity <= 0 ? 'disabled' : ''}>Add to Cart</button>
+                </div>
+                <!-- Stock Status Badge -->
+                <div class="stock-badge" style="margin-top: 8px; text-align: center; font-size: 0.85rem; font-weight: 500;">
+                    ${product.stock_quantity <= 0 ? 
+                        '<span style="color: #d32f2f; background-color: #ffebee; padding: 4px 8px; border-radius: 4px; display: inline-block;">Out of Stock</span>' :
+                        product.stock_quantity < 10 ?
+                        `<span style="color: #f57c00; background-color: #fff3e0; padding: 4px 8px; border-radius: 4px; display: inline-block;">Only ${product.stock_quantity} left</span>` :
+                        '<span style="color: #388e3c; background-color: #e8f5e9; padding: 4px 8px; border-radius: 4px; display: inline-block;">In Stock</span>'
+                    }
                 </div>
             </div>
         `;

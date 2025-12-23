@@ -75,6 +75,9 @@ require_once 'config/cache.php';
             <div class="nav-item" data-menu="new">
                 <a href="new-arrivals.php">NEW <i class="fas fa-chevron-down"></i></a>
             </div>
+            <div class="nav-item" data-menu="shop">
+                <a href="products.php">SHOP <i class="fas fa-chevron-down"></i></a>
+            </div>
             <div class="nav-item" data-menu="women">
                 <a href="products.php?gender=women">WOMEN <i class="fas fa-chevron-down"></i></a>
             </div>
@@ -92,6 +95,7 @@ require_once 'config/cache.php';
             <div class="dropdown-content" data-content="new">
                 <div class="new-products-grid" id="new-products-grid">
                     <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 1</h4><p class="price">£99.99</p></div>
+                    <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 1</h4><p class="price">£99.99</p></div>
                     <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 2</h4><p class="price">£149.99</p></div>
                     <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 3</h4><p class="price">£199.99</p></div>
                     <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 4</h4><p class="price">£249.99</p></div>
@@ -99,9 +103,6 @@ require_once 'config/cache.php';
                     <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 6</h4><p class="price">£349.99</p></div>
                     <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 7</h4><p class="price">£399.99</p></div>
                     <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 8</h4><p class="price">£449.99</p></div>
-                    <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 9</h4><p class="price">£499.99</p></div>
-                </div>
-            </div>
             
             <!-- WOMEN Dropdown -->
             <div class="dropdown-content" data-content="women">

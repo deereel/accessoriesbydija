@@ -2,7 +2,10 @@
 session_start();
 require_once 'config/database.php';
 
+// Support both order_id and session_id parameters
 $order_id = $_GET['order_id'] ?? $_SESSION['order_id'] ?? null;
+$session_id = $_GET['session_id'] ?? null;
+$payment_method = $_GET['payment'] ?? null;
 
 if (!$order_id) {
     header('Location: index.php');
@@ -11,7 +14,8 @@ if (!$order_id) {
 
 try {
     // Fetch order with customer info
-    $stmt = $pdo->prepare("SELECT o.*, c.first_name, c.last_name, c.email, a.full_name as address_name, a.address_line_1, a.city, a.postal_code
+    // customer_addresses table stores first_name and last_name separately (no full_name column)
+    $stmt = $pdo->prepare("SELECT o.*, c.first_name, c.last_name, c.email, CONCAT(a.first_name, ' ', a.last_name) AS address_name, a.address_line_1, a.city, a.postal_code
                            FROM orders o
                            LEFT JOIN customers c ON o.customer_id = c.id
                            LEFT JOIN customer_addresses a ON o.address_id = a.id
@@ -33,7 +37,14 @@ try {
     $items = $stmt->fetchAll();
 
 } catch (PDOException $e) {
-    die('Database error');
+    // Log full exception for debugging (do not expose details to users)
+    error_log("order-confirmation.php DB error: " . $e->getMessage());
+    // Friendly message for the user
+    echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Order Error</title></head><body>';
+    echo '<h1>We couldn\'t load your order</h1>';
+    echo '<p>There was a problem retrieving your order details. Please contact support and provide the time of the transaction.</p>';
+    echo '</body></html>';
+    exit;
 }
 
 $is_paid = $order['status'] !== 'pending';
@@ -197,8 +208,12 @@ $is_paid = $order['status'] !== 'pending';
                                 <td><?php echo htmlspecialchars($item['name']); ?></td>
                                 <td><?php echo htmlspecialchars($item['sku']); ?></td>
                                 <td style="text-align: right;"><?php echo intval($item['quantity']); ?></td>
-                                <td style="text-align: right;">£<?php echo number_format($item['price'], 2); ?></td>
-                                <td style="text-align: right;">£<?php echo number_format($item['price'] * $item['quantity'], 2); ?></td>
+                                <?php
+                                    $unit_price = isset($item['unit_price']) ? floatval($item['unit_price']) : (isset($item['price']) ? floatval($item['price']) : 0.0);
+                                    $line_total = $unit_price * intval($item['quantity']);
+                                ?>
+                                <td style="text-align: right;">£<?php echo number_format($unit_price, 2); ?></td>
+                                <td style="text-align: right;">£<?php echo number_format($line_total, 2); ?></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -232,7 +247,7 @@ $is_paid = $order['status'] !== 'pending';
 
                 <!-- Actions -->
                 <div class="action-buttons">
-                    <a href="/" class="btn btn-primary">Continue Shopping</a>
+                    <a href="/products.php" class="btn btn-primary">Continue Shopping</a>
                     <a href="account.php" class="btn btn-secondary">View Orders</a>
                 </div>
 

@@ -18,6 +18,8 @@
 
 header('Content-Type: application/json');
 
+// Load environment variables from .env file
+require_once __DIR__ . '/../../../config/env.php';
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/email.php';
 
@@ -28,11 +30,31 @@ $STRIPE_WEBHOOK_SECRET = getenv('STRIPE_WEBHOOK_SECRET') ?: 'whsec_your_webhook_
 $raw_body = file_get_contents('php://input');
 $event = null;
 
-try {
-    $event = json_decode($raw_body);
-} catch (Exception $e) {
+// Log the request method and content type for debugging
+error_log("Webhook request - Method: " . $_SERVER['REQUEST_METHOD'] . ", Content-Type: " . ($_SERVER['CONTENT_TYPE'] ?? 'none'));
+
+if (empty($raw_body)) {
     http_response_code(400);
-    echo json_encode(['error' => 'Invalid JSON']);
+    error_log("Webhook error: Empty request body");
+    echo json_encode(['error' => 'Empty request body']);
+    exit;
+}
+
+// Decode JSON
+$event = json_decode($raw_body);
+
+if (!$event) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Invalid JSON or malformed event']);
+    error_log("Webhook JSON decode failed. Raw body: " . substr($raw_body, 0, 500));
+    exit;
+}
+
+// Validate event has required type field
+if (empty($event->type)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Event missing type field']);
+    error_log("Webhook event missing type field. Event: " . json_encode($event));
     exit;
 }
 
@@ -51,6 +73,12 @@ if (empty($sig_header)) {
 }
 
 // Handle different event types
+if (!isset($event->type)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'No event type specified']);
+    exit;
+}
+
 switch ($event->type) {
     case 'checkout.session.completed':
         handleCheckoutSessionCompleted($event, $pdo);
@@ -66,6 +94,7 @@ switch ($event->type) {
     
     default:
         // Ignore other event types
+        error_log("Unhandled webhook event type: " . $event->type);
         break;
 }
 
@@ -148,6 +177,117 @@ function handleCheckoutSessionCompleted($event, $pdo) {
             $order_id
         ]);
 
+        // Clear customer's cart now that payment is confirmed (if customer exists)
+        if (!empty($order['customer_id'])) {
+            try {
+                $deleteStmt = $pdo->prepare("DELETE FROM cart WHERE customer_id = ?");
+                $deleteStmt->execute([$order['customer_id']]);
+                error_log('Stripe: Cart cleared for customer ' . $order['customer_id'] . ' after payment confirmed for order ' . $order_id);
+            } catch (Exception $e) {
+                error_log('Stripe: failed to clear cart for customer ' . $order['customer_id'] . ': ' . $e->getMessage());
+            }
+        }
+
+        // Log inventory transactions directly
+        try {
+            error_log("Stripe: Starting inventory update for order {$order_id}");
+            
+            // Get customer name for inventory logs
+            $customer_name = "Customer";
+            if (!empty($order['contact_name'])) {
+                $customer_name = htmlspecialchars($order['contact_name']);
+            } else if (!empty($order['customer_id'])) {
+                $cstmt = $pdo->prepare("SELECT CONCAT(first_name, ' ', last_name) as name FROM customers WHERE id = ?");
+                $cstmt->execute([$order['customer_id']]);
+                $cdata = $cstmt->fetch();
+                if ($cdata && !empty($cdata['name'])) {
+                    $customer_name = htmlspecialchars($cdata['name']);
+                }
+            }
+            
+            // Verify inventory tables exist
+            $check = $pdo->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'inventory_transactions'");
+            $has_tables = ($check->fetch(PDO::FETCH_NUM)[0] > 0);
+            if (!$has_tables) {
+                error_log("Stripe: WARNING - inventory_transactions table does not exist. Inventory will not be logged. Run /api/setup/init-db.php?key=your-key to create tables.");
+            }
+            
+            $itemsStmt = $pdo->prepare("SELECT product_id, quantity FROM order_items WHERE order_id = ?");
+            $itemsStmt->execute([$order_id]);
+            $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            if (empty($items)) {
+                error_log("Stripe: No order items found for order {$order_id}");
+            } else {
+                error_log("Stripe: Found " . count($items) . " order items");
+            }
+            
+            $inventory_updated_count = 0;
+            foreach ($items as $item) {
+                try {
+                    $product_id = intval($item['product_id']);
+                    $quantity = intval($item['quantity']);
+                    
+                    if ($quantity <= 0) {
+                        error_log("Stripe: Skipping item with invalid quantity: {$quantity}");
+                        continue;
+                    }
+                    
+                    // Get current stock
+                    $stockStmt = $pdo->prepare("SELECT stock_quantity FROM products WHERE id = ?");
+                    $stockStmt->execute([$product_id]);
+                    $product = $stockStmt->fetch();
+                    
+                    if (!$product) {
+                        error_log("Stripe: Product {$product_id} not found for order {$order_id}");
+                        continue;
+                    }
+                    
+                    $old_stock = intval($product['stock_quantity']);
+                    $new_stock = max(0, $old_stock - $quantity);
+                    
+                    // Only update inventory if tables exist
+                    if ($has_tables) {
+                        // Log transaction
+                        $logStmt = $pdo->prepare("INSERT INTO inventory_transactions (product_id, transaction_type, quantity_change, reference_id, reference_type, previous_stock, new_stock, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                        $logStmt->execute([
+                            $product_id,
+                            'sale',
+                            -$quantity,
+                            $order_id,
+                            'order',
+                            $old_stock,
+                            $new_stock,
+                            "Sold to {$customer_name} - Order #{$order_id}"
+                        ]);
+                        
+                        // Log to admin logs with notes containing customer name
+                        $adminLogStmt = $pdo->prepare("INSERT INTO inventory_logs (product_id, action, old_quantity, new_quantity, notes) VALUES (?, ?, ?, ?, ?)");
+                        $adminLogStmt->execute([$product_id, 'sale', $old_stock, $new_stock, "Sold to {$customer_name}"]);
+                    }
+                    
+                    // Update product stock (ALWAYS do this, even if logging tables don't exist)
+                    $updateStmt = $pdo->prepare("UPDATE products SET stock_quantity = ? WHERE id = ?");
+                    $updateResult = $updateStmt->execute([$new_stock, $product_id]);
+                    
+                    if ($updateResult) {
+                        $inventory_updated_count++;
+                        error_log("Stripe: Stock updated - Product {$product_id}: {$old_stock} → {$new_stock} (-{$quantity} units for Order #{$order_id})");
+                    } else {
+                        error_log("Stripe: FAILED to update stock for Product {$product_id}");
+                    }
+                    
+                } catch (Exception $itemEx) {
+                    error_log('Stripe: ERROR processing inventory for item ' . ($item['product_id'] ?? 'unknown') . ': ' . $itemEx->getMessage());
+                    continue; // Continue with next item even if this one fails
+                }
+            }
+            
+            error_log("Stripe: Inventory update completed for order {$order_id}. Updated {$inventory_updated_count} product(s)");
+        } catch (Exception $e) {
+            error_log('Stripe: ERROR during inventory update for order ' . $order_id . ': ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
+        }
+
         // TODO: Create order_items from session
         // TODO: Update inventory
         // TODO: Send confirmation email
@@ -210,6 +350,47 @@ function handlePaymentIntentSucceeded($event, $pdo) {
                 $order_id,
                 'pending'
             ]);
+
+            // Clear customer's cart now that payment is confirmed (if customer exists)
+            $stmt2 = $pdo->prepare("SELECT customer_id FROM orders WHERE id = ?");
+            $stmt2->execute([$order_id]);
+            $o = $stmt2->fetch(PDO::FETCH_ASSOC);
+            if (!empty($o['customer_id'])) {
+                try {
+                    $deleteStmt = $pdo->prepare("DELETE FROM cart WHERE customer_id = ?");
+                    $deleteStmt->execute([$o['customer_id']]);
+                    error_log('Stripe: Cart cleared for customer ' . $o['customer_id'] . ' after payment_intent succeeded for order ' . $order_id);
+                } catch (Exception $e) {
+                    error_log('Stripe: failed to clear cart for customer ' . $o['customer_id'] . ': ' . $e->getMessage());
+                }
+            }
+
+            // Log inventory transactions
+            try {
+                $itemsStmt = $pdo->prepare("SELECT product_id, quantity FROM order_items WHERE order_id = ?");
+                $itemsStmt->execute([$order_id]);
+                $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                if (!empty($items)) {
+                    $ch = curl_init();
+                    curl_setopt_array($ch, [
+                        CURLOPT_URL => 'http://' . $_SERVER['HTTP_HOST'] . '/api/inventory/log_transaction.php',
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_POST => true,
+                        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                        CURLOPT_POSTFIELDS => json_encode([
+                            'order_id' => $order_id,
+                            'order_items' => $items,
+                            'reference_type' => 'order'
+                        ]),
+                        CURLOPT_TIMEOUT => 10
+                    ]);
+                    curl_exec($ch);
+                    curl_close($ch);
+                }
+            } catch (Exception $e) {
+                error_log('Stripe: failed to log inventory for order ' . $order_id . ': ' . $e->getMessage());
+            }
         }
     } catch (PDOException $e) {
         error_log('Stripe webhook error: ' . $e->getMessage());

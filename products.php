@@ -255,7 +255,17 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
                                         <?php endif; ?>
                                         <div class="product-footer">
                                             <span class="product-price" data-price="<?= $product['price'] ?>">£<?= number_format($product['price'], 2) ?></span>
-                                            <button class="cart-btn add-to-cart" data-product-id="<?= $product['id'] ?>">Add to Cart</button>
+                                            <button class="cart-btn add-to-cart" data-product-id="<?= $product['id'] ?>" <?php if ($product['stock_quantity'] <= 0): ?>disabled<?php endif; ?>>Add to Cart</button>
+                                        </div>
+                                        <!-- Stock Status Badge -->
+                                        <div class="stock-badge" style="margin-top: 8px; text-align: center; font-size: 0.85rem; font-weight: 500;">
+                                            <?php if ($product['stock_quantity'] <= 0): ?>
+                                                <span style="color: #d32f2f; background-color: #ffebee; padding: 4px 8px; border-radius: 4px; display: inline-block;">Out of Stock</span>
+                                            <?php elseif ($product['stock_quantity'] < 10): ?>
+                                                <span style="color: #f57c00; background-color: #fff3e0; padding: 4px 8px; border-radius: 4px; display: inline-block;">Only <?= $product['stock_quantity'] ?> left</span>
+                                            <?php else: ?>
+                                                <span style="color: #388e3c; background-color: #e8f5e9; padding: 4px 8px; border-radius: 4px; display: inline-block;">In Stock</span>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                 </div>
@@ -307,47 +317,62 @@ document.addEventListener('DOMContentLoaded', function () {
             window.location.href = url.toString();
         });
     });
+    
+    // Poll for stock updates every 5 seconds to reflect real-time changes
+    setInterval(updateStockBadges, 5000);
 });
 
-// Cart functionality
-document.querySelectorAll('.cart-btn').forEach(btn => {
-    btn.addEventListener('click', async function() {
-        const productId = this.dataset.productId || this.closest('.product-card')?.dataset.productId;
-        if (!productId) return;
-
-        const card = this.closest('.product-card');
-        const name = card?.dataset.name || '';
-        const price = parseFloat(card?.dataset.price || 0);
-        const image = card?.querySelector('.main-img')?.getAttribute('src') || '';
-
-        const originalText = this.textContent;
-        this.textContent = 'Adding...';
-
-        try {
-            const res = await fetch('/api/cart.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ product_id: productId, product_name: name, price: price, image: image, quantity: 1 })
-            });
-            const data = await res.json();
-            if (data.success) {
-                this.textContent = 'Added!';
-                if (window.cartHandler && typeof window.cartHandler.updateCartCount === 'function') {
-                    window.cartHandler.updateCartCount();
+// Poll for stock updates without reloading entire page
+async function updateStockBadges() {
+    const productCards = document.querySelectorAll('.product-card[data-product-id]');
+    if (productCards.length === 0) return;
+    
+    const productIds = Array.from(productCards).map(card => card.getAttribute('data-product-id'));
+    
+    try {
+        const response = await fetch('api/check-stock-levels.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ product_ids: productIds })
+        });
+        
+        const data = await response.json();
+        if (!data.success) return;
+        
+        // Update each product card with fresh stock data
+        Object.entries(data.stocks || {}).forEach(([productId, stockData]) => {
+            const card = document.querySelector(`.product-card[data-product-id="${productId}"]`);
+            if (card) {
+                const stockBadge = card.querySelector('.stock-badge');
+                const addBtn = card.querySelector('.add-to-cart');
+                
+                if (stockBadge && stockData.stock_quantity !== undefined) {
+                    const qty = parseInt(stockData.stock_quantity);
+                    let badgeHtml;
+                    
+                    if (qty <= 0) {
+                        badgeHtml = '<span style="color: #d32f2f; background-color: #ffebee; padding: 4px 8px; border-radius: 4px; display: inline-block;">Out of Stock</span>';
+                        if (addBtn) addBtn.disabled = true;
+                    } else if (qty < 10) {
+                        badgeHtml = `<span style="color: #f57c00; background-color: #fff3e0; padding: 4px 8px; border-radius: 4px; display: inline-block;">Only ${qty} left</span>`;
+                        if (addBtn) addBtn.disabled = false;
+                    } else {
+                        badgeHtml = '<span style="color: #388e3c; background-color: #e8f5e9; padding: 4px 8px; border-radius: 4px; display: inline-block;">In Stock</span>';
+                        if (addBtn) addBtn.disabled = false;
+                    }
+                    
+                    stockBadge.innerHTML = badgeHtml;
                 }
-            } else {
-                this.textContent = originalText;
-                alert(data.message || 'Failed to add to cart');
             }
-        } catch (err) {
-            console.error(err);
-            this.textContent = originalText;
-            alert('Error adding to cart');
-        }
+        });
+    } catch (error) {
+        console.error('Error updating stock badges:', error);
+    }
+}
 
-        setTimeout(() => this.textContent = originalText, 1500);
-    });
-});
+// Cart functionality is handled centrally by assets/js/cart-handler.js
 
 // Wishlist functionality
 document.querySelectorAll('.wishlist-btn').forEach(btn => {

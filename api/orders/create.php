@@ -159,6 +159,34 @@ try {
         $subtotal += $price * $qty;
     }
 
+    // Validate stock availability for all items before proceeding
+    foreach ($cart_items as $item) {
+        $product_id = intval($item['product_id']);
+        $qty = intval($item['quantity']);
+        
+        $stmt = $pdo->prepare("SELECT id, name, stock_quantity FROM products WHERE id = ? AND is_active = 1");
+        $stmt->execute([$product_id]);
+        $product = $stmt->fetch();
+        
+        if (!$product) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Product not found: ' . htmlspecialchars($item['product_name'] ?? 'Unknown')]);
+            exit;
+        }
+        
+        if ($product['stock_quantity'] <= 0) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => $product['name'] . ' is out of stock']);
+            exit;
+        }
+        
+        if ($product['stock_quantity'] < $qty) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'message' => 'Only ' . $product['stock_quantity'] . ' units of ' . $product['name'] . ' available in stock']);
+            exit;
+        }
+    }
+
     $subtotal = round($subtotal, 2);
 
     // ===== SERVER-SIDE PROMO VALIDATION =====
@@ -324,10 +352,9 @@ try {
                 ->execute([$promo_id]);
         }
 
-        // Clear cart for logged-in customer
-        if ($customer_id) {
-            $pdo->prepare("DELETE FROM cart WHERE customer_id = ?")->execute([$customer_id]);
-        }
+        // NOTE: Do NOT clear the customer's cart here. The cart should be cleared
+        // only after payment confirmation from the gateway (webhook/verify handler)
+        // to avoid losing items when payment fails or is abandoned.
 
         // Commit transaction
         $pdo->commit();

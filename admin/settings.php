@@ -83,7 +83,12 @@ require_once '../config/database.php';
                 </div>
 
                 <!-- Database Management -->
-                <div class="setting-card">
+                <div class="setting-card" style="position:relative;">
+                    <?php if (($_SESSION['admin_role'] ?? '') === 'superadmin'): ?>
+                    <div style="position:absolute; top:10px; right:10px;">
+                        <button id="run-migrations-btn" title="Run database migrations" style="border:none; background:transparent; cursor:pointer; font-size:18px; color:var(--accent);">🔄</button>
+                    </div>
+                    <?php endif; ?>
                     <div class="icon"><i class="fas fa-database"></i></div>
                     <h3>Database Tools</h3>
                     <p>View table data and create backups of the site database.</p>
@@ -104,3 +109,39 @@ require_once '../config/database.php';
 </div>
 
 <?php include '_layout_footer.php'; ?>
+
+<!-- Migrations Modal -->
+<div id="migrations-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1200; align-items:center; justify-content:center;">
+    <div style="background:#fff; width:90%; max-width:820px; padding:18px; border-radius:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <h3>Run Database Migrations</h3>
+            <button onclick="closeMigrations()" class="btn">Close</button>
+        </div>
+        <div id="migrations-body"><p style="color:#666;">Click "Run" to apply migrations from the SQL sheet. Results will be listed below.</p></div>
+        <div style="text-align:right; margin-top:12px;"><button class="btn" onclick="closeMigrations()">Cancel</button> <button class="btn" id="migrations-run">Run</button></div>
+    </div>
+</div>
+
+<script>
+function closeMigrations(){ document.getElementById('migrations-modal').style.display='none'; }
+document.getElementById('run-migrations-btn') && document.getElementById('run-migrations-btn').addEventListener('click', function(){ document.getElementById('migrations-modal').style.display='flex'; });
+document.getElementById('migrations-run') && document.getElementById('migrations-run').addEventListener('click', function(){
+    var btn = this; btn.disabled = true; btn.textContent = 'Running...';
+    fetch('/admin/quick-migrate.php',{method:'POST'}).then(r=>r.json()).then(j=>{
+        btn.disabled = false; btn.textContent = 'Run';
+        if(j.success){ 
+            var html = '<div style="background:#e6ffed; border:1px solid #86efac; padding:12px; border-radius:6px; margin-bottom:12px;">';
+            html += '<p style="color:#166534; margin:0;"><strong>✓ Success!</strong> ' + j.message + '</p></div>';
+            if(j.tables_created && j.tables_created.length > 0) {
+                html += '<p><strong>Tables Created:</strong> ' + j.tables_created.join(', ') + '</p>';
+            }
+            if(j.columns_added && j.columns_added.length > 0) {
+                html += '<p><strong>Columns Added:</strong> ' + j.columns_added.join(', ') + '</p>';
+            }
+            document.getElementById('migrations-body').innerHTML = html;
+        } else { 
+            document.getElementById('migrations-body').innerHTML = '<div style="color:#b33; background:#ffe6e6; border:1px solid #fca5a5; padding:12px; border-radius:6px;">Error: '+(j.message||'Unknown')+'</div>'; 
+        }
+    }).catch(e=>{ btn.disabled=false; btn.textContent='Run'; document.getElementById('migrations-body').innerHTML = '<div style="color:#b33;">Network error</div>'; });
+});
+</script>

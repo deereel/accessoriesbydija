@@ -94,11 +94,19 @@ try {
 
 		if (!$product_id) json(['success' => false, 'message' => 'Product ID missing']);
 
-		// Verify product exists and price/name/slug
-		$stmt = $pdo->prepare('SELECT id, name, price, slug FROM products WHERE id = ? AND is_active = 1');
+		// Verify product exists and check stock
+		$stmt = $pdo->prepare('SELECT id, name, price, slug, stock_quantity FROM products WHERE id = ? AND is_active = 1');
 		$stmt->execute([$product_id]);
 		$product = $stmt->fetch(PDO::FETCH_ASSOC);
 		if (!$product) json(['success' => false, 'message' => 'Product not found']);
+		
+		// Check if product has enough stock for requested quantity
+		if ($product['stock_quantity'] <= 0) {
+			json(['success' => false, 'message' => 'This product is out of stock']);
+		}
+		if ($product['stock_quantity'] < $quantity) {
+			json(['success' => false, 'message' => 'Only ' . $product['stock_quantity'] . ' units available in stock']);
+		}
 
 		$customer_id = current_customer_id();
 		if ($customer_id) {

@@ -241,13 +241,13 @@ include 'includes/header.php';
                 <div class="checkout-section">
                     <div class="section-title">Payment Method</div>
                     <div class="payment-methods">
-                        <label class="payment-option selected" onclick="selectPaymentMethod('paystack')">
-                            <input type="radio" name="payment_method" value="paystack" checked onchange="selectPaymentMethod('paystack')">
+                        <label class="payment-option" onclick="selectPaymentMethod('paystack')">
+                            <input type="radio" name="payment_method" value="paystack" onchange="selectPaymentMethod('paystack')">
                             <i class="fas fa-credit-card"></i> Paystack
                             <small style="display: block; color: #666; margin-left: 1.75rem;">Card, Mobile Money, Bank Transfer</small>
                         </label>
-                        <label class="payment-option" onclick="selectPaymentMethod('stripe')">
-                            <input type="radio" name="payment_method" value="stripe" onchange="selectPaymentMethod('stripe')">
+                        <label class="payment-option selected" onclick="selectPaymentMethod('stripe')">
+                            <input type="radio" name="payment_method" value="stripe" checked onchange="selectPaymentMethod('stripe')">
                             <i class="fab fa-stripe"></i> Stripe
                             <small style="display: block; color: #666; margin-left: 1.75rem;">Card Payments</small>
                         </label>

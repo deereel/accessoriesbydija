@@ -45,6 +45,7 @@ include 'includes/header.php';
                 </form>
                 
                 <div class="auth-footer">
+                    <p><a href="security-reset.php">Forgot your password?</a></p>
                     <p>Don't have an account? <a href="signup.php">Create Account</a></p>
                 </div>
             </div>
@@ -57,6 +58,7 @@ include 'includes/header.php';
     min-height: 80vh;
     display: flex;
     align-items: center;
+    justify-content: center;
     padding: 2rem 0;
     background: #f8f8f8;
 }
@@ -243,6 +245,13 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
                 window.location.href = '<?php echo htmlspecialchars($redirect); ?>';
             }, 500);
         } else {
+            // If account requires forced password reset, redirect to reset page
+            if (data.force_reset) {
+                errorMsg.textContent = data.message || 'Password reset required';
+                errorMsg.style.display = 'block';
+                setTimeout(function(){ window.location.href = 'security-reset.php?step=email'; }, 800);
+                return;
+            }
             errorMsg.textContent = data.message;
             errorMsg.style.display = 'block';
             submitBtn.disabled = false;

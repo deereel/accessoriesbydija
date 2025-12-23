@@ -251,6 +251,39 @@ CREATE TABLE IF NOT EXISTS site_settings (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Inventory transactions (for tracking stock changes)
+CREATE TABLE IF NOT EXISTS inventory_transactions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    transaction_type ENUM('purchase', 'sale', 'adjustment', 'return') DEFAULT 'sale',
+    quantity_change INT NOT NULL,
+    reference_id INT,
+    reference_type VARCHAR(50),
+    notes TEXT,
+    previous_stock INT,
+    new_stock INT,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES admin_users(id) ON DELETE SET NULL,
+    INDEX (product_id, created_at),
+    INDEX (reference_type, reference_id)
+);
+
+-- Inventory logs (for admin dashboard)
+CREATE TABLE IF NOT EXISTS inventory_logs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    old_quantity INT,
+    new_quantity INT,
+    user_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES admin_users(id) ON DELETE SET NULL,
+    INDEX (product_id, created_at)
+);
+
 -- Insert sample categories
 INSERT IGNORE INTO categories (name, slug, description) VALUES
 ('Women', 'women', 'Jewelry collection for women'),
@@ -284,6 +317,29 @@ INSERT IGNORE INTO product_categories (product_id, category_id) VALUES
 (6, 2), (6, 3), -- Mens ring -> Men, Rings
 (7, 1), (7, 4), -- Rose gold pendant -> Women, Necklaces
 (8, 2), (8, 3); -- Platinum band -> Men, Rings
+
+-- Support Tickets table (for customer support requests)
+CREATE TABLE IF NOT EXISTS support_tickets (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT,
+    customer_email VARCHAR(255) NOT NULL,
+    customer_name VARCHAR(255) NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    category VARCHAR(100),
+    priority ENUM('low', 'medium', 'high') DEFAULT 'medium',
+    status ENUM('open', 'in_progress', 'resolved', 'closed') DEFAULT 'open',
+    assigned_to INT,
+    response_text TEXT,
+    response_date TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
+    FOREIGN KEY (assigned_to) REFERENCES admin_users(id) ON DELETE SET NULL,
+    INDEX (customer_id, status),
+    INDEX (status, created_at),
+    INDEX (priority)
+);
 
 -- Insert sample testimonials
 INSERT IGNORE INTO testimonials (customer_name, rating, title, content, is_featured, is_approved) VALUES

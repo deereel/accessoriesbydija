@@ -25,6 +25,8 @@
 session_start();
 header('Content-Type: application/json');
 
+// Load environment variables from .env file
+require_once __DIR__ . '/../../../config/env.php';
 require_once __DIR__ . '/../../../config/database.php';
 
 // TODO: Use Composer autoloader if installed
@@ -40,25 +42,32 @@ if (!$order_id) {
 }
 
 try {
-    // Fetch order
-    $stmt = $pdo->prepare("SELECT o.*, oi.* FROM orders o 
-                           LEFT JOIN order_items oi ON o.id = oi.order_id 
-                           WHERE o.id = ? AND o.status = 'pending'");
+    // Fetch order - Remove status check to allow any order to be paid
+    $stmt = $pdo->prepare("SELECT o.* FROM orders o WHERE o.id = ?");
     $stmt->execute([$order_id]);
-    $order_data = $stmt->fetchAll();
+    $order = $stmt->fetch();
 
-    if (empty($order_data)) {
+    if (!$order) {
         http_response_code(404);
+        error_log("Order not found: $order_id");
         echo json_encode(['success' => false, 'message' => 'Order not found']);
         exit;
     }
 
-    $order = $order_data[0]; // Main order details
+    error_log("Order found - ID: $order_id, Total: " . $order['total_amount'] . ", Email: " . $order['email']);
+
+    // Validate required order fields
+    if (empty($order['total_amount']) || empty($order['email'])) {
+        http_response_code(400);
+        error_log("Missing required order fields - Total: " . ($order['total_amount'] ?? 'NULL') . ", Email: " . ($order['email'] ?? 'NULL'));
+        echo json_encode(['success' => false, 'message' => 'Order is missing required fields']);
+        exit;
+    }
 
     // TODO: Get STRIPE_SECRET_KEY from environment
     $STRIPE_SECRET_KEY = getenv('STRIPE_SECRET_KEY') ?: 'sk_test_your_secret_key_here';
 
-    if (strpos($STRIPE_SECRET_KEY, 'your_secret_key') !== false) {
+    if (empty($STRIPE_SECRET_KEY) || strpos($STRIPE_SECRET_KEY, 'your_secret_key') !== false || strpos($STRIPE_SECRET_KEY, 'xxxxx') !== false) {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Stripe configuration incomplete']);
         exit;
@@ -72,11 +81,12 @@ try {
     
     // TODO: Fetch actual order items
     // For now, create a single item with total amount
+    $order_number = $order['order_number'] ?? 'Order #' . $order['id'];
     $line_items[] = [
         'price_data' => [
             'currency' => 'gbp',
             'product_data' => [
-                'name' => 'Order #' . $order['order_number'],
+                'name' => $order_number,
                 'description' => 'Order items'
             ],
             'unit_amount' => intval($order['total_amount'] * 100) // Amount in pence
@@ -89,16 +99,20 @@ try {
     // 'unit_amount' => intval($order['shipping_amount'] * 100)
 
     // Create Stripe Checkout Session
+    // Determine the protocol (http or https)
+    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'];
+    $base_url = $protocol . '://' . $host;
+    
     $session_params = [
         'payment_method_types' => ['card'],
         'line_items' => $line_items,
         'mode' => 'payment',
-        'success_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/api/payments/stripe/webhook.php?session_id={CHECKOUT_SESSION_ID}',
-        'cancel_url' => 'https://' . $_SERVER['HTTP_HOST'] . '/checkout.php?cancelled=1',
+        'success_url' => $base_url . '/order-confirmation.php?order_id=' . $order_id . '&payment=stripe&session_id={CHECKOUT_SESSION_ID}',
+        'cancel_url' => $base_url . '/checkout.php?cancelled=1',
         'customer_email' => $order['email'],
         'metadata' => [
-            'order_id' => $order_id,
-            'order_number' => $order['order_number']
+            'order_id' => $order_id
         ]
     ];
 
@@ -114,12 +128,24 @@ try {
     ]);
 
     $response = curl_exec($ch);
+    $curl_error = curl_error($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
+    // Log for debugging
+    error_log("Stripe API Response - HTTP Code: $http_code, Response: " . substr($response, 0, 500));
+
+    if ($curl_error) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Curl error: ' . $curl_error]);
+        exit;
+    }
+
     if ($http_code !== 200) {
         http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Failed to create Stripe session']);
+        $error_response = json_decode($response, true);
+        $error_message = $error_response['error']['message'] ?? 'Failed to create Stripe session';
+        echo json_encode(['success' => false, 'message' => $error_message]);
         exit;
     }
 

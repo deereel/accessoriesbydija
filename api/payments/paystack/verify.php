@@ -17,6 +17,8 @@
 session_start();
 header('Content-Type: application/json');
 
+// Load environment variables from .env file
+require_once __DIR__ . '/../../../config/env.php';
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/email.php';
 
@@ -156,6 +158,99 @@ try {
         'Paid via Paystack. Reference: ' . $reference,
         $order['id']
     ]);
+
+    // Clear customer's cart now that payment is confirmed (if customer exists)
+    if (!empty($order['customer_id'])) {
+        try {
+            $deleteStmt = $pdo->prepare("DELETE FROM cart WHERE customer_id = ?");
+            $deleteStmt->execute([$order['customer_id']]);
+            error_log('Paystack: Cart cleared for customer ' . $order['customer_id'] . ' after payment verified for order ' . $order['id']);
+        } catch (Exception $e) {
+            error_log('Paystack: failed to clear cart for customer ' . $order['customer_id'] . ': ' . $e->getMessage());
+        }
+    }
+
+    // Log inventory transactions directly
+    try {
+        error_log("Paystack: Starting inventory update for order {$order['id']}");
+        
+        // Get customer name for inventory logs
+        $customer_name = "Customer";
+        if (!empty($order['contact_name'])) {
+            $customer_name = htmlspecialchars($order['contact_name']);
+        } else if (!empty($order['customer_id'])) {
+            $cstmt = $pdo->prepare("SELECT CONCAT(first_name, ' ', last_name) as name FROM customers WHERE id = ?");
+            $cstmt->execute([$order['customer_id']]);
+            $cdata = $cstmt->fetch();
+            if ($cdata && !empty($cdata['name'])) {
+                $customer_name = htmlspecialchars($cdata['name']);
+            }
+        }
+        
+        // Verify inventory tables exist
+        $check = $pdo->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'inventory_transactions'");
+        $has_tables = ($check->fetch(PDO::FETCH_NUM)[0] > 0);
+        if (!$has_tables) {
+            error_log("Paystack: WARNING - inventory_transactions table does not exist. Inventory will not be logged. Run /api/setup/init-db.php?key=your-key to create tables.");
+        }
+        
+        $itemsStmt = $pdo->prepare("SELECT product_id, quantity FROM order_items WHERE order_id = ?");
+        $itemsStmt->execute([$order['id']]);
+        $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        if (empty($items)) {
+            error_log("Paystack: No order items found for order {$order['id']}");
+        } else {
+            error_log("Paystack: Found " . count($items) . " order items");
+        }
+        
+        foreach ($items as $item) {
+            $product_id = intval($item['product_id']);
+            $quantity = intval($item['quantity']);
+            
+            // Get current stock
+            $stockStmt = $pdo->prepare("SELECT stock_quantity FROM products WHERE id = ?");
+            $stockStmt->execute([$product_id]);
+            $product = $stockStmt->fetch();
+            
+            if ($product) {
+                $old_stock = intval($product['stock_quantity']);
+                $new_stock = max(0, $old_stock - $quantity);
+                
+                // Only update inventory if tables exist
+                if ($has_tables) {
+                    // Log transaction
+                    $logStmt = $pdo->prepare("INSERT INTO inventory_transactions (product_id, transaction_type, quantity_change, reference_id, reference_type, previous_stock, new_stock, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                    $logStmt->execute([
+                        $product_id,
+                        'sale',
+                        -$quantity,
+                        $order['id'],
+                        'order',
+                        $old_stock,
+                        $new_stock,
+                        "Sold to {$customer_name} - Order #{$order['id']}"
+                    ]);
+                    
+                    // Log to admin logs with notes containing customer name
+                    $adminLogStmt = $pdo->prepare("INSERT INTO inventory_logs (product_id, action, old_quantity, new_quantity, notes) VALUES (?, ?, ?, ?, ?)");
+                    $adminLogStmt->execute([$product_id, 'sale', $old_stock, $new_stock, "Sold to {$customer_name}"]);
+                }
+                
+                // Update product stock (always do this)
+                $updateStmt = $pdo->prepare("UPDATE products SET stock_quantity = ? WHERE id = ?");
+                $updateStmt->execute([$new_stock, $product_id]);
+                
+                error_log("Paystack: Inventory reduced - Product {$product_id}: {$old_stock} → {$new_stock} (-{$quantity} units for Order #{$order['id']})");
+            } else {
+                error_log("Paystack: Product {$product_id} not found for order {$order['id']}");
+            }
+        }
+        
+        error_log("Paystack: Inventory update completed for order {$order['id']}");
+    } catch (Exception $e) {
+        error_log('Paystack: ERROR during inventory update for order ' . $order['id'] . ': ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
+    }
 
     // TODO: Update inventory/stock levels
     // TODO: Send confirmation email to customer

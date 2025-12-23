@@ -1,0 +1,79 @@
+# Environment variables - Do not commit sensitive keys
+.env
+.env.local
+.env.*.local
+
+# Composer dependencies
+/vendor/
+composer.lock
+
+# IDE configuration files
+.vscode/
+.vscode/settings.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Log files
+*.log
+/logs/
+debug.log
+
+# Temporary files
+/tmp/
+/temp/
+*.tmp
+*.swp
+*.swo
+*~
+
+# Editor backup files
+*~
+*.bak
+*.swp
+*.swo
+.#*
+
+# Node modules (if using any frontend build tools)
+/node_modules/
+npm-debug.log
+yarn-error.log
+
+# Database files
+*.sql
+database.sqlite
+*.db
+
+# Build and dist folders
+/build/
+/dist/
+
+# Cache files
+/cache/
+*.cache
+
+# Uploaded files and user content
+/uploads/
+/files/
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+
+# Testing files
+/tests/coverage/
+.phpunit.result.cache
+
+# Misc
+.env.example.local
+.gitkeep

@@ -41,6 +41,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
         
+        // Check if admin-forced password reset is required (column may not exist)
+        try {
+            $fr = $pdo->prepare("SELECT force_password_reset FROM customers WHERE id = ?");
+            $fr->execute([$customer['id']]);
+            $frRow = $fr->fetch(PDO::FETCH_ASSOC);
+            if ($frRow && intval($frRow['force_password_reset']) === 1) {
+                echo json_encode(['success' => false, 'message' => 'Your account requires a password reset. Please reset your password to continue.', 'force_reset' => true]);
+                exit;
+            }
+        } catch (PDOException $e) {
+            // Column doesn't exist or other error — ignore to preserve backward compatibility
+        }
+
         // Set session
         $_SESSION['customer_id'] = $customer['id'];
         $_SESSION['customer_name'] = $customer['first_name'] . ' ' . $customer['last_name'];

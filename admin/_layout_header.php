@@ -93,6 +93,7 @@ $active_nav = isset($active_nav) ? $active_nav : '';
 
     <a class="nav-link <?php echo $active_nav==='orders'?'active':''; ?>" href="/admin/orders.php"><i class="fas fa-shopping-cart"></i> <span>Orders</span></a>
     <a class="nav-link <?php echo $active_nav==='customers'?'active':''; ?>" href="/admin/customers.php"><i class="fas fa-users"></i> <span>Customers</span></a>
+    <a class="nav-link <?php echo $active_nav==='support_tickets'?'active':''; ?>" href="/admin/support-tickets.php"><i class="fas fa-headset"></i> <span>Support Tickets</span></a>
     
     <?php if (isset($user_role) && in_array($user_role, ['admin', 'superadmin'])): ?>
     <a class="nav-link <?php echo $active_nav==='banners'?'active':''; ?>" href="/admin/banners.php"><i class="fas fa-image"></i> <span>Banners</span></a>

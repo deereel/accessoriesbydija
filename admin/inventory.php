@@ -192,7 +192,7 @@ try {
                             <td style="padding:10px; text-align:center; font-weight:500;"><?php echo (int)$product['units_sold_30d']; ?></td>
                             <td style="padding:10px;">
                                 <form class="inline-stock-update" onsubmit="return updateStock(event, <?php echo (int)$product['id']; ?>)">
-                                    <input type="number" name="stock_quantity" value="<?php echo (int)$product['stock_quantity']; ?>" required>
+                                    <input type="number" name="stock_quantity" placeholder="Enter new quantity" required>
                                     <button type="submit" class="btn btn-success">Save</button>
                                 </form>
                             </td>

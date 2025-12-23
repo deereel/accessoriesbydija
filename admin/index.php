@@ -151,7 +151,7 @@ include __DIR__ . '/_layout_header.php';
           <h3 style="margin:8px 0 4px;">Revenue</h3>
           <div style="font-size:28px; font-weight:700; color:#c487a5;">£<?php echo number_format(floatval($monthly_revenue), 2); ?></div>
           <p style="color:#666;">This month's revenue</p>
-          <a href="#" class="btn">View Reports</a>
+          <a href="/admin/reports.php" class="btn">View Reports</a>
         </div>
       </div>
       <div class="card" style="border-left:4px solid #c487a5;">

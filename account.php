@@ -324,6 +324,20 @@ include 'includes/header.php';
     </div>
 </div>
 
+<!-- Order Details Modal -->
+<div id="order-modal" class="modal">
+    <div class="modal-content">
+        <span class="close" id="order-modal-close">&times;</span>
+        <h2>Order Details</h2>
+        <div id="order-modal-body">
+            <p class="text-muted">Loading...</p>
+        </div>
+        <div class="modal-actions">
+            <button type="button" class="btn-secondary" id="order-modal-close-btn">Close</button>
+        </div>
+    </div>
+</div>
+
 <link rel="stylesheet" href="assets/css/account.css">
 <script src="assets/js/account.js"></script>
 

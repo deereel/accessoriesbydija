@@ -41,7 +41,10 @@ $customers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <td style="padding:10px;"><?php echo htmlspecialchars($customer['phone'] ?? 'N/A'); ?></td>
                             <td style="padding:10px;"><?php echo date('M d, Y', strtotime($customer['created_at'])); ?></td>
                             <td style="padding:10px;">
-                                <a href="#" class="btn" style="font-size:12px;">View Profile</a>
+                                <div style="display:flex; gap:8px; align-items:center;">
+                                    <a href="#" class="btn" style="font-size:12px;">View Profile</a>
+                                    <button class="btn force-reset-btn" data-customer-id="<?php echo intval($customer['id']); ?>" style="font-size:12px;">Force Reset</button>
+                                </div>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -52,3 +55,18 @@ $customers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 </div>
 
 <?php include '_layout_footer.php'; ?>
+<script>
+document.querySelectorAll('.force-reset-btn').forEach(function(btn){
+    btn.addEventListener('click', function(e){
+        e.preventDefault();
+        var id = this.dataset.customerId;
+        if(!confirm('Force password reset for this customer?')) return;
+        fetch('/admin/force-password-reset.php', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ customer_id: id, action: 'set' })
+        }).then(r=>r.json()).then(j=>{
+            if(j.success){ alert('Password reset forced for customer #' + id); } else { alert('Error: ' + (j.message||'failed')); }
+        }).catch(e=>{ alert('Network error'); });
+    });
+});
+</script>

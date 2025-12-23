@@ -118,7 +118,7 @@ function displayRecentOrders(orders) {
             <div class="order-details">
                 <div class="order-detail">
                     <label>Date</label>
-                    <span>${formatDate(order.created_at)}</span>
+                    <span>${order.created_at_human ? order.created_at_human : formatDate(order.created_at)}</span>
                 </div>
                 <div class="order-detail">
                     <label>Total</label>
@@ -147,7 +147,7 @@ async function loadOrders() {
             }
             
             container.innerHTML = data.orders.map(order => `
-                <div class="order-card">
+                <div class="order-card" data-order-id="${order.id}">
                     <div class="order-header">
                         <span class="order-number">#${order.order_number}</span>
                         <span class="order-status ${order.status}">${order.status}</span>
@@ -155,7 +155,7 @@ async function loadOrders() {
                     <div class="order-details">
                         <div class="order-detail">
                             <label>Date</label>
-                            <span>${formatDate(order.created_at)}</span>
+                            <span>${order.created_at_human ? order.created_at_human : formatDate(order.created_at)}</span>
                         </div>
                         <div class="order-detail">
                             <label>Total</label>
@@ -168,11 +168,73 @@ async function loadOrders() {
                     </div>
                 </div>
             `).join('');
+
+            // Attach click handlers to open order modal
+            document.querySelectorAll('.order-card[data-order-id]').forEach(card => {
+                card.addEventListener('click', () => {
+                    const orderId = card.getAttribute('data-order-id');
+                    openOrderModal(orderId);
+                });
+            });
         }
     } catch (error) {
         container.innerHTML = '<p class="text-muted">Error loading orders</p>';
     }
 }
+
+// Fetch and display order details in modal
+async function openOrderModal(orderId) {
+    const modal = document.getElementById('order-modal');
+    const body = document.getElementById('order-modal-body');
+    body.innerHTML = '<p class="text-muted">Loading...</p>';
+    modal.classList.add('active');
+
+    try {
+        const response = await fetch(`api/account/get_order.php?order_id=${orderId}`);
+        const data = await response.json();
+        if (!data.success) {
+            body.innerHTML = `<p class="text-muted">${data.message}</p>`;
+            return;
+        }
+
+        const order = data.order;
+        const items = data.items || [];
+
+        body.innerHTML = `
+            <p><strong>Order #${order.order_number}</strong></p>
+            <p>Status: ${order.status} | Payment: ${order.payment_status}</p>
+            <p>Date: ${formatDate(order.created_at)}</p>
+            <h4>Items</h4>
+            <table class="items-table" style="width:100%;border-collapse:collapse;">
+                <thead><tr><th>Product</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit</th><th style="text-align:right">Total</th></tr></thead>
+                <tbody>
+                    ${items.map(i => `
+                        <tr>
+                            <td>${i.name || i.product_name}</td>
+                            <td style="text-align:right">${i.quantity}</td>
+                            <td style="text-align:right">£${(parseFloat(i.unit_price)||0).toFixed(2)}</td>
+                            <td style="text-align:right">£${(parseFloat(i.unit_price||0)*parseInt(i.quantity||0)).toFixed(2)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+            <div style="margin-top:1rem;">
+                <strong>Total: £${parseFloat(order.total_amount).toFixed(2)}</strong>
+            </div>
+        `;
+    } catch (err) {
+        body.innerHTML = '<p class="text-muted">Error loading order details</p>';
+    }
+}
+
+// Order modal close handlers
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('order-modal');
+    const close = document.getElementById('order-modal-close');
+    const closeBtn = document.getElementById('order-modal-close-btn');
+    if (close) close.addEventListener('click', () => modal.classList.remove('active'));
+    if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.remove('active'));
+});
 
 async function loadAddresses() {
     const container = document.getElementById('addresses-list');
