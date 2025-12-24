@@ -88,5 +88,20 @@
     });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
+    <button class="scroll-top" id="scrollTopBtn" aria-label="Scroll to top">↑</button>
+    <script>
+    (function(){
+        const btn = document.getElementById('scrollTopBtn');
+        if (!btn) return;
+        // Show after user scrolls down 300px
+        window.addEventListener('scroll', function() {
+            if (window.scrollY > 300) btn.classList.add('show'); else btn.classList.remove('show');
+        });
+        // Smooth scroll to top
+        btn.addEventListener('click', function() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    })();
+    </script>
 </body>
 </html>

@@ -15,8 +15,11 @@ try {
     $colCheck->execute();
     $hasCol = $colCheck->fetchColumn() > 0;
     if (!$hasCol) {
-        // Add column
-        $pdo->exec("ALTER TABLE customers ADD COLUMN force_password_reset TINYINT(1) DEFAULT 0");
+        try {
+            $pdo->exec("ALTER TABLE customers ADD COLUMN force_password_reset TINYINT(1) DEFAULT 0");
+        } catch (Exception $e) {
+            echo json_encode(['success'=>false,'message'=>'Failed to add column: ' . $e->getMessage()]); exit;
+        }
     }
 
     $val = ($action === 'clear') ? 0 : 1;

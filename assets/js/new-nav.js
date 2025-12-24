@@ -10,7 +10,9 @@ fetch('api/new-products.php')
         const grid = document.getElementById('new-products-grid');
         if (data.success && data.products && grid) {
             grid.innerHTML = '';
-            data.products.forEach(product => {
+            // Limit to exactly 8 items for 4x2 grid
+            const limitedProducts = data.products.slice(0, 8);
+            limitedProducts.forEach(product => {
                 const card = document.createElement('div');
                 card.className = 'product-card';
                 card.innerHTML = `

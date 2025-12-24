@@ -73,6 +73,9 @@ $active_nav = isset($active_nav) ? $active_nav : '';
     /* Button Styles */
     .btn-success { background: #28a745; }
     .btn-success:hover { background: #218838; }
+    /* Scroll-to-top for admin */
+    .scroll-top { position: fixed; right: 18px; bottom: 22px; width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; border: none; display: none; align-items: center; justify-content: center; cursor: pointer; z-index: 2000; box-shadow: 0 6px 18px rgba(0,0,0,0.15); font-size: 18px; }
+    .scroll-top.show { display: flex; }
   </style>
 </head>
 <body>
@@ -109,3 +112,4 @@ $active_nav = isset($active_nav) ? $active_nav : '';
       <a href="/admin/index.php?logout=1" class="btn logout">Logout</a>
     </header>
     <main class="main">
+    <button class="scroll-top" id="adminScrollTopBtn" aria-label="Scroll to top">↑</button>

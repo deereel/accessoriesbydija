@@ -59,9 +59,11 @@ try {
             id INT PRIMARY KEY AUTO_INCREMENT,
             product_id INT NOT NULL,
             action VARCHAR(100) NOT NULL,
+            quantity_change INT,
             old_quantity INT,
             new_quantity INT,
             user_id INT,
+            reason TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
             FOREIGN KEY (user_id) REFERENCES admin_users(id) ON DELETE SET NULL,
@@ -69,18 +71,36 @@ try {
         )
     ");
     
+    // Add missing columns to inventory_logs if they don't exist
+    $columns_added = [];
+    
+    $qtyChangeCheck = $pdo->prepare("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'inventory_logs' AND column_name = 'quantity_change'");
+    $qtyChangeCheck->execute();
+    if ($qtyChangeCheck->fetchColumn() == 0) {
+        $pdo->exec("ALTER TABLE inventory_logs ADD COLUMN quantity_change INT AFTER action");
+        $columns_added[] = 'inventory_logs.quantity_change';
+    }
+    
+    $reasonCheck = $pdo->prepare("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'inventory_logs' AND column_name = 'reason'");
+    $reasonCheck->execute();
+    if ($reasonCheck->fetchColumn() == 0) {
+        $pdo->exec("ALTER TABLE inventory_logs ADD COLUMN reason TEXT AFTER user_id");
+        $columns_added[] = 'inventory_logs.reason';
+    }
+    
     // Add force_password_reset column to customers if missing
     $colCheck = $pdo->prepare("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = 'customers' AND column_name = 'force_password_reset'");
     $colCheck->execute();
     if ($colCheck->fetchColumn() == 0) {
         $pdo->exec("ALTER TABLE customers ADD COLUMN force_password_reset TINYINT(1) DEFAULT 0");
+        $columns_added[] = 'customers.force_password_reset';
     }
     
     echo json_encode([
         'success' => true,
         'message' => 'All required tables created/verified successfully',
         'tables_created' => ['support_tickets', 'inventory_transactions', 'inventory_logs'],
-        'columns_added' => ['customers.force_password_reset']
+        'columns_added' => $columns_added
     ]);
     
 } catch (PDOException $e) {

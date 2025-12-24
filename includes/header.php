@@ -27,7 +27,8 @@ require_once 'config/cache.php';
     <link rel="stylesheet" href="assets/css/product-cards.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="assets/js/new-nav.js"></script>
+    <script src="assets/js/header.js" defer></script>
+    <script src="assets/js/new-nav.js" defer></script>
     <script>
     // Lightweight client-side event tracker that posts to server for basic analytics
     window.trackEvent = function(eventName, payload) {
@@ -40,6 +41,29 @@ require_once 'config/cache.php';
         } catch (e) {}
     };
     </script>
+    <style>
+    /* Scroll-to-top button (global) */
+    .scroll-top {
+        position: fixed;
+        right: 18px;
+        bottom: 22px;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: #C27BA0;
+        color: #fff;
+        border: none;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 2000;
+        box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+        font-size: 18px;
+    }
+    .scroll-top.show { display: flex; }
+    .scroll-top:focus { outline: 2px solid #fff; }
+    </style>
 </head>
 <body>
     <header class="header">
@@ -95,7 +119,6 @@ require_once 'config/cache.php';
             <div class="dropdown-content" data-content="new">
                 <div class="new-products-grid" id="new-products-grid">
                     <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 1</h4><p class="price">£99.99</p></div>
-                    <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 1</h4><p class="price">£99.99</p></div>
                     <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 2</h4><p class="price">£149.99</p></div>
                     <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 3</h4><p class="price">£199.99</p></div>
                     <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 4</h4><p class="price">£249.99</p></div>
@@ -103,7 +126,9 @@ require_once 'config/cache.php';
                     <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 6</h4><p class="price">£349.99</p></div>
                     <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 7</h4><p class="price">£399.99</p></div>
                     <div class="product-card"><div class="product-image"><div class="placeholder-img">NEW</div></div><h4>New Product 8</h4><p class="price">£449.99</p></div>
-            
+                </div>
+            </div>
+
             <!-- WOMEN Dropdown -->
             <div class="dropdown-content" data-content="women">
                 <div class="category-layout">

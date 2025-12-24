@@ -144,8 +144,77 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
 
 @media (max-width: 768px) {
     .products-layout { flex-direction: column; }
-    .filters-sidebar { width: 100%; }
-    .product-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    .filters-sidebar { 
+        width: 100%; 
+        display: grid;
+        grid-template-columns: auto repeat(3, 1fr);
+        gap: 0.75rem;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    .clear-btn {
+        grid-column: 1;
+        margin-bottom: 0;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
+    }
+    .filter-section {
+        margin-bottom: 0;
+        grid-column: span 1;
+    }
+    .filter-section h3 {
+        display: none;
+    }
+    .filter-list {
+        position: relative;
+    }
+    .filter-list::before {
+        content: attr(data-label);
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #666;
+        margin-bottom: 0.5rem;
+        text-transform: uppercase;
+    }
+    .filter-dropdown-toggle {
+        display: block;
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background: white;
+        cursor: pointer;
+        font-size: 0.85rem;
+        text-align: left;
+    }
+    .filter-dropdown-toggle::after {
+        content: ' ▼';
+        font-size: 0.65rem;
+        float: right;
+    }
+    .filter-list.mobile-dropdown .filter-link {
+        display: none;
+    }
+    .filter-list.mobile-dropdown.active .filter-link {
+        display: block;
+        padding: 0.5rem 0.75rem;
+        background: #f9f9f9;
+        border-bottom: 1px solid #eee;
+        font-size: 0.85rem;
+    }
+    .filter-list.mobile-dropdown .filter-link:last-child {
+        border-bottom: none;
+    }
+    .filter-list.mobile-dropdown .filter-link.active {
+        background: #f0f0f0;
+        font-weight: 600;
+    }
+    .product-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+    .product-info { padding: 0.75rem; }
+    .product-info h3 { font-size: 0.75rem; }
+    .product-info p { font-size: 0.7rem; }
+    .cart-btn { padding: 0.2rem 0.5rem; font-size: 0.7rem; }
 }
 </style>
 
@@ -167,7 +236,10 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
             <!-- Gender Filter -->
             <div class="filter-section">
                 <h3>GENDER</h3>
-                <div class="filter-list">
+                <button class="filter-dropdown-toggle" data-filter="gender">
+                    <?= $selected_gender ? ucfirst($selected_gender) : 'Gender' ?>
+                </button>
+                <div class="filter-list mobile-dropdown" data-label="GENDER">
                     <a href="#" class="filter-link <?= !$selected_gender ? 'active' : '' ?>" data-filter-key="gender" data-filter-value="">All</a>
                     <?php foreach ($all_genders as $gender): ?>
                         <a href="#" class="filter-link <?= strtolower($selected_gender) == strtolower($gender) ? 'active' : '' ?>" data-filter-key="gender" data-filter-value="<?= htmlspecialchars($gender) ?>"><?= htmlspecialchars(ucfirst($gender)) ?></a>
@@ -178,7 +250,10 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
             <!-- Category Filter -->
             <div class="filter-section">
                 <h3>CATEGORY</h3>
-                <div class="filter-list">
+                <button class="filter-dropdown-toggle" data-filter="category">
+                    <?= $selected_category ? ucfirst($selected_category) : 'Category' ?>
+                </button>
+                <div class="filter-list mobile-dropdown" data-label="CATEGORY">
                     <a href="#" class="filter-link <?= !$selected_category ? 'active' : '' ?>" data-filter-key="category" data-filter-value="">All</a>
                     <?php foreach ($all_categories as $category): ?>
                         <a href="#" class="filter-link <?= strtolower($selected_category) == strtolower($category) ? 'active' : '' ?>" data-filter-key="category" data-filter-value="<?= htmlspecialchars($category) ?>"><?= htmlspecialchars(ucfirst($category)) ?></a>
@@ -189,7 +264,22 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
             <!-- Price Filter -->
             <div class="filter-section">
                 <h3>FILTER BY PRICE</h3>
-                <div class="filter-list">
+                <button class="filter-dropdown-toggle" data-filter="price">
+                    <?php 
+                        if ($selected_price_min == 0 && $selected_price_max == 50) {
+                            echo '£0 - £50';
+                        } elseif ($selected_price_min == 50 && $selected_price_max == 100) {
+                            echo '£50 - £100';
+                        } elseif ($selected_price_min == 100 && $selected_price_max == 200) {
+                            echo '£100 - £200';
+                        } elseif ($selected_price_min == 200 && $selected_price_max == 9999) {
+                            echo '£200+';
+                        } else {
+                            echo 'Price';
+                        }
+                    ?>
+                </button>
+                <div class="filter-list mobile-dropdown" data-label="PRICE">
                     <a href="#" class="filter-link <?= (!$selected_price_min && !$selected_price_max) ? 'active' : '' ?>" data-filter-key="price" data-filter-value="">All</a>
                     <a href="#" class="filter-link <?= ($selected_price_min == 0 && $selected_price_max == 50) ? 'active' : '' ?>" data-filter-key="price" data-filter-value="0-50">£0 - £50</a>
                     <a href="#" class="filter-link <?= ($selected_price_min == 50 && $selected_price_max == 100) ? 'active' : '' ?>" data-filter-key="price" data-filter-value="50-100">£50 - £100</a>
@@ -290,6 +380,34 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const filterLinks = document.querySelectorAll('.filter-link');
+    const filterToggles = document.querySelectorAll('.filter-dropdown-toggle');
+
+    // Mobile dropdown toggle functionality
+    filterToggles.forEach(toggle => {
+        toggle.addEventListener('click', function() {
+            const filterType = this.getAttribute('data-filter');
+            const filterList = this.nextElementSibling;
+            
+            // Close other dropdowns
+            document.querySelectorAll('.filter-list.mobile-dropdown.active').forEach(list => {
+                if (list !== filterList) {
+                    list.classList.remove('active');
+                }
+            });
+            
+            // Toggle current dropdown
+            filterList.classList.toggle('active');
+        });
+    });
+
+    // Close dropdowns when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.filter-section')) {
+            document.querySelectorAll('.filter-list.mobile-dropdown.active').forEach(list => {
+                list.classList.remove('active');
+            });
+        }
+    });
 
     filterLinks.forEach(link => {
         link.addEventListener('click', function (e) {
@@ -433,6 +551,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Update pagination
         bullets[currentSlide].classList.add('swiper-pagination-bullet-active');
+
+        // Scroll to top of products area
+        const productsHeader = document.querySelector('.products-header');
+        if (productsHeader) {
+            productsHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
     }
 
     function nextSlide() {

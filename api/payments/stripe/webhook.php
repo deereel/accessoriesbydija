@@ -235,11 +235,16 @@ function handleCheckoutSessionCompleted($event, $pdo) {
                     
                     // Get current stock
                     $stockStmt = $pdo->prepare("SELECT stock_quantity FROM products WHERE id = ?");
-                    $stockStmt->execute([$product_id]);
+                    if (!$stockStmt->execute([$product_id])) {
+                        error_log("Stripe: DB ERROR - Failed to fetch stock for product {$product_id}. PDO error: " . implode(", ", $stockStmt->errorInfo()));
+                        // Optionally notify admin here
+                        continue;
+                    }
                     $product = $stockStmt->fetch();
                     
                     if (!$product) {
                         error_log("Stripe: Product {$product_id} not found for order {$order_id}");
+                        // Optionally notify admin here
                         continue;
                     }
                     
@@ -250,7 +255,7 @@ function handleCheckoutSessionCompleted($event, $pdo) {
                     if ($has_tables) {
                         // Log transaction
                         $logStmt = $pdo->prepare("INSERT INTO inventory_transactions (product_id, transaction_type, quantity_change, reference_id, reference_type, previous_stock, new_stock, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                        $logStmt->execute([
+                        if (!$logStmt->execute([
                             $product_id,
                             'sale',
                             -$quantity,
@@ -259,27 +264,37 @@ function handleCheckoutSessionCompleted($event, $pdo) {
                             $old_stock,
                             $new_stock,
                             "Sold to {$customer_name} - Order #{$order_id}"
-                        ]);
-                        
-                        // Log to admin logs with notes containing customer name
-                        $adminLogStmt = $pdo->prepare("INSERT INTO inventory_logs (product_id, action, old_quantity, new_quantity, notes) VALUES (?, ?, ?, ?, ?)");
-                        $adminLogStmt->execute([$product_id, 'sale', $old_stock, $new_stock, "Sold to {$customer_name}"]);
-                    }
+                        ])) {
+                            error_log("Stripe: DB ERROR - Failed to log inventory transaction for product {$product_id}. PDO error: " . implode(", ", $logStmt->errorInfo()));
+                            // Optionally notify admin here
+                        }
                     
+                    // Log to admin logs (include quantity_change and reason)
+                    $adminLogStmt = $pdo->prepare("INSERT INTO inventory_logs (product_id, user_id, action, quantity_change, old_quantity, new_quantity, reason) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                    $admin_user_id = null; // system action; no admin user
+                    $quantity_change = $new_stock - $old_stock;
+                    $reason = "Sold to {$customer_name} - Order #{$order_id}";
+                    if (!$adminLogStmt->execute([$product_id, $admin_user_id, 'sale', $quantity_change, $old_stock, $new_stock, $reason])) {
+                        error_log("Stripe: DB ERROR - Failed to log admin inventory for product {$product_id}. PDO error: " . implode(", ", $adminLogStmt->errorInfo()));
+                    }
+                    }
+                
                     // Update product stock (ALWAYS do this, even if logging tables don't exist)
                     $updateStmt = $pdo->prepare("UPDATE products SET stock_quantity = ? WHERE id = ?");
-                    $updateResult = $updateStmt->execute([$new_stock, $product_id]);
-                    
-                    if ($updateResult) {
+                    $ok = $updateStmt->execute([$new_stock, $product_id]);
+                    $affected = $updateStmt->rowCount();
+
+                    if (!$ok) {
+                        error_log("Stripe: DB ERROR - FAILED to update stock for Product {$product_id}. PDO error: " . implode(", ", $updateStmt->errorInfo()));
+                    } else {
                         $inventory_updated_count++;
                         error_log("Stripe: Stock updated - Product {$product_id}: {$old_stock} → {$new_stock} (-{$quantity} units for Order #{$order_id})");
-                    } else {
-                        error_log("Stripe: FAILED to update stock for Product {$product_id}");
                     }
-                    
+                
                 } catch (Exception $itemEx) {
                     error_log('Stripe: ERROR processing inventory for item ' . ($item['product_id'] ?? 'unknown') . ': ' . $itemEx->getMessage());
-                    continue; // Continue with next item even if this one fails
+                    // Optionally notify admin here
+                    continue;
                 }
             }
             
@@ -326,74 +341,115 @@ function handleCheckoutSessionCompleted($event, $pdo) {
  */
 function handlePaymentIntentSucceeded($event, $pdo) {
     $payment_intent = $event->data->object;
+    $pi_id = $payment_intent->id;
 
-    // This is similar to checkout.session.completed
-    // Use metadata to find and update order
+    error_log("Stripe: Handling 'payment_intent.succeeded' for PI: {$pi_id}");
+
     try {
+        // Find order by metadata
         $order_id = $payment_intent->metadata->order_id ?? null;
         
         if (!$order_id) {
+            // Fallback for older checkouts without order_id in metadata
             $order_number = $payment_intent->metadata->order_number ?? null;
             if ($order_number) {
                 $stmt = $pdo->prepare("SELECT id FROM orders WHERE order_number = ?");
                 $stmt->execute([$order_number]);
                 $order = $stmt->fetch();
-                $order_id = $order['id'] ?? null;
+                if ($order) {
+                    $order_id = $order['id'];
+                    error_log("Stripe: Found order_id {$order_id} from order_number {$order_number}");
+                }
             }
         }
 
-        if ($order_id) {
-            $stmt = $pdo->prepare("UPDATE orders SET status = ?, notes = ? WHERE id = ? AND status = ?");
-            $stmt->execute([
-                'paid',
-                'Paid via Stripe. Intent: ' . $payment_intent->id,
-                $order_id,
-                'pending'
-            ]);
+        if (!$order_id) {
+            error_log("Stripe: No order_id found in metadata for PI: {$pi_id}");
+            return; 
+        }
 
-            // Clear customer's cart now that payment is confirmed (if customer exists)
-            $stmt2 = $pdo->prepare("SELECT customer_id FROM orders WHERE id = ?");
-            $stmt2->execute([$order_id]);
-            $o = $stmt2->fetch(PDO::FETCH_ASSOC);
-            if (!empty($o['customer_id'])) {
-                try {
-                    $deleteStmt = $pdo->prepare("DELETE FROM cart WHERE customer_id = ?");
-                    $deleteStmt->execute([$o['customer_id']]);
-                    error_log('Stripe: Cart cleared for customer ' . $o['customer_id'] . ' after payment_intent succeeded for order ' . $order_id);
-                } catch (Exception $e) {
-                    error_log('Stripe: failed to clear cart for customer ' . $o['customer_id'] . ': ' . $e->getMessage());
-                }
-            }
+        // Fetch order to verify details
+        $stmt = $pdo->prepare("SELECT * FROM orders WHERE id = ?");
+        $stmt->execute([$order_id]);
+        $order = $stmt->fetch();
 
-            // Log inventory transactions
+        if (!$order) {
+            error_log("Stripe: Order with ID {$order_id} not found for PI: {$pi_id}");
+            return;
+        }
+
+        // Idempotency: Check if already processed
+        if ($order['status'] === 'paid' || $order['status'] === 'processing') {
+            error_log("Stripe: Order {$order_id} already processed. Skipping.");
+            return;
+        }
+
+        // SECURITY: Verify amount matches (in pence for GBP)
+        $expected_amount = intval($order['total_amount'] * 100);
+        if ($payment_intent->amount !== $expected_amount) {
+            error_log("Stripe: Amount mismatch for order_id={$order_id}. Expected: {$expected_amount}, Received: {$payment_intent->amount}");
+            return;
+        }
+
+        // Update order status
+        $stmt = $pdo->prepare("UPDATE orders SET status = ?, payment_status = ?, notes = ? WHERE id = ?");
+        $stmt->execute(['processing', 'paid', "Paid via Stripe Intent: {$pi_id}", $order_id]);
+        error_log("Stripe: Order {$order_id} status updated to 'processing'.");
+
+        // Clear customer's cart
+        if (!empty($order['customer_id'])) {
             try {
-                $itemsStmt = $pdo->prepare("SELECT product_id, quantity FROM order_items WHERE order_id = ?");
-                $itemsStmt->execute([$order_id]);
-                $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
-                
-                if (!empty($items)) {
-                    $ch = curl_init();
-                    curl_setopt_array($ch, [
-                        CURLOPT_URL => 'http://' . $_SERVER['HTTP_HOST'] . '/api/inventory/log_transaction.php',
-                        CURLOPT_RETURNTRANSFER => true,
-                        CURLOPT_POST => true,
-                        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
-                        CURLOPT_POSTFIELDS => json_encode([
-                            'order_id' => $order_id,
-                            'order_items' => $items,
-                            'reference_type' => 'order'
-                        ]),
-                        CURLOPT_TIMEOUT => 10
-                    ]);
-                    curl_exec($ch);
-                    curl_close($ch);
-                }
+                $deleteStmt = $pdo->prepare("DELETE FROM cart WHERE customer_id = ?");
+                $deleteStmt->execute([$order['customer_id']]);
+                error_log("Stripe: Cart cleared for customer {$order['customer_id']}.");
             } catch (Exception $e) {
-                error_log('Stripe: failed to log inventory for order ' . $order_id . ': ' . $e->getMessage());
+                error_log("Stripe: Failed to clear cart for customer {$order['customer_id']}: " . $e->getMessage());
             }
         }
+
+        // Update inventory
+        try {
+            $itemsStmt = $pdo->prepare("SELECT product_id, quantity FROM order_items WHERE order_id = ?");
+            $itemsStmt->execute([$order_id]);
+            $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($items)) {
+                error_log("Stripe: No order items found for order {$order_id} to update inventory.");
+            } else {
+                $inventory_updated_count = 0;
+                foreach ($items as $item) {
+                    // Reduce stock for each item
+                    $updateStmt = $pdo->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ?");
+                    $updateStmt->execute([$item['quantity'], $item['product_id']]);
+                    $inventory_updated_count++;
+                }
+                error_log("Stripe: Inventory updated for {$inventory_updated_count} product(s) in order {$order_id}.");
+            }
+        } catch (Exception $e) {
+            error_log("Stripe: ERROR during inventory update for order {$order_id}: " . $e->getMessage());
+        }
+
+        // Send confirmation email and record analytics
+        try {
+            send_order_confirmation_email($pdo, $order_id);
+
+            $aeStmt = $pdo->prepare('INSERT INTO analytics_events (event_name, payload, user_id, ip_address, created_at) VALUES (?, ?, ?, ?, NOW())');
+            $payload = json_encode([
+                'order_id' => (int)$order_id,
+                'order_number' => $order['order_number'] ?? null,
+                'total_amount' => (float)$order['total_amount'] ?? null,
+                'provider' => 'stripe',
+                'payment_intent_id' => $pi_id
+            ]);
+            $aeStmt->execute(['order_created', $payload, $order['customer_id'] ?? null, $_SERVER['REMOTE_ADDR'] ?? null]);
+        } catch (Exception $e) {
+            error_log("Stripe: Failed post-payment tasks for order {$order_id}: " . $e->getMessage());
+        }
+
     } catch (PDOException $e) {
-        error_log('Stripe webhook error: ' . $e->getMessage());
+        error_log("Stripe webhook 'payment_intent.succeeded' DB error: " . $e->getMessage());
+    } catch (Exception $e) {
+        error_log("Stripe webhook 'payment_intent.succeeded' general error: " . $e->getMessage());
     }
 }
 

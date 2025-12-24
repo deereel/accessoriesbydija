@@ -44,6 +44,7 @@ $customers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <div style="display:flex; gap:8px; align-items:center;">
                                     <a href="#" class="btn" style="font-size:12px;">View Profile</a>
                                     <button class="btn force-reset-btn" data-customer-id="<?php echo intval($customer['id']); ?>" style="font-size:12px;">Force Reset</button>
+                                    <span class="reset-status" style="font-size:12px; color:green; display:none;">Reset!</span>
                                 </div>
                             </td>
                         </tr>
@@ -60,13 +61,32 @@ document.querySelectorAll('.force-reset-btn').forEach(function(btn){
     btn.addEventListener('click', function(e){
         e.preventDefault();
         var id = this.dataset.customerId;
+        var statusSpan = this.parentNode.querySelector('.reset-status');
         if(!confirm('Force password reset for this customer?')) return;
+        this.disabled = true;
+        statusSpan.style.display = 'none';
         fetch('/admin/force-password-reset.php', {
             method: 'POST', headers: {'Content-Type':'application/json'},
             body: JSON.stringify({ customer_id: id, action: 'set' })
         }).then(r=>r.json()).then(j=>{
-            if(j.success){ alert('Password reset forced for customer #' + id); } else { alert('Error: ' + (j.message||'failed')); }
-        }).catch(e=>{ alert('Network error'); });
+            if(j.success){
+                statusSpan.textContent = 'Reset!';
+                statusSpan.style.color = 'green';
+                statusSpan.style.display = '';
+            } else {
+                statusSpan.textContent = 'Error!';
+                statusSpan.style.color = 'red';
+                statusSpan.style.display = '';
+                alert('Error: ' + (j.message||'failed'));
+            }
+        }).catch(e=>{
+            statusSpan.textContent = 'Network error!';
+            statusSpan.style.color = 'red';
+            statusSpan.style.display = '';
+            alert('Network error');
+        }).finally(()=>{
+            this.disabled = false;
+        });
     });
 });
 </script>
