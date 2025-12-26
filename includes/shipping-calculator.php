@@ -69,7 +69,7 @@ function getFreeShippingThreshold($customer_id, $country, $pdo) {
  */
 function calculateShippingFee($country, $total_weight_grams = 0, $subtotal = 0, $customer_id = null, $pdo = null) {
     // Check if eligible for free shipping
-    if ($subtotal > 0 && $customer_id !== false && $pdo !== null) {
+    if ($subtotal > 0 && $pdo !== null) {
         $threshold = getFreeShippingThreshold($customer_id, $country, $pdo);
         if ($subtotal >= $threshold) {
             return 0.00; // Free shipping

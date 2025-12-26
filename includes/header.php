@@ -25,6 +25,7 @@ require_once 'config/cache.php';
     <link rel="stylesheet" href="assets/css/testimonials.css">
     <link rel="stylesheet" href="assets/css/footer.css">
     <link rel="stylesheet" href="assets/css/product-cards.css">
+    <link rel="stylesheet" href="assets/css/megamenu.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="assets/js/header.js" defer></script>
@@ -65,7 +66,7 @@ require_once 'config/cache.php';
     .scroll-top:focus { outline: 2px solid #fff; }
     </style>
 </head>
-<body>
+<body class="<?php echo isset($body_class) ? $body_class : ''; ?>">
     <header class="header">
         <div class="header-top">
             <div class="search-container">

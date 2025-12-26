@@ -9,7 +9,7 @@ require_once __DIR__ . '/../config/database.php';
 try {
     // Create support_tickets table directly
     $pdo->exec("
-        CREATE TABLE IF NOT EXISTS support_tickets (
+        CREATE TABLE IF NOT EXISTS support_tickets ( 
             id INT PRIMARY KEY AUTO_INCREMENT,
             customer_id INT,
             customer_email VARCHAR(255) NOT NULL,
@@ -93,15 +93,61 @@ try {
     $colCheck->execute();
     if ($colCheck->fetchColumn() == 0) {
         $pdo->exec("ALTER TABLE customers ADD COLUMN force_password_reset TINYINT(1) DEFAULT 0");
-        $columns_added[] = 'customers.force_password_reset';
+        $pdo->exec("ALTER TABLE customers ADD INDEX idx_force_password_reset (force_password_reset)");
+        $columns_added[] = 'customers.force_password_reset (with index)';
     }
     
-    echo json_encode([
+    // Add can_force_password_reset permission to admin_users if missing
+    $adminResetCheck = $pdo->prepare("
+        SELECT COUNT(*) 
+        FROM information_schema.columns 
+        WHERE table_schema = DATABASE() 
+        AND table_name = 'admin_users' 
+        AND column_name = 'can_force_password_reset'
+    ");
+    $adminResetCheck->execute();
+    if ($adminResetCheck->fetchColumn() == 0) {
+        $pdo->exec("
+            ALTER TABLE admin_users 
+            ADD COLUMN can_force_password_reset TINYINT(1) DEFAULT 0,
+            ADD INDEX idx_can_force_reset (can_force_password_reset)
+        ");
+        $columns_added[] = 'admin_users.can_force_password_reset (permission)';
+        
+        // Grant permission to superadmin by default
+        $pdo->exec("UPDATE admin_users SET can_force_password_reset = 1 WHERE role = 'superadmin'");
+    }
+
+    // Prepare response with all changes made
+    $response = [
         'success' => true,
-        'message' => 'All required tables created/verified successfully',
-        'tables_created' => ['support_tickets', 'inventory_transactions', 'inventory_logs'],
-        'columns_added' => $columns_added
+        'message' => 'Database migration completed successfully'
+    ];
+    // Add tables created if any
+    $tables_created = array_filter([
+        'support_tickets',
+        'inventory_transactions',
+        'inventory_logs'
     ]);
+    if (!empty($tables_created)) {
+        $response['tables_created'] = $tables_created;
+    }
+    // Add columns added if any
+    if (!empty($columns_added)) {
+        $response['columns_added'] = $columns_added;
+    }
+    // Add summary message
+    $summary = [];
+    if (!empty($tables_created)) {
+        $summary[] = count($tables_created) . " table(s) verified/created";
+    }
+    if (!empty($columns_added)) {
+        $summary[] = count($columns_added) . " column(s) added/updated";
+    }
+    if (!empty($summary)) {
+        $response['message'] .= " - " . implode(", ", $summary);
+    }
+    echo json_encode($response);
     
 } catch (PDOException $e) {
     echo json_encode(['success'=>false,'message'=>'Error: ' . $e->getMessage()]);

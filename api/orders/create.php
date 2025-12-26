@@ -251,11 +251,17 @@ try {
 
     // Calculate shipping based on country and total weight
     $total_weight = calculateTotalWeight($cart_items, $pdo);
-    $shipping = calculateShippingFee($country, $total_weight, $subtotal, $customer_id, $pdo);
     
-    // If country not recognized, use default for now (should be handled by client)
-    if ($shipping === null) {
-        $shipping = 5.00; // Default shipping if location not found
+    // Use shipping cost from request if provided, otherwise calculate it
+    if (isset($data['shipping_cost'])) {
+        $shipping = floatval($data['shipping_cost']);
+    } else {
+        $shipping = calculateShippingFee($country, $total_weight, $subtotal, $customer_id, $pdo);
+        
+        // If country not recognized, use default for now (should be handled by client)
+        if ($shipping === null) {
+            $shipping = 5.00; // Default shipping if location not found
+        }
     }
     
     $total_amount = round($subtotal + $shipping - $discount, 2);

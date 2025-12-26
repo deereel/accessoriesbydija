@@ -1,7 +1,11 @@
 <?php
 header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com fonts.googleapis.com; connect-src 'self' api.exchangerate-api.com; img-src 'self' data:; font-src 'self' fonts.gstatic.com;");
 require_once 'config/database.php';
+
+// Set page variables
+$body_class = 'products-page';
 $page_title = 'All Products | Accessories by Dija';
+
 include 'includes/header.php';
 
 // --- FILTER DATA FETCHING ---

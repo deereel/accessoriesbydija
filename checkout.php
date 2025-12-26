@@ -559,7 +559,8 @@ include 'includes/header.php';
                     contact_phone: contactPhone,
                     payment_method: paymentMethod,
                     promo_code: document.getElementById('promo_code').value || null,
-                    client_discount: Math.round(clientDiscount * 100) / 100  // Round to 2 decimals
+                    client_discount: Math.round(clientDiscount * 100) / 100,  // Round to 2 decimals
+                    shipping_cost: SHIPPING_COST  // Include the calculated shipping cost
                 };
                 
                 // For logged-in customers

@@ -27,15 +27,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($step === 'ask') {
         $email = $_POST['email'] ?? null;
         if ($email) {
-            $stmt = $pdo->prepare("SELECT id, security_question_pair_id FROM customers WHERE email = ?");
+            // First check if force_password_reset is enabled for this user
+            $stmt = $pdo->prepare("
+                SELECT id, security_question_pair_id, force_password_reset 
+                FROM customers 
+                WHERE email = ?
+            ");
             $stmt->execute([$email]);
             $user = $stmt->fetch();
-            if ($user && !empty($user['security_question_pair_id'])) {
+            
+            if ($user) {
                 $_SESSION['customer_id_for_reset'] = $user['id'];
-                $_SESSION['question_pair_id'] = $user['security_question_pair_id'];
-                // We don't change the step here, we let the page re-render to show the questions
+                
+                // Check if force password reset is enabled
+                if ($user['force_password_reset']) {
+                    // Skip security questions and go directly to password reset
+                    $_SESSION['reset_password_allowed'] = true;
+                    // Clear the force password reset flag
+                    $pdo->prepare("UPDATE customers SET force_password_reset = 0 WHERE id = ?")->execute([$user['id']]);
+                    header('Location: security-reset.php?step=set');
+                    exit;
+                }
+                // Original flow with security questions
+                else if (!empty($user['security_question_pair_id'])) {
+                    $_SESSION['question_pair_id'] = $user['security_question_pair_id'];
+                    // Let it render the questions
+                } else {
+                    $error = "No security questions set up for this account. Please contact support.";
+                    $step = 'email';
+                }
             } else {
-                $error = "No account found with that email or no security questions set up.";
+                $error = "No account found with that email.";
                 $step = 'email';
             }
         } else {
@@ -85,6 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 }
+
 
 $page_title = "Password Reset - Dija Accessories";
 include 'includes/header.php';

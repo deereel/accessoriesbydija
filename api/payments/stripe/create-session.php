@@ -104,6 +104,7 @@ try {
     $host = $_SERVER['HTTP_HOST'];
     $base_url = $protocol . '://' . $host;
     
+    // In create-session.php, around line 107, modify the session_params array:
     $session_params = [
         'payment_method_types' => ['card'],
         'line_items' => $line_items,
@@ -113,7 +114,11 @@ try {
         'customer_email' => $order['email'],
         'metadata' => [
             'order_id' => $order_id
-        ]
+        ],
+        'payment_intent_data' => [
+            // Removed invalid 'currency' parameter - currency is set at session level
+        ],
+        'currency' => 'gbp'  // Force currency to GBP
     ];
 
     // Make API request to Stripe
