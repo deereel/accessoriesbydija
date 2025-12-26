@@ -127,20 +127,28 @@ function closeMigrations(){ document.getElementById('migrations-modal').style.di
 document.getElementById('run-migrations-btn') && document.getElementById('run-migrations-btn').addEventListener('click', function(){ document.getElementById('migrations-modal').style.display='flex'; });
 document.getElementById('migrations-run') && document.getElementById('migrations-run').addEventListener('click', function(){
     var btn = this; btn.disabled = true; btn.textContent = 'Running...';
-    fetch('/admin/quick-migrate.php',{method:'POST'}).then(r=>r.json()).then(j=>{
+    fetch('/admin/run-migrations.php',{method:'POST'}).then(r=>r.json()).then(j=>{
         btn.disabled = false; btn.textContent = 'Run';
-        if(j.success){ 
+        if(j.success){
             var html = '<div style="background:#e6ffed; border:1px solid #86efac; padding:12px; border-radius:6px; margin-bottom:12px;">';
-            html += '<p style="color:#166534; margin:0;"><strong>✓ Success!</strong> ' + j.message + '</p></div>';
-            if(j.tables_created && j.tables_created.length > 0) {
-                html += '<p><strong>Tables Created:</strong> ' + j.tables_created.join(', ') + '</p>';
-            }
-            if(j.columns_added && j.columns_added.length > 0) {
-                html += '<p><strong>Columns Added:</strong> ' + j.columns_added.join(', ') + '</p>';
+            html += '<p style="color:#166534; margin:0;"><strong>✓ Migration Completed Successfully!</strong></p></div>';
+            if(j.results && j.results.length > 0) {
+                var created = j.results.filter(r => r.action === 'created').map(r => r.table);
+                var altered = j.results.filter(r => r.action === 'altered').map(r => r.table);
+                var executed = j.results.filter(r => r.action === 'executed').length;
+                var errors = j.results.filter(r => r.action === 'error');
+                if(created.length > 0) html += '<p><strong>Tables Created:</strong> ' + created.join(', ') + '</p>';
+                if(altered.length > 0) html += '<p><strong>Tables Altered:</strong> ' + altered.join(', ') + '</p>';
+                if(executed > 0) html += '<p><strong>Statements Executed:</strong> ' + executed + '</p>';
+                if(errors.length > 0) {
+                    html += '<p><strong>Errors:</strong></p><ul>';
+                    errors.forEach(e => html += '<li>' + (e.statement ? e.statement.substring(0,50) + '...' : 'Unknown') + ': ' + e.error + '</li>');
+                    html += '</ul>';
+                }
             }
             document.getElementById('migrations-body').innerHTML = html;
-        } else { 
-            document.getElementById('migrations-body').innerHTML = '<div style="color:#b33; background:#ffe6e6; border:1px solid #fca5a5; padding:12px; border-radius:6px;">Error: '+(j.message||'Unknown')+'</div>'; 
+        } else {
+            document.getElementById('migrations-body').innerHTML = '<div style="color:#b33; background:#ffe6e6; border:1px solid #fca5a5; padding:12px; border-radius:6px;">Error: '+(j.message||'Unknown')+'</div>';
         }
     }).catch(e=>{ btn.disabled=false; btn.textContent='Run'; document.getElementById('migrations-body').innerHTML = '<div style="color:#b33;">Network error</div>'; });
 });

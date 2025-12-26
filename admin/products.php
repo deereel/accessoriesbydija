@@ -10,602 +10,212 @@ $active_nav = 'products';
 
 require_once '../config/database.php';
 
-// Pagination setup
-$limit = 10; // Number of products per page
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$offset = ($page - 1) * $limit;
-
-// Filtering and Search
-$where = ["1=1"]; // Start with a true condition
-$params = [];
-
-if (!empty($_GET['search'])) {
-    $searchTerm = '%' . $_GET['search'] . '%';
-    $where[] = "(p.name LIKE ? OR p.sku LIKE ? OR p.description LIKE ?)";
-    array_push($params, $searchTerm, $searchTerm, $searchTerm);
-}
-
-if (!empty($_GET['gender'])) {
-    $where[] = "p.gender = ?";
-    $params[] = $_GET['gender'];
-}
-
-if (!empty($_GET['status'])) {
-    $status = $_GET['status'] === 'active' ? 1 : 0;
-    $where[] = "p.is_active = ?";
-    $params[] = $status;
-}
-
-// Get total number of products for pagination
-$count_sql = "SELECT COUNT(*) FROM products p WHERE " . implode(" AND ", $where);
-$count_stmt = $pdo->prepare($count_sql);
-$count_stmt->execute($params);
-$total_products_count = $count_stmt->fetchColumn();
-$total_pages = ceil($total_products_count / $limit);
-
-
-// Handle product operations for authorized users
+// This top part handles the AJAX POST requests for adding/updating products
 if (isset($_SESSION['admin_role']) && in_array($_SESSION['admin_role'], ['admin', 'superadmin'])) {
-    if ($_POST) {
-        $action = $_POST['action'] ?? '';
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+        $action = $_POST['action'];
 
-        if ($action === 'add_product') {
-            $slug = strtolower(str_replace(' ', '-', $_POST['product_name']));
-            $stmt = $pdo->prepare("INSERT INTO products (name, slug, description, sku, price, stock_quantity, weight, material, stone_type, gender, is_featured, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$_POST['product_name'], $slug, $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], $_POST['weight'], $_POST['material'], $_POST['stone_type'], $_POST['gender'], isset($_POST['is_featured']) ? 1 : 0, isset($_POST['is_active']) ? 1 : 0]);
-            $product_id = $pdo->lastInsertId();
+        if ($action === 'add_product' || $action === 'update_product') {
+            header('Content-Type: application/json');
+            $is_update = ($action === 'update_product');
+            $response = ['success' => false, 'message' => 'An unknown error occurred.'];
+            $pdo->beginTransaction();
 
-            // Handle category assignment
-            if (!empty($_POST['category'])) {
-                $category_id = (int)$_POST['category'];
-                $cat_stmt = $pdo->prepare("INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)");
-                $cat_stmt->execute([$product_id, $category_id]);
-            }
+            try {
+                $product_name = $_POST['product_name'] ?? '';
+                $product_id = $is_update ? (int)$_POST['product_id'] : null;
 
-            $uploads_dir = '../assets/images/products';
-            if (!is_dir($uploads_dir)) {
-                mkdir($uploads_dir, 0777, true);
-            }
-
-            // Handle main image upload
-            if (isset($_FILES['main_image']) && $_FILES['main_image']['error'] === UPLOAD_ERR_OK) {
-                $file_name = uniqid() . '-' . basename($_FILES['main_image']['name']);
-                $destination = "$uploads_dir/$file_name";
-                if (move_uploaded_file($_FILES['main_image']['tmp_name'], $destination)) {
-                    $image_url = "assets/images/products/$file_name";
-                    $img_stmt = $pdo->prepare("INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, ?)");
-                    $img_stmt->execute([$product_id, $image_url, 1]);
+                if (empty($product_name)) {
+                    throw new Exception("Product name is required.");
                 }
-            }
 
-            // Handle additional images upload
-            if (isset($_FILES['additional_images'])) {
-                foreach ($_FILES['additional_images']['tmp_name'] as $key => $tmp_name) {
-                    if ($_FILES['additional_images']['error'][$key] === UPLOAD_ERR_OK) {
-                        $file_name = uniqid() . '-' . basename($_FILES['additional_images']['name'][$key]);
-                        $destination = "$uploads_dir/$file_name";
-                        if (move_uploaded_file($tmp_name, $destination)) {
-                            $image_url = "assets/images/products/$file_name";
-                            $img_stmt = $pdo->prepare("INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, ?)");
-                            $img_stmt->execute([$product_id, $image_url, 0]);
+                // 1. Insert or Update Base Product
+                if ($is_update) {
+                    $stmt = $pdo->prepare("UPDATE products SET name=?, slug=?, description=?, price=?, stock_quantity=?, weight=?, size=?, gender=?, is_featured=?, is_active=? WHERE id=?");
+                    $stmt->execute([$product_name, strtolower(str_replace(' ', '-', $product_name)), $_POST['description'], $_POST['price'], $_POST['stock'], $_POST['weight'], $_POST['size'], $_POST['gender'], isset($_POST['is_featured']) ? 1 : 0, isset($_POST['is_active']) ? 1 : 0, $product_id]);
+                } else {
+                    $words = explode(' ', $product_name);
+                    $initials = '';
+                    foreach ($words as $w) { if(!empty($w)) $initials .= strtoupper($w[0]); }
+                    $sku = $initials . '01';
+                    $counter = 1;
+                    while (true) {
+                        $stmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE sku = ?");
+                        $stmt->execute([$sku]);
+                        if ($stmt->fetchColumn() == 0) break;
+                        $counter++;
+                        $sku = $initials . str_pad($counter, 2, '0', STR_PAD_LEFT);
+                    }
+                    
+                    $slug = strtolower(str_replace(' ', '-', $product_name));
+                    $stmt = $pdo->prepare("INSERT INTO products (name, slug, description, sku, price, stock_quantity, weight, size, gender, is_featured, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([$product_name, $slug, $_POST['description'], $sku, $_POST['price'], $_POST['stock'], $_POST['weight'], $_POST['size'], $_POST['gender'], isset($_POST['is_featured']) ? 1 : 0, isset($_POST['is_active']) ? 1 : 0]);
+                    $product_id = $pdo->lastInsertId();
+                }
+
+                // 2. Clear and Re-insert Relationships
+                if ($is_update) {
+                    $pdo->prepare("DELETE FROM product_categories WHERE product_id = ?")->execute([$product_id]);
+                    $pdo->prepare("DELETE FROM product_materials WHERE product_id = ?")->execute([$product_id]);
+                    $pdo->prepare("DELETE FROM product_colors WHERE product_id = ?")->execute([$product_id]);
+                    $pdo->prepare("DELETE FROM product_adornments WHERE product_id = ?")->execute([$product_id]);
+                    // Clean up variants and images before re-inserting
+                    $pdo->prepare("DELETE FROM product_variants WHERE product_id = ?")->execute([$product_id]);
+                    $pdo->prepare("DELETE FROM product_images WHERE product_id = ?")->execute([$product_id]);
+                }
+                
+                if (isset($_POST['category']) && !empty($_POST['category'])) { $pdo->prepare("INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)")->execute([$product_id, (int)$_POST['category']]); }
+                if (isset($_POST['materials']) && !empty($_POST['materials'])) { $stmt = $pdo->prepare("INSERT INTO product_materials (product_id, material_id) VALUES (?, ?)"); foreach ($_POST['materials'] as $id) { $stmt->execute([$product_id, (int)$id]); } }
+                if (!empty($_POST['color'])) { $pdo->prepare("INSERT INTO product_colors (product_id, color_id) VALUES (?, ?)")->execute([$product_id, (int)$_POST['color']]); }
+                if (isset($_POST['adornments']) && !empty($_POST['adornments'])) { $stmt = $pdo->prepare("INSERT INTO product_adornments (product_id, adornment_id) VALUES (?, ?)"); foreach ($_POST['adornments'] as $id) { $stmt->execute([$product_id, (int)$id]); } }
+
+                // 3. Handle Variants & Images
+                $variants_data = $_POST['variants'] ?? [];
+                $uploads_dir = '../assets/images/products';
+                if (!is_dir($uploads_dir)) { mkdir($uploads_dir, 0777, true); }
+                $total_variant_stock = 0;
+                
+                // Process Main Image + Variant
+                if (isset($_FILES['main_image']) && $_FILES['main_image']['error'] === UPLOAD_ERR_OK) {
+                    $variant_info = $variants_data['main_0'] ?? null;
+                    if ($variant_info && !empty($variant_info['tag'])) {
+                        $total_variant_stock += (int)($variant_info['stock'] ?? 0);
+                        $stmt = $pdo->prepare("INSERT INTO product_variants (product_id, sku, price_override, size_override) VALUES (?, ?, ?, ?)");
+                        $stmt->execute([$product_id, $variant_info['tag'], $variant_info['price'] ?: null, $variant_info['size'] ?: null]);
+                        $variant_id = $pdo->lastInsertId();
+                        $pdo->prepare("INSERT INTO variant_tags (product_id, variant_id, tag) VALUES (?, ?, ?)")->execute([$product_id, $variant_id, $variant_info['tag']]);
+                        $pdo->prepare("INSERT INTO variant_stock (variant_id, stock_quantity) VALUES (?, ?)")->execute([$variant_id, (int)$variant_info['stock']]);
+
+                        $file_name = uniqid() . '-' . basename($_FILES['main_image']['name']);
+                        if (move_uploaded_file($_FILES['main_image']['tmp_name'], "$uploads_dir/$file_name")) {
+                            $pdo->prepare("INSERT INTO product_images (product_id, image_url, is_primary, variant_id) VALUES (?, ?, 1, ?)")->execute([$product_id, "assets/images/products/$file_name", $variant_id]);
                         }
                     }
                 }
-            }
-            $success = "Product added successfully!";
-        } elseif ($action === 'update_product') {
-            $product_id = (int)$_POST['product_id'];
-            $stmt = $pdo->prepare("UPDATE products SET name=?, description=?, sku=?, price=?, stock_quantity=?, weight=?, material=?, stone_type=?, gender=?, is_featured=?, is_active=? WHERE id=?");
-            $stmt->execute([$_POST['product_name'], $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], $_POST['weight'], $_POST['material'], $_POST['stone_type'], $_POST['gender'], isset($_POST['is_featured']) ? 1 : 0, isset($_POST['is_active']) ? 1 : 0, $product_id]);
+                
+                // Process Additional Images + Variants
+                if (isset($_FILES['additional_images']['name'])) {
+                     foreach ($_FILES['additional_images']['name'] as $key => $name) {
+                        if ($_FILES['additional_images']['error'][$key] !== UPLOAD_ERR_OK) continue;
+                        $variant_key = "additional_{$key}";
+                        $variant_info = $variants_data[$variant_key] ?? null;
 
-            // Handle category update
-            $del_cat_stmt = $pdo->prepare("DELETE FROM product_categories WHERE product_id = ?");
-            $del_cat_stmt->execute([$product_id]);
-            if (!empty($_POST['category'])) {
-                $category_id = (int)$_POST['category'];
-                $cat_stmt = $pdo->prepare("INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)");
-                $cat_stmt->execute([$product_id, $category_id]);
-            }
-
-            $uploads_dir = '../assets/images/products';
-            if (!is_dir($uploads_dir)) {
-                mkdir($uploads_dir, 0777, true);
-            }
-
-            // Handle main image upload
-            if (isset($_FILES['main_image']) && $_FILES['main_image']['error'] === UPLOAD_ERR_OK) {
-                // Find and delete old primary image
-                $find_old_primary_stmt = $pdo->prepare("SELECT id, image_url FROM product_images WHERE product_id = ? AND is_primary = 1");
-                $find_old_primary_stmt->execute([$product_id]);
-                $old_primary = $find_old_primary_stmt->fetch();
-
-                if ($old_primary) {
-                    if (file_exists('../' . $old_primary['image_url'])) {
-                        unlink('../' . $old_primary['image_url']);
-                    }
-                    $delete_old_primary_stmt = $pdo->prepare("DELETE FROM product_images WHERE id = ?");
-                    $delete_old_primary_stmt->execute([$old_primary['id']]);
-                }
-
-                $file_name = uniqid() . '-' . basename($_FILES['main_image']['name']);
-                $destination = "$uploads_dir/$file_name";
-                if (move_uploaded_file($_FILES['main_image']['tmp_name'], $destination)) {
-                    $image_url = "assets/images/products/$file_name";
-                    $img_stmt = $pdo->prepare("INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, ?)");
-                    $img_stmt->execute([$product_id, $image_url, 1]);
-                }
-            }
-
-            // Handle additional images upload
-            if (isset($_FILES['additional_images'])) {
-                foreach ($_FILES['additional_images']['tmp_name'] as $key => $tmp_name) {
-                    if ($_FILES['additional_images']['error'][$key] === UPLOAD_ERR_OK) {
-                        $file_name = uniqid() . '-' . basename($_FILES['additional_images']['name'][$key]);
-                        $destination = "$uploads_dir/$file_name";
-                        if (move_uploaded_file($tmp_name, $destination)) {
-                            $image_url = "assets/images/products/$file_name";
-                            $img_stmt = $pdo->prepare("INSERT INTO product_images (product_id, image_url, is_primary) VALUES (?, ?, ?)");
-                            $img_stmt->execute([$product_id, $image_url, 0]);
+                         if ($variant_info && !empty($variant_info['tag'])) {
+                            $total_variant_stock += (int)($variant_info['stock'] ?? 0);
+                            $stmt = $pdo->prepare("INSERT INTO product_variants (product_id, sku, price_override, size_override) VALUES (?, ?, ?, ?)");
+                            $stmt->execute([$product_id, $variant_info['tag'], $variant_info['price'] ?: null, $variant_info['size'] ?: null]);
+                            $variant_id = $pdo->lastInsertId();
+                            $pdo->prepare("INSERT INTO variant_tags (product_id, variant_id, tag) VALUES (?, ?, ?)")->execute([$product_id, $variant_id, $variant_info['tag']]);
+                            $pdo->prepare("INSERT INTO variant_stock (variant_id, stock_quantity) VALUES (?, ?)")->execute([$variant_id, (int)$variant_info['stock']]);
+                            $file_name = uniqid() . '-' . basename($name);
+                            if (move_uploaded_file($_FILES['additional_images']['tmp_name'][$key], "$uploads_dir/$file_name")) {
+                                $pdo->prepare("INSERT INTO product_images (product_id, image_url, is_primary, variant_id) VALUES (?, ?, 0, ?)")->execute([$product_id, "assets/images/products/$file_name", $variant_id]);
+                            }
                         }
                     }
                 }
+
+                // 4. Stock Validation
+                $main_stock = (int)($_POST['stock'] ?? 0);
+                if (!empty($variants_data) && $total_variant_stock > 0 && $total_variant_stock !== $main_stock) {
+                    throw new Exception("The sum of variant stock quantities ($total_variant_stock) must equal the main product stock quantity ($main_stock).");
+                }
+
+                $pdo->commit();
+                $response = ['success' => true, 'message' => 'Product ' . ($is_update ? 'updated' : 'added') . ' successfully!'];
+
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                $response = ['success' => false, 'message' => $e->getMessage()];
             }
-            $success = "Product updated successfully!";
-        } elseif ($action === 'delete_product') {
+            echo json_encode($response);
+            exit;
+        }
+        
+        if ($action === 'delete_product') {
             $stmt = $pdo->prepare("DELETE FROM products WHERE id=?");
             $stmt->execute([$_POST['product_id']]);
-            $success = "Product deleted successfully!";
+            header('Location: products.php');
+            exit;
         }
     }
 }
 
-// Fetch products from database with filters and pagination
-$sql = "SELECT p.*, (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1) as main_image 
+// --- This part is for the GET request to display the page ---
+$limit = 10; $page = isset($_GET['page']) ? (int)$_GET['page'] : 1; $offset = ($page - 1) * $limit;
+$where = ["p.is_active IN (0,1)"]; $params = [];
+if (!empty($_GET['search'])) { $searchTerm = '%' . $_GET['search'] . '%'; $where[] = "(p.name LIKE ? OR p.sku LIKE ?)"; array_push($params, $searchTerm, $searchTerm); }
+if (!empty($_GET['gender'])) { $where[] = "p.gender = ?"; $params[] = $_GET['gender']; }
+if (isset($_GET['status']) && $_GET['status'] !== '') { $where[] = "p.is_active = ?"; $params[] = (int)$_GET['status']; }
+$count_sql = "SELECT COUNT(*) FROM products p WHERE " . implode(" AND ", $where);
+$count_stmt = $pdo->prepare($count_sql); $count_stmt->execute($params); $total_products_count = $count_stmt->fetchColumn(); $total_pages = ceil($total_products_count / $limit);
+$sql = "SELECT p.*, (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1) as main_image, GROUP_CONCAT(DISTINCT m.name SEPARATOR ', ') as materials
         FROM products p 
+        LEFT JOIN product_materials pm ON p.id = pm.product_id
+        LEFT JOIN materials m ON pm.material_id = m.id
         WHERE " . implode(" AND ", $where) . " 
-        ORDER BY created_at DESC 
-        LIMIT ? OFFSET ?";
-
-$stmt = $pdo->prepare($sql);
-
-// Bind filter parameters
-foreach ($params as $key => $value) {
-    $stmt->bindValue($key + 1, $value);
-}
-
-// Bind LIMIT and OFFSET as integers
-$stmt->bindValue(count($params) + 1, $limit, PDO::PARAM_INT);
-$stmt->bindValue(count($params) + 2, $offset, PDO::PARAM_INT);
-
-$stmt->execute();
-$products = $stmt->fetchAll();
-
-// Fetch categories for the modal dropdown
+        GROUP BY p.id ORDER BY p.created_at DESC LIMIT ? OFFSET ?";
+$stmt = $pdo->prepare($sql); foreach ($params as $key => $value) { $stmt->bindValue($key + 1, $value); }
+$stmt->bindValue(count($params) + 1, $limit, PDO::PARAM_INT); $stmt->bindValue(count($params) + 2, $offset, PDO::PARAM_INT);
+$stmt->execute(); $products = $stmt->fetchAll();
 $categories_from_db = $pdo->query("SELECT id, name FROM categories ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+$materials_from_db = $pdo->query("SELECT id, name FROM materials ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+$colors_from_db = $pdo->query("SELECT id, name FROM colors ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+$adornments_from_db = $pdo->query("SELECT id, name FROM adornments ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+include '_layout_header.php'; 
 ?>
-
-<?php include '_layout_header.php'; ?>
-
-    <?php if (isset($success)): ?>
-        <div class="card">
-            <div class="card-body" style="background:#d4edda; color:#155724;">
-                <?php echo $success; ?>
-            </div>
-        </div>
-    <?php endif; ?>
-
-    <div class="card">
-        <div class="card-header">
-            <i class="fas fa-gem"></i> Products Management
-            <?php if (isset($_SESSION['admin_role']) && in_array($_SESSION['admin_role'], ['admin', 'superadmin'])): ?>
-            <button class="btn" style="float:right; margin-top:-8px;" onclick="openAddModal()">+ Add Product</button>
-            <?php endif; ?>
-            <a href="products.php" class="btn" style="float:right; margin-top:-8px; margin-right:10px; background:#6c757d;">Clear Filters</a>
-        </div>
-        <div class="card-body">
-            <form method="GET" action="products.php" style="margin-bottom:16px; display:flex; gap:10px;">
-                <input type="text" name="search" placeholder="Search products..." value="<?php echo htmlspecialchars($_GET['search'] ?? ''); ?>" style="flex:1; padding:8px; border:1px solid #ddd; border-radius:4px;">
-                <select name="gender" style="padding:8px; border:1px solid #ddd; border-radius:4px;">
-                    <option value="">All Genders</option>
-                    <option value="unisex" <?php echo ($_GET['gender'] ?? '') === 'unisex' ? 'selected' : ''; ?>>Unisex</option>
-                    <option value="women" <?php echo ($_GET['gender'] ?? '') === 'women' ? 'selected' : ''; ?>>Women</option>
-                    <option value="men" <?php echo ($_GET['gender'] ?? '') === 'men' ? 'selected' : ''; ?>>Men</option>
-                </select>
-                <select name="status" style="padding:8px; border:1px solid #ddd; border-radius:4px;">
-                    <option value="">All Status</option>
-                    <option value="active" <?php echo ($_GET['status'] ?? '') === 'active' ? 'selected' : ''; ?>>Active</option>
-                    <option value="inactive" <?php echo ($_GET['status'] ?? '') === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
-                </select>
-                <button type="submit" class="btn">Filter</button>
-            </form>
-
-            <!-- Success/Error Messages -->
-            <div style="margin-bottom: 15px;">
-                <?php if (isset($error)): ?>
-                    <div class="alert alert-danger"><?php echo $error; ?></div>
-                <?php endif; ?>
-                <?php if (isset($success)): ?>
-                    <div class="alert alert-success"><?php echo $success; ?></div>
-                <?php endif; ?>
-            </div>
-
-            <div class="table-container">
-                <table style="width:100%; border-collapse:collapse;">
-                    <thead>
-                        <tr style="background:#f5f5f5;">
-                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Image</th>
-                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Product</th>
-                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">SKU</th>
-                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Price</th>
-                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Weight</th>
-                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Stock</th>
-                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Material</th>
-                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Status</th>
-                            <?php if (isset($_SESSION['admin_role']) && in_array($_SESSION['admin_role'], ['admin', 'superadmin'])): ?>
-                            <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Actions</th>
-                            <?php endif; ?>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($products as $product): ?>
-                        <tr style="border-bottom:1px solid #eee;">
-                            <td style="padding:10px;"> 
-                                <?php if (!empty($product['main_image'])): ?>
-                                    <img src="../<?php echo htmlspecialchars($product['main_image']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" style="width:50px; height:50px; object-fit:cover; border-radius:4px;">
-                                <?php else: ?>
-                                    <div style="width:50px; height:50px; background:#f0f0f0; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:12px; color:#666;">
-                                        No Img
-                                    </div>
-                                <?php endif; ?>
-                            </td>
-                            <td style="padding:10px;">
-                                <strong><?php echo htmlspecialchars($product['name']); ?></strong>
-                                <?php if ($product['is_featured']): ?>
-                                    <br><span style="background:#fff3cd; color:#856404; padding:2px 6px; border-radius:3px; font-size:11px;">Featured</span>
-                                <?php endif; ?>
-                            </td>
-                            <td style="padding:10px;"><?php echo htmlspecialchars($product['sku']); ?></td>
-                            <td style="padding:10px;">£<?php echo number_format($product['price'], 2); ?></td>
-                            <td style="padding:10px;"><?php echo $product['weight'] ? htmlspecialchars($product['weight']) . 'g' : '-'; ?></td>
-                            <td style="padding:10px;"><?php echo $product['stock_quantity']; ?></td>
-                            <td style="padding:10px;"><?php echo htmlspecialchars($product['material']); ?></td>
-                            <td style="padding:10px;">
-                                <span style="background:<?php echo $product['is_active']?'#d4edda':'#f8d7da'; ?>; color:<?php echo $product['is_active']?'#155724':'#721c24'; ?>; padding:4px 8px; border-radius:3px; font-size:12px;">
-                                    <?php echo $product['is_active'] ? 'Active' : 'Inactive'; ?>
-                                </span>
-                            </td>
-                            <?php if (isset($_SESSION['admin_role']) && in_array($_SESSION['admin_role'], ['admin', 'superadmin'])): ?>
-                            <td style="padding:10px;">
-                                <button class="btn" style="background:#007bff; font-size:11px;" onclick="editProduct(<?php echo $product['id']; ?>)">Edit</button>
-                                <button class="btn" style="background:#ffc107; color:#000; font-size:11px;" onclick="toggleFeatured(<?php echo $product['id']; ?>)">
-                                    <?php echo $product['is_featured'] ? 'Unfeature' : 'Feature'; ?>
-                                </button>
-                                <button class="btn" style="background:#dc3545; font-size:11px;" onclick="deleteProduct(<?php echo $product['id']; ?>)">Delete</button>
-                            </td>
-                            <?php endif; ?>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Pagination Controls -->
-            <div style="margin-top:20px; text-align:center;">
-                <?php if ($total_pages > 1): ?>
-                    <?php
-                    // Build query string without page parameter
-                    $query_params = $_GET;
-                    unset($query_params['page']);
-                    $query_string = http_build_query($query_params);
-                    ?>
-                    <?php if ($page > 1): ?>
-                        <a href="?page=<?php echo $page - 1; ?>&<?php echo $query_string; ?>" class="btn" style="margin-right:5px;">Previous</a>
-                    <?php endif; ?>
-                    <?php for ($i = 1; $i <= $total_pages; $i++): ?>
-                        <a href="?page=<?php echo $i; ?>&<?php echo $query_string; ?>" class="btn <?php echo ($i === $page) ? 'btn-success' : ''; ?>" style="margin-right:5px;"><?php echo $i; ?></a>
-                    <?php endfor; ?>
-                    <?php if ($page < $total_pages): ?>
-                        <a href="?page=<?php echo $page + 1; ?>&<?php echo $query_string; ?>" class="btn">Next</a>
-                    <?php endif; ?>
-                <?php endif; ?>
-            </div>
+<style> .modal-content .checkbox-group { max-height: 150px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 4px; } .image-preview-wrapper { position: relative; display: inline-block; margin: 5px; } .image-preview-wrapper img { width: 100px; height: 100px; object-fit: cover; border-radius: 4px; } .remove-image-btn { position: absolute; top: -5px; right: -5px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 14px; line-height: 1; display: flex; align-items: center; justify-content: center; } table th, table td { padding: 10px; border-bottom: 1px solid #ddd; text-align: left; } </style>
+<div class="card">
+    <div class="card-header"><i class="fas fa-gem"></i> Products Management <button class="btn" style="float:right; margin-top:-8px;" onclick="openAddModal()">+ Add Product</button> <a href="products.php" class="btn" style="float:right; margin-top:-8px; margin-right:10px; background:#6c757d;">Clear Filters</a></div>
+    <div class="card-body">
+        <form method="GET" action="products.php" style="margin-bottom:16px; display:flex; gap:10px; align-items: center;">
+             <input type="text" name="search" placeholder="Search..." value="<?= htmlspecialchars($_GET['search'] ?? ''); ?>" style="flex:1;">
+            <select name="gender"><option value="">Gender</option><option value="unisex" <?= ($_GET['gender']??'')==='unisex'?'selected':'';?>>Unisex</option><option value="women" <?= ($_GET['gender']??'')==='women'?'selected':'';?>>Women</option><option value="men" <?= ($_GET['gender']??'')==='men'?'selected':'';?>>Men</option></select>
+            <select name="status"><option value="">Status</option><option value="1" <?= (isset($_GET['status'])&&$_GET['status']==='1')?'selected':'';?>>Active</option><option value="0" <?= (isset($_GET['status'])&&$_GET['status']==='0')?'selected':'';?>>Inactive</option></select>
+            <button type="submit" class="btn">Filter</button>
+        </form>
+        <div class="table-container">
+            <table style="width:100%; border-collapse:collapse;">
+                <thead><tr style="background:#f5f5f5;"><th>Image</th><th>Product</th><th>SKU</th><th>Price</th><th>Weight</th><th>Materials</th><th>Stock</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody>
+                    <?php foreach ($products as $product): ?>
+                    <tr>
+                        <td><?php if(!empty($product['main_image'])):?><img src="../<?= htmlspecialchars($product['main_image']);?>" alt="" style="width:50px;height:50px;object-fit:cover;border-radius:4px;"><?php else:?><div style="width:50px;height:50px;background:#f0f0f0;"></div><?php endif;?></td>
+                        <td><strong><?= htmlspecialchars($product['name']);?></strong></td><td><?= htmlspecialchars($product['sku']);?></td><td>£<?= number_format($product['price'],2);?></td>
+                        <td><?= $product['weight'] ? htmlspecialchars($product['weight']).'g' : '-';?></td><td><?= htmlspecialchars($product['materials'] ?? '-');?></td><td><?= $product['stock_quantity'];?></td>
+                        <td><span style="padding:4px 8px;border-radius:3px;font-size:12px;background:<?=$product['is_active']?'#d4edda':'#f8d7da';?>;color:<?=$product['is_active']?'#155724':'#721c24';?>"><?=$product['is_active']?'Active':'Inactive';?></span></td>
+                        <td><button class="btn" style="font-size:11px;" onclick="editProduct(<?=$product['id'];?>)">Edit</button><form method="post" style="display:inline;" onsubmit="return confirm('Are you sure?');"><input type="hidden" name="action" value="delete_product"><input type="hidden" name="product_id" value="<?=$product['id'];?>"><button class="btn" style="background:#dc3545;font-size:11px;">Delete</button></form></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
         </div>
     </div>
-
-    <!-- Add/Edit Product Modal -->
-    <div id="productModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h2 id="modalTitle">Add Product</h2>
-            <form id="productForm" method="POST" enctype="multipart/form-data">
-                <input type="hidden" name="action" id="formAction" value="add_product">
-                <input type="hidden" name="product_id" id="productId">
-
-                <div class="form-group">
-                    <label for="product_name">Product Name</label>
-                    <input type="text" id="product_name" name="product_name" required>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="sku">SKU</label>
-                        <input type="text" id="sku" name="sku" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="price">Price (£)</label>
-                        <input type="number" id="price" name="price" step="0.01" required>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="stock">Stock Quantity</label>
-                        <input type="number" id="stock" name="stock" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="weight">Weight (g)</label>
-                        <input type="number" id="weight" name="weight" step="0.1">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="description">Description</label>
-                    <textarea id="description" name="description" rows="3" required></textarea>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="material">Material</label>
-                        <select id="material" name="material" required>
-                            <option value="">Select Material</option>
-                            <option value="Gold">Gold</option>
-                            <option value="Silver">Silver</option>
-                            <option value="Platinum">Platinum</option>
-                            <option value="Rose Gold">Rose Gold</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="category">Category</label>
-                        <select id="category" name="category" required>
-                            <option value="">Select Category</option>
-                            <?php foreach ($categories_from_db as $cat): ?>
-                                <option value="<?php echo $cat['id']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="gender">Gender</label>
-                        <select id="gender" name="gender" required>
-                            <option value="unisex">Unisex</option>
-                            <option value="women">Women</option>
-                            <option value="men">Men</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="stone_type">Stone Type</label>
-                        <select id="stone_type" name="stone_type">
-                            <option value="">No Stone</option>
-                            <option value="Diamond">Diamond</option>
-                            <option value="Ruby">Ruby</option>
-                            <option value="Emerald">Emerald</option>
-                            <option value="Sapphire">Sapphire</option>
-                            <option value="Pearl">Pearl</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Existing Images Section -->
-                <div id="existingImagesSection" style="display: none; margin-bottom: 1rem;">
-                    <label style="font-weight: bold; margin-bottom: 0.5rem; display: block;">Existing Images</label>
-                    <div id="existingImagesContainer" style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;"></div>
-                </div>
-
-                <!-- Image Upload Fields -->
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="main_image">Main Image</label>
-                        <input type="file" id="main_image" name="main_image" accept="image/*">
-                        <small style="color: #666; font-size: 12px;">Upload a new main image to replace the current one</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="additional_images">Additional Images</label>
-                        <input type="file" id="additional_images" name="additional_images[]" accept="image/*" multiple>
-                        <small style="color: #666; font-size: 12px;">Upload additional images (multiple files allowed)</small>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="is_featured" name="is_featured" value="1">
-                            Featured Product
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="is_active" name="is_active" value="1" checked>
-                            Active
-                        </label>
-                    </div>
-                </div>
-
-                <div style="text-align: right; margin-top: 20px;">
-                    <button type="button" class="btn" onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn btn-success">Save Product</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script>
-        // Categories fetched from the database
-        const categoriesFromDb = <?php echo json_encode($categories_from_db); ?>;
-
-        function populateCategoryDropdown(selectedCategoryId = null) {
-            const categorySelect = document.getElementById('category');
-            categorySelect.innerHTML = '<option value="">Select Category</option>'; // Clear existing
-
-            categoriesFromDb.forEach(cat => {
-                const option = document.createElement('option');
-                option.value = cat.id; // Assuming category ID is stored
-                option.textContent = cat.name;
-                if (selectedCategoryId && parseInt(selectedCategoryId) === parseInt(cat.id)) {
-                    option.selected = true;
-                }
-                categorySelect.appendChild(option);
-            });
-        }
-
-        // Call on page load to populate for add modal
-        document.addEventListener('DOMContentLoaded', populateCategoryDropdown);
-
-        function openAddModal() {
-            document.getElementById('modalTitle').textContent = 'Add Product';
-            document.getElementById('formAction').value = 'add_product';
-            document.getElementById('productForm').reset();
-            document.getElementById('productId').value = '';
-            document.getElementById('is_active').checked = true;
-            document.getElementById('is_featured').checked = false;
-            document.getElementById('existingImagesSection').style.display = 'none';
-            document.getElementById('productModal').style.display = 'block';
-        }
-
-        function editProduct(id) {
-            fetch(`get_product.php?id=${id}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (!data.success) {
-                        alert(data.error);
-                        return;
-                    }
-                    const product = data.product;
-                    document.getElementById('modalTitle').textContent = 'Edit Product';
-                    document.getElementById('formAction').value = 'update_product';
-                    document.getElementById('productId').value = product.id;
-                    document.getElementById('product_name').value = product.name;
-                    document.getElementById('sku').value = product.sku;
-                    document.getElementById('price').value = product.price;
-                    document.getElementById('stock').value = product.stock_quantity;
-                    document.getElementById('weight').value = product.weight || '';
-                    document.getElementById('description').value = product.description || '';
-                    document.getElementById('material').value = product.material || '';
-                    document.getElementById('stone_type').value = product.stone_type || '';
-                    document.getElementById('gender').value = product.gender;
-                    document.getElementById('is_featured').checked = product.is_featured == 1;
-                    document.getElementById('is_active').checked = product.is_active == 1;
-
-                    // Set the selected category
-                    document.getElementById('category').value = product.category_id || '';
-
-                    // Display existing images
-                    const existingImagesSection = document.getElementById('existingImagesSection');
-                    const existingImagesContainer = document.getElementById('existingImagesContainer');
-                    existingImagesContainer.innerHTML = '';
-
-                    if (product.images && product.images.length > 0) {
-                        existingImagesSection.style.display = 'block';
-
-                        product.images.forEach(image => {
-                            const wrapper = document.createElement('div');
-                            wrapper.className = 'img-preview-wrapper';
-                            wrapper.style.cssText = 'position: relative; display: inline-block; margin: 5px;';
-
-                            const img = document.createElement('img');
-                            img.src = '../' + image.image_url;
-                            img.style.cssText = 'width: 80px; height: 80px; object-fit: cover; border-radius: 4px; border: 2px solid #ddd;';
-
-                            const label = document.createElement('div');
-                            label.textContent = image.is_primary ? 'Main Image' : 'Additional Image';
-                            label.style.cssText = 'font-size: 10px; text-align: center; margin-top: 2px; color: #666;';
-
-                            const deleteBtn = document.createElement('button');
-                            deleteBtn.innerHTML = '&times;';
-                            deleteBtn.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px; line-height: 1;';
-                            deleteBtn.onclick = () => deleteImage(image.id, wrapper);
-
-                            wrapper.appendChild(img);
-                            wrapper.appendChild(label);
-                            wrapper.appendChild(deleteBtn);
-                            existingImagesContainer.appendChild(wrapper);
-                        });
-                    } else {
-                        existingImagesSection.style.display = 'none';
-                    }
-
-                    document.getElementById('productModal').style.display = 'block';
-                })
-                .catch(error => {
-                    console.error('Error fetching product:', error);
-                    alert('Could not fetch product details.');
-                });
-        }
-
-        function deleteProduct(id) {
-            if (confirm('Are you sure you want to delete this product?')) {
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.innerHTML = `<input type="hidden" name="action" value="delete_product"><input type="hidden" name="product_id" value="${id}">`;
-                document.body.appendChild(form);
-                form.submit();
-            }
-        }
-
-        function toggleFeatured(id) {
-            fetch('toggle_featured.php', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: `product_id=${id}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            })
-            .catch(error => {
-                alert('Error toggling featured status');
-            });
-        }
-
-        function closeModal() {
-            document.getElementById('productModal').style.display = 'none';
-        }
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('productModal');
-            if (event.target == modal) {
-                modal.style.display = 'none';
-            }
-        }
-
-        function deleteImage(imageId, elementToRemove) {
-            if (!confirm('Are you sure you want to delete this image?')) {
-                return;
-            }
-            fetch('delete_image.php', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: `image_id=${imageId}`
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    elementToRemove.remove();
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred while deleting the image.');
-            });
-        }
-    </script>
-
+</div>
+<div id="productModal" class="modal"><div class="modal-content" style="width:80%;max-width:900px;"><span class="close" onclick="closeModal()">&times;</span><h2 id="modalTitle">Add</h2><form id="productForm"><input type="hidden" name="action" id="formAction"><input type="hidden" name="product_id" id="productId"><div class="form-group"><label>Name</label><input type="text" id="product_name" name="product_name" required oninput="generateSku()"></div><div class="form-row"><div class="form-group"><label>SKU</label><input type="text" id="sku" name="sku" required readonly></div><div class="form-group"><label>Price (£)</label><input type="number" id="price" name="price" step="0.01" required></div></div><div class="form-row"><div class="form-group"><label>Stock</label><input type="number" id="stock" name="stock" required></div><div class="form-group"><label>Weight (g)</label><input type="number" id="weight" name="weight" step="0.1"></div><div class="form-group"><label>Size</label><input type="text" id="size" name="size" placeholder="e.g., 22mm, 9cm, comma-separated"></div></div><div class="form-group"><label>Desc</label><textarea id="description" name="description" rows="3" required></textarea></div><div class="form-row"><div class="form-group"><label>Category</label><select id="category" name="category" required><option value="">Select</option><?php foreach($categories_from_db as $c):?><option value="<?=$c['id'];?>"><?=$c['name'];?></option><?php endforeach;?></select></div><div class="form-group"><label>Gender</label><select id="gender" name="gender" required><option value="unisex">Unisex</option><option value="women">Women</option><option value="men">Men</option></select></div></div><div class="form-group"><label>Materials <span id="selected-materials-display" style="font-weight:normal;font-style:italic;"></span></label><div class="checkbox-group" id="materials-group"><?php foreach($materials_from_db as $m):?><label><input type="checkbox" name="materials[]" value="<?=$m['id'];?>"> <?=$m['name'];?></label><?php endforeach;?></div></div><div class="form-group"><label>Colors <span id="selected-colors-display" style="font-weight:normal;font-style:italic;"></span></label><div class="checkbox-group" id="colors-group"><?php foreach($colors_from_db as $c):?><label><input type="checkbox" name="colors[]" value="<?=$c['id'];?>"> <?=$c['name'];?></label><?php endforeach;?></div></div><div class="form-group"><label>Adornments <span id="selected-adornments-display" style="font-weight:normal;font-style:italic;"></span></label><div class="checkbox-group" id="adornments-group"><?php foreach($adornments_from_db as $a):?><label><input type="checkbox" name="adornments[]" value="<?=$a['id'];?>"> <?=$a['name'];?></label><?php endforeach;?></div></div><hr><h4>Variants</h4><div class="form-group"><label>Tags</label><div id="tag-list" style="margin-bottom:10px;"></div><button type="button" class="btn" onclick="generateTag()">Gen Tag</button></div><div id="existingImagesSection" style="display:none;"><label>Existing</label><div id="existingImagesContainer"></div></div><div class="form-row"><div class="form-group"><label>Main Img</label><input type="file" id="main_image" name="main_image" accept="image/*"><div id="main-image-preview-container"></div></div><div class="form-group"><label>More Imgs</label><input type="file" id="additional_images" name="additional_images[]" accept="image/*" multiple><div id="additional-images-preview-container"></div></div></div><div id="image-variant-assignment"></div><div class="form-row"><div class="form-group"><label><input type="checkbox" id="is_featured" name="is_featured" value="1"> Featured</label></div><div class="form-group"><label><input type="checkbox" id="is_active" name="is_active" value="1" checked> Active</label></div></div><div id="form-error" class="alert alert-danger" style="display:none;"></div><div style="text-align:right;margin-top:20px;"><button type="button" class="btn" onclick="closeModal()">Cancel</button><button type="submit" class="btn btn-success">Save</button></div></form></div></div>
+<script>
+// --- CORRECTED AND COMPLETE SCRIPT ---
+const categoriesFromDb=<?php echo json_encode($categories_from_db);?>;let generatedTags=[],additionalImagesFiles=[],mainImageFile=null,imageVariantData={};
+const mainImageInput=document.getElementById('main_image'),additionalImagesInput=document.getElementById('additional_images'),mainImagePreviewContainer=document.getElementById('main-image-preview-container'),additionalImagesPreviewContainer=document.getElementById('additional-images-preview-container'),productForm=document.getElementById('productForm');
+document.addEventListener('DOMContentLoaded',()=>{['materials','adornments'].forEach(g=>document.querySelector(`#${g}-group`)?.addEventListener('change',()=>updateSelectedDisplay(g)));mainImageInput.addEventListener('change',handleMainImageChange);additionalImagesInput.addEventListener('change',handleAdditionalImagesChange);productForm.addEventListener('submit',handleFormSubmit);window.onclick=e=>{if(e.target==document.getElementById('productModal'))closeModal()};populateCategoryDropdown()});
+function handleFormSubmit(e){e.preventDefault();const formData=new FormData(productForm);formData.delete('additional_images[]');if(mainImageFile)formData.set('main_image',mainImageFile,mainImageFile.name);else formData.delete('main_image');additionalImagesFiles.forEach((f,i)=>formData.append(`additional_images[${i}]`,f.file,f.file.name));for(const k in imageVariantData){const d=imageVariantData[k];for(const p in d)if(d[p]!==null&&d[p]!==undefined)formData.append(`variants[${k}][${p}]`,d[p])}
+const errorDiv=document.getElementById('form-error'),submitButton=productForm.querySelector('button[type="submit"]'),originalButtonText=submitButton.textContent;submitButton.textContent='Saving...';submitButton.disabled=true;errorDiv.style.display='none';
+fetch('products.php',{method:'POST',body:formData,headers:{'X-Requested-With':'XMLHttpRequest'}}).then(res=>res.json()).then(data=>{if(data.success){closeModal();location.reload()}else{errorDiv.textContent=data.message;errorDiv.style.display='block'}}).catch(err=>{console.error('Error:',err);errorDiv.textContent='An unexpected network error occurred: '+err.message;errorDiv.style.display='block'}).finally(()=>{submitButton.textContent=originalButtonText;submitButton.disabled=false})}
+function handleMainImageChange(e){mainImageFile=e.target.files[0];if(mainImageFile)imageVariantData.main_0=imageVariantData.main_0||{};renderMainImagePreview();updateImageVariantAssignment()}
+function handleAdditionalImagesChange(e){Array.from(e.target.files).forEach(f=>{const k=`additional_${additionalImagesFiles.length}`;if(!additionalImagesFiles.some(fi=>fi.key===k)){additionalImagesFiles.push({key:k,file:f});imageVariantData[k]=imageVariantData[k]||{}}});e.target.value='';renderAdditionalImagePreviews();updateImageVariantAssignment()}
+function saveVariantData(k,field,value){if(!imageVariantData[k])imageVariantData[k]={};imageVariantData[k][field]=value}
+function renderMainImagePreview(){mainImagePreviewContainer.innerHTML='';if(mainImageFile)mainImagePreviewContainer.appendChild(createPreview(mainImageFile,'main_0','main'))}
+function renderAdditionalImagePreviews(){additionalImagesPreviewContainer.innerHTML='';additionalImagesFiles.forEach(f=>additionalImagesPreviewContainer.appendChild(createPreview(f.file,f.key,'additional')))}
+function createPreview(file,key,type){const reader=new FileReader(),wrapper=document.createElement('div'),img=document.createElement('img'),btn=document.createElement('button');wrapper.className='image-preview-wrapper';img.className='preview-img';btn.className='remove-image-btn';btn.innerHTML='&times;';btn.type='button';btn.onclick=()=>{delete imageVariantData[key];if(type==='main'){mainImageFile=null;mainImageInput.value='';renderMainImagePreview()}else{additionalImagesFiles=additionalImagesFiles.filter(f=>f.key!==key);renderAdditionalImagePreviews()}updateImageVariantAssignment()};wrapper.append(img,btn);reader.onload=e=>img.src=e.target.result;reader.readAsDataURL(file);return wrapper}
+function updateImageVariantAssignment(){const container=document.getElementById('image-variant-assignment');container.innerHTML='<h5>Assign Variants to Images</h5>';const allFiles=mainImageFile?[{key:'main_0',file:mainImageFile}].concat(additionalImagesFiles):additionalImagesFiles;allFiles.forEach(f=>{const data=imageVariantData[f.key]||{},url=URL.createObjectURL(f.file),el=document.createElement('div');el.className='image-variant-row';el.style.cssText='display:flex;align-items:center;gap:15px;margin-bottom:15px;border-bottom:1px solid #eee;padding-bottom:15px;';el.innerHTML=`<img src="${url}" style="width:80px;height:80px;object-fit:cover;border-radius:4px;"><div style="flex-grow:1;"><div class="form-group"><label>Tag</label><select class="variant-tag-select" onchange="saveVariantData('${f.key}','tag',this.value)"><option value="">Select</option>${generatedTags.map(t=>`<option value="${t}" ${data.tag===t?'selected':''}>${t}</option>`).join('')}</select></div><div class="form-row"><div class="form-group"><label>Price</label><input type="number" value="${data.price||''}" oninput="saveVariantData('${f.key}','price',this.value)" step="0.01"></div><div class="form-group"><label>Size</label><input type="text" value="${data.size||''}" oninput="saveVariantData('${f.key}','size',this.value)"></div><div class="form-group"><label>Stock</label><input type="number" value="${data.stock||''}" oninput="saveVariantData('${f.key}','stock',this.value)"></div></div></div>`;container.appendChild(el)})}
+function updateSelectedDisplay(group){const el=document.getElementById(`selected-${group}-display`);if(el){const s=Array.from(document.querySelectorAll(`#${group}-group input:checked`)).map(cb=>cb.parentElement.textContent.trim());el.textContent=s.length>0?`(${s.join(', ')})`:''}}
+function generateSku(){const name=document.getElementById('product_name').value;if(!name)return;document.getElementById('sku').value=(name.split(' ').filter(w=>w).map(w=>w[0]).join('')+"01").toUpperCase()}
+function renderTags(){const list=document.getElementById('tag-list');list.innerHTML='';generatedTags.forEach(t=>{const el=document.createElement('span');el.className='tag';el.textContent=t;list.appendChild(el)})}
+function generateTag(){const sku=document.getElementById('sku').value;if(!sku)return alert('Gen SKU first');const newTag=`${sku}-${generatedTags.length+1}`;if(generatedTags.includes(newTag))return alert('Tag exists');generatedTags.push(newTag);renderTags();updateImageVariantAssignment()}
+function openAddModal(){productForm.reset();document.getElementById('modalTitle').textContent='Add Product';document.getElementById('formAction').value='add_product';document.getElementById('productId').value='';document.getElementById('is_active').checked=true;document.getElementById('is_featured').checked=false;document.getElementById('existingImagesSection').style.display='none';document.getElementById('form-error').style.display='none';mainImageFile=null;additionalImagesFiles=[];imageVariantData={};generatedTags=[];renderMainImagePreview();renderAdditionalImagePreviews();renderTags();updateImageVariantAssignment();['materials','adornments'].forEach(updateSelectedDisplay);document.getElementById('productModal').style.display='block'}
+function populateExistingImages(images,variants){const container=document.getElementById('existingImagesContainer');container.innerHTML='';images.forEach(img=>{const div=document.createElement('div');div.className='existing-image-item';div.innerHTML=`<img src="../${img.image_url}" style="width:100px;height:100px;object-fit:cover;"><br><small>Tag: ${variants.find(v=>v.id==img.variant_id)?.tag||'None'}</small>`;container.appendChild(div)})}
+function editProduct(id){fetch(`get_product.php?id=${id}`).then(res=>res.json()).then(data=>{if(!data.success)throw new Error(data.error);openAddModal();const product=data.product;document.getElementById('modalTitle').textContent='Edit Product';document.getElementById('formAction').value='update_product';document.getElementById('productId').value=product.id;document.getElementById('product_name').value=product.name;document.getElementById('sku').value=product.sku;document.getElementById('price').value=product.price;document.getElementById('stock').value=product.stock_quantity;document.getElementById('weight').value=product.weight||'';document.getElementById('size').value=product.size||'';document.getElementById('description').value=product.description||'';document.getElementById('gender').value=product.gender;document.getElementById('is_featured').checked=product.is_featured==1;document.getElementById('is_active').checked=product.is_active==1;populateCategoryDropdown(product.category_id);if(document.getElementById('color'))document.getElementById('color').value=product.color_id||'';['materials','adornments'].forEach(group=>{document.querySelectorAll(`#${group}-group input`).forEach(c=>{c.checked=product[group]?.map(String).includes(c.value)??false});updateSelectedDisplay(group)});generatedTags=product.variants?.map(v=>v.tag).filter(Boolean)||[];renderTags();populateExistingImages(product.images||[],product.variants||[]);document.getElementById('existingImagesSection').style.display='block';document.getElementById('productModal').style.display='block'}).catch(err=>alert('Could not fetch product details: '+err.message))}
+function closeModal(){document.getElementById('productModal').style.display='none'}
+function populateCategoryDropdown(selected){const sel=document.getElementById('category');sel.innerHTML='<option value="">Select</option>';categoriesFromDb.forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.name;if(selected==c.id)o.selected=true;sel.appendChild(o)})}
+</script>
 <?php include '_layout_footer.php'; ?>

@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS products (
     sale_price DECIMAL(10,2) NULL,
     stock_quantity INT DEFAULT 0,
     weight DECIMAL(8,2),
-    dimensions VARCHAR(100),
+    size VARCHAR(255),
     material VARCHAR(100),
     stone_type VARCHAR(100),
     category VARCHAR(100),
@@ -60,9 +60,94 @@ CREATE TABLE IF NOT EXISTS product_images (
     alt_text VARCHAR(255),
     sort_order INT DEFAULT 0,
     is_primary BOOLEAN DEFAULT FALSE,
+    variant_id INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE SET NULL
+);
+
+-- Materials table
+CREATE TABLE IF NOT EXISTS materials (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL UNIQUE
+);
+
+-- Colors table
+CREATE TABLE IF NOT EXISTS colors (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    hex_value VARCHAR(7)
+);
+
+-- Adornments table
+CREATE TABLE IF NOT EXISTS adornments (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL UNIQUE
+);
+
+-- Sizes table
+CREATE TABLE IF NOT EXISTS sizes (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL UNIQUE
+);
+
+-- Product materials relationship
+CREATE TABLE IF NOT EXISTS product_materials (
+    product_id INT,
+    material_id INT,
+    PRIMARY KEY (product_id, material_id),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE
+);
+
+-- Product colors relationship
+CREATE TABLE IF NOT EXISTS product_colors (
+    product_id INT,
+    color_id INT,
+    PRIMARY KEY (product_id, color_id),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (color_id) REFERENCES colors(id) ON DELETE CASCADE
+);
+
+-- Product adornments relationship
+CREATE TABLE IF NOT EXISTS product_adornments (
+    product_id INT,
+    adornment_id INT,
+    PRIMARY KEY (product_id, adornment_id),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (adornment_id) REFERENCES adornments(id) ON DELETE CASCADE
+);
+
+-- Product variants
+CREATE TABLE IF NOT EXISTS product_variants (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    sku VARCHAR(255) NOT NULL UNIQUE,
+    price_override DECIMAL(10,2),
+    size_override VARCHAR(255),
+    main_variant BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
+
+-- Variant tags
+CREATE TABLE IF NOT EXISTS variant_tags (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    variant_id INT NOT NULL,
+    tag VARCHAR(255) NOT NULL UNIQUE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE CASCADE
+);
+
+-- Variant stock
+CREATE TABLE IF NOT EXISTS variant_stock (
+    variant_id INT PRIMARY KEY,
+    stock_quantity INT NOT NULL,
+    FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE CASCADE
+);
+
+-- Add size_override column to product_variants if it doesn't exist
+ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS size_override VARCHAR(255) NULL;
 
 -- Customers table
 CREATE TABLE IF NOT EXISTS customers (
@@ -75,6 +160,7 @@ CREATE TABLE IF NOT EXISTS customers (
     date_of_birth DATE,
     gender ENUM('male', 'female', 'other'),
     is_active BOOLEAN DEFAULT TRUE,
+    force_password_reset TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -168,6 +254,7 @@ CREATE TABLE IF NOT EXISTS testimonials (
     title VARCHAR(255),
     content TEXT NOT NULL,
     product_id INT,
+    client_image MEDIUMTEXT NULL,
     is_featured BOOLEAN DEFAULT FALSE,
     is_approved BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -192,6 +279,64 @@ CREATE TABLE IF NOT EXISTS banners (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Support Tickets table
+CREATE TABLE IF NOT EXISTS support_tickets (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT,
+    customer_email VARCHAR(255) NOT NULL,
+    customer_name VARCHAR(255) NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    category VARCHAR(100),
+    priority ENUM('low', 'medium', 'high') DEFAULT 'medium',
+    status ENUM('open', 'in_progress', 'resolved', 'closed') DEFAULT 'open',
+    assigned_to INT,
+    response_text TEXT,
+    response_date TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL,
+    FOREIGN KEY (assigned_to) REFERENCES admin_users(id) ON DELETE SET NULL,
+    INDEX (customer_id, status),
+    INDEX (status, created_at),
+    INDEX (priority)
+);
+
+-- Inventory transactions
+CREATE TABLE IF NOT EXISTS inventory_transactions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    transaction_type ENUM('purchase', 'sale', 'adjustment', 'return') DEFAULT 'sale',
+    quantity_change INT NOT NULL,
+    reference_id INT,
+    reference_type VARCHAR(50),
+    notes TEXT,
+    previous_stock INT,
+    new_stock INT,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES admin_users(id) ON DELETE SET NULL,
+    INDEX (product_id, created_at),
+    INDEX (reference_type, reference_id)
+);
+
+-- Inventory logs
+CREATE TABLE IF NOT EXISTS inventory_logs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    quantity_change INT,
+    old_quantity INT,
+    new_quantity INT,
+    user_id INT,
+    reason TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES admin_users(id) ON DELETE SET NULL,
+    INDEX (product_id, created_at)
+);
+
 -- Newsletter subscribers
 CREATE TABLE IF NOT EXISTS newsletter_subscribers (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -208,9 +353,10 @@ CREATE TABLE IF NOT EXISTS admin_users (
     password_hash VARCHAR(255) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     full_name VARCHAR(255),
-    role ENUM('admin', 'manager') DEFAULT 'admin',
+    role ENUM('admin', 'manager', 'superadmin') DEFAULT 'admin',
     is_active BOOLEAN DEFAULT TRUE,
     last_login TIMESTAMP NULL,
+    can_force_password_reset TINYINT(1) DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -352,6 +498,18 @@ INSERT IGNORE INTO testimonials (customer_name, rating, title, content, is_featu
 -- Insert default admin user (username: admin, password: admin123)
 INSERT IGNORE INTO admin_users (username, password_hash, email, full_name) VALUES
 ('admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin@dijaccessories.com', 'Administrator');
+
+-- Insert initial materials
+INSERT IGNORE INTO materials (name) VALUES
+('Sterling Silver'), ('Stainless Steel'), ('Titanium Steel'), ('Copper'), ('Pearl'), ('Platinum');
+
+-- Insert initial colors
+INSERT IGNORE INTO colors (name) VALUES
+('Gold'), ('Silver'), ('Rose Gold'), ('Black'), ('White'), ('Blue'), ('Pink'), ('Custom');
+
+-- Insert initial adornments
+INSERT IGNORE INTO adornments (name) VALUES
+('Diamond'), ('Ruby'), ('Emerald'), ('Zirconia'), ('Sapphire'), ('Pearl'), ('Moissanite'), ('Blue Gem'), ('Pink Gem'), ('White Gem'), ('Red Gem'), ('White Stone'), ('Black Stone'), ('Red Stone'), ('Pink Stone');
 
 -- Insert sample collection banners
 INSERT IGNORE INTO collection_banners (title, subtitle, image_url, link_url, button_text, sort_order) VALUES
