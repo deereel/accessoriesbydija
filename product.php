@@ -24,6 +24,23 @@ $stmt = $pdo->prepare("SELECT * FROM product_images WHERE product_id = ? ORDER B
 $stmt->execute([$product['id']]);
 $images = $stmt->fetchAll();
 
+// Check and move images from wrong directory if necessary
+foreach ($images as &$image) {
+    $image_path = $image['image_url'];
+    if (!file_exists($image_path)) {
+        $wrong_path = 'admin/' . $image_path;
+        if (file_exists($wrong_path)) {
+            $dir = dirname($image_path);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            if (rename($wrong_path, $image_path)) {
+                // Successfully moved
+            }
+        }
+    }
+}
+
 // If no images in database, check filesystem
 if (empty($images)) {
     $image_dir = "assets/images/products/";
@@ -38,7 +55,7 @@ if (empty($images)) {
             }
         }
     }
-    
+
     foreach ($image_files as $index => $file) {
         $images[] = [
             'image_url' => $file,
@@ -94,7 +111,13 @@ $page_description = substr($product['description'], 0, 160);
     <div class="product-detail-container">
         <div class="product-images">
             <div class="main-image-container">
-                <div class="main-image" id="mainImage">💎</div>
+                <div class="main-image" id="mainImage">
+                    <?php if ($images && isset($images[0])): ?>
+                        <img src="<?= htmlspecialchars($images[0]['image_url']) ?>" alt="<?= htmlspecialchars($images[0]['alt_text'] ?? 'Product image') ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                    <?php else: ?>
+                        💎
+                    <?php endif; ?>
+                </div>
             </div>
             <div class="image-thumbnails">
                 <?php if ($images): ?>
@@ -204,10 +227,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const img = this.querySelector('img');
             if (img) {
                 img.style.transform = 'scale(1)';
-                img.style.transformOrigin = 'center center';
             } else {
                 this.style.transform = 'scale(1)';
-                this.style.transformOrigin = 'center center';
             }
         });
     }
@@ -230,11 +251,9 @@ function selectMaterial(materialId) {
     selectedVariation = null;
     selectedSize = null;
     
-    // Store material name
     const materialBtn = document.querySelector(`[data-material-id="${materialId}"]`);
     selectedMaterialName = materialBtn.textContent;
     
-    // Update material buttons
     document.querySelectorAll('#materialOptions .option-btn').forEach(btn => {
         btn.classList.remove('selected');
         if (btn.dataset.materialId == materialId) {
@@ -242,7 +261,6 @@ function selectMaterial(materialId) {
         }
     });
     
-    // Load variations for this material
     fetch(`get_variations.php?product_id=<?= $product['id'] ?>&material_id=${materialId}`)
         .then(response => response.json())
         .then(variations => {
@@ -279,7 +297,6 @@ function selectVariation(variationId, priceAdjustment, variationData) {
     selectedSize = null;
     selectedVariationData = variationData || {};
     
-    // Update variation buttons
     document.querySelectorAll('#variationOptions .option-btn').forEach(btn => {
         btn.classList.remove('selected');
         if (btn.dataset.variationId == variationId) {
@@ -287,25 +304,15 @@ function selectVariation(variationId, priceAdjustment, variationData) {
         }
     });
     
-    // Update images based on variation tag
     const selectedBtn = document.querySelector(`[data-variation-id="${variationId}"]`);
-    const tag = selectedBtn ? selectedBtn.textContent : null;
     const stock = selectedBtn ? selectedBtn.dataset.stock : 0;
-    
-    // Update stock info for variation
     document.getElementById('stockInfo').textContent = `${stock} in stock`;
     
-    if (tag) {
-        updateImagesForTag(tag);
-    }
-    
-    // Update price
     const finalPrice = parseFloat(priceAdjustment) || basePrice;
     document.getElementById('finalPrice').innerHTML = `£${finalPrice.toFixed(2)}`;
     document.getElementById('finalPrice').style.display = 'block';
     document.getElementById('basePrice').style.display = 'none';
     
-    // Load sizes for this variation
     fetch(`get_sizes.php?variation_id=${variationId}`)
         .then(response => response.json())
         .then(sizes => {
@@ -344,7 +351,6 @@ function selectSize(sizeId, priceAdjustment, stock, sizeData) {
     selectedSizeData = sizeData || {};
     maxStock = stock;
     
-    // Update size buttons
     document.querySelectorAll('#sizeOptions .option-btn').forEach(btn => {
         btn.classList.remove('selected');
         if (btn.dataset.sizeId == sizeId) {
@@ -352,16 +358,10 @@ function selectSize(sizeId, priceAdjustment, stock, sizeData) {
         }
     });
     
-    // Update price with size adjustment
-    const selectedVariationBtn = document.querySelector('#variationOptions .selected');
-    const variationPrice = selectedVariationBtn ? parseFloat(selectedVariationBtn.dataset.priceAdjustment || 0) : 0;
-    const finalPrice = parseFloat(priceAdjustment) || (variationPrice > 0 ? variationPrice : basePrice);
+    const finalPrice = parseFloat(priceAdjustment) || (selectedVariationData.price_adjustment > 0 ? selectedVariationData.price_adjustment : basePrice);
     document.getElementById('finalPrice').innerHTML = `£${finalPrice.toFixed(2)}`;
-    
-    // Update stock info
     document.getElementById('stockInfo').textContent = `${stock} in stock`;
     
-    // Update quantity input max
     const quantityInput = document.getElementById('quantityInput');
     quantityInput.max = stock;
     if (parseInt(quantityInput.value) > stock) {
@@ -393,14 +393,11 @@ function updateComponentSummary() {
     
     if (selectedSize && selectedSizeData.size) {
         summaryHtml += `<strong>Size:</strong> ${selectedSizeData.size}<br>`;
-    } else {
-        summaryHtml += `<strong>Size:</strong> <br>`;
     }
     
     const quantity = document.getElementById('quantityInput')?.value || 1;
     summaryHtml += `<strong>Quantity:</strong> ${quantity}<br>`;
     
-    // Calculate and display price
     let finalPrice = basePrice;
     if (selectedSize && selectedSizeData.price_adjustment && selectedSizeData.price_adjustment > 0) {
         finalPrice = parseFloat(selectedSizeData.price_adjustment);
@@ -441,45 +438,305 @@ function updateAddToCartButton() {
 }
 
 function addToCart() {
-    if (!selectedMaterial || !selectedVariation) return;
+    if (!selectedMaterial || !selectedVariation) {
+        alert('Please select all required options');
+        return;
+    }
     
+    const sizeGroup = document.getElementById('sizeGroup');
+    if (sizeGroup.style.display !== 'none' && !selectedSize) {
+        alert('Please select a size');
+        return;
+    }
+    
+    const quantity = parseInt(document.getElementById('quantityInput').value) || 1;
+    
+    // Create cart item with proper structure
+    const cartItem = {
+        id: Date.now(), // Unique ID for cart item
+        product_id: <?= $product['id'] ?>,
+        name: '<?= addslashes($product['name']) ?>',
+        price: selectedSizeData.price_adjustment || selectedVariationData.price_adjustment || basePrice,
+        quantity: quantity,
+        material: selectedMaterialName,
+        variation: selectedVariationData.tag || 'Standard',
+        size: selectedSizeData.size || null,
+        image: '<?= isset($images[0]) ? addslashes($images[0]['image_url']) : '' ?>',
+        slug: '<?= $product['slug'] ?>'
+    };
+    
+    // Get existing cart
+    let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    
+    // Check if same item exists
+    const existingIndex = cart.findIndex(item => 
+        item.product_id === cartItem.product_id &&
+        item.material === cartItem.material &&
+        item.variation === cartItem.variation &&
+        item.size === cartItem.size
+    );
+    
+    if (existingIndex >= 0) {
+        cart[existingIndex].quantity += quantity;
+    } else {
+        cart.push(cartItem);
+    }
+    
+    // Save cart
+    localStorage.setItem('cart', JSON.stringify(cart));
+    
+    // Update button feedback
     const btn = document.getElementById('addToCartBtn');
-    btn.textContent = 'Added!';
-    setTimeout(() => btn.textContent = 'Add to Cart', 1500);
+    const originalText = btn.textContent;
+    btn.textContent = 'Added to Cart!';
+    btn.style.background = '#28a745';
+    
+    setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = '#222';
+    }, 2000);
+    
+    // Trigger cart update event
+    window.dispatchEvent(new Event('cartUpdated'));
 }
 
 function toggleWishlist() {
     const btn = event.target;
     btn.textContent = btn.textContent === '♡ Wishlist' ? '♥ Added' : '♡ Wishlist';
 }
+</script>
 
-function updateImagesForTag(tag) {
-    // Fetch images for this tag
-    fetch(`get_tag_images.php?product_id=<?= $product['id'] ?>&tag=${encodeURIComponent(tag)}`)
-        .then(response => response.json())
-        .then(images => {
-            if (images.length > 0) {
-                // Update thumbnails
-                const thumbnailContainer = document.querySelector('.image-thumbnails');
-                thumbnailContainer.innerHTML = '';
-                
-                images.forEach((image, index) => {
-                    const thumbnail = document.createElement('div');
-                    thumbnail.className = `thumbnail ${index === 0 ? 'active' : ''}`;
-                    thumbnail.onclick = () => changeImage(thumbnail);
-                    thumbnail.innerHTML = `<img src="${image.image_url}" alt="${image.alt_text || 'Product image'}">`;
-                    thumbnailContainer.appendChild(thumbnail);
-                });
-                
-                // Update main image
-                if (images[0]) {
-                    const mainImage = document.getElementById('mainImage');
-                    mainImage.innerHTML = `<img src="${images[0].image_url}" alt="${images[0].alt_text || 'Product image'}" style="width:100%;height:100%;object-fit:cover;">`;
-                }
+<?php include 'includes/footer.php'; ?>ner('mouseleave', function() {
+            const img = this.querySelector('img');
+            if (img) {
+                img.style.transform = 'scale(1)';
+                img.style.transformOrigin = 'center center';
+            } else {
+                this.style.transform = 'scale(1)';
+                this.style.transformOrigin = 'center center';
             }
-        })
-        .catch(error => console.error('Error loading tag images:', error));
+        });
+    }
+});
+
+function changeImage(thumbnail) {
+    document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
+    thumbnail.classList.add('active');
+    const mainImage = document.getElementById('mainImage');
+    const img = thumbnail.querySelector('img');
+    if (img) {
+        mainImage.innerHTML = `<img src="${img.src}" alt="Product image" style="width:100%;height:100%;object-fit:cover;">`;
+    } else {
+        mainImage.innerHTML = thumbnail.innerHTML;
+    }
 }
+
+function addToCart() {
+    if (!selectedMaterial || !selectedVariation) {
+        alert('Please select all required options');
+        return;
+    }
+    
+    const sizeGroup = document.getElementById('sizeGroup');
+    if (sizeGroup.style.display !== 'none' && !selectedSize) {
+        alert('Please select a size');
+        return;
+    }
+    
+    const quantity = parseInt(document.getElementById('quantityInput').value) || 1;
+    
+    // Get cart from localStorage
+    let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    
+    // Create cart item
+    const cartItem = {
+        product_id: <?= $product['id'] ?>,
+        name: '<?= addslashes($product['name']) ?>',
+        price: selectedSizeData.price_adjustment || selectedVariationData.price_adjustment || basePrice,
+        quantity: quantity,
+        material: selectedMaterialName,
+        variation: selectedVariationData.tag || 'Standard',
+        size: selectedSizeData.size || null,
+        image: '<?= isset($images[0]) ? addslashes($images[0]['image_url']) : '' ?>'
+    };
+    
+    // Check if item already exists in cart
+    const existingIndex = cart.findIndex(item => 
+        item.product_id === cartItem.product_id &&
+        item.material === cartItem.material &&
+        item.variation === cartItem.variation &&
+        item.size === cartItem.size
+    );
+    
+    if (existingIndex >= 0) {
+        cart[existingIndex].quantity += quantity;
+    } else {
+        cart.push(cartItem);
+    }
+    
+    // Save to localStorage
+    localStorage.setItem('cart', JSON.stringify(cart));
+    
+    // Update button
+    const btn = document.getElementById('addToCartBtn');
+    const originalText = btn.textContent;
+    btn.textContent = 'Added to Cart!';
+    btn.style.background = '#28a745';
+    
+    setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = '#222';
+    }, 2000);
+    
+    // Update cart count in header if function exists
+    if (typeof updateCartCount === 'function') {
+        updateCartCount();
+    }
+}
+
+function selectMaterial(materialId) {
+    selectedMaterial = materialId;
+    selectedVariation = null;
+    selectedSize = null;
+    
+    const materialBtn = document.querySelector(`[data-material-id="${materialId}"]`);
+    selectedMaterialName = materialBtn.textContent;
+    
+    document.querySelectorAll('#materialOptions .option-btn').forEach(btn => {
+        btn.classList.remove('selected');
+        if (btn.dataset.materialId == materialId) {
+            btn.classList.add('selected');
+        }
+    });
+    
+    fetch(`get_variations.php?product_id=<?= $product['id'] ?>&material_id=${materialId}`)
+        .then(response => response.json())
+        .then(variations => {
+            const variationGroup = document.getElementById('variationGroup');
+            const variationOptions = document.getElementById('variationOptions');
+            
+            if (variations.length > 0) {
+                variationOptions.innerHTML = '';
+                variations.forEach(variation => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.dataset.variationId = variation.id;
+                    btn.dataset.priceAdjustment = variation.price_adjustment || 0;
+                    btn.dataset.color = variation.color || '';
+                    btn.dataset.finish = variation.finish || '';
+                    btn.dataset.stock = variation.stock_quantity || 0;
+                    btn.textContent = variation.tag || 'Standard';
+                    btn.onclick = () => selectVariation(variation.id, variation.price_adjustment, variation);
+                    variationOptions.appendChild(btn);
+                });
+                variationGroup.style.display = 'block';
+            } else {
+                variationGroup.style.display = 'none';
+            }
+            
+            document.getElementById('sizeGroup').style.display = 'none';
+            updateAddToCartButton();
+        });
+}
+
+function selectVariation(variationId, priceAdjustment, variationData) {
+    selectedVariation = variationId;
+    selectedSize = null;
+    selectedVariationData = variationData || {};
+    
+    document.querySelectorAll('#variationOptions .option-btn').forEach(btn => {
+        btn.classList.remove('selected');
+        if (btn.dataset.variationId == variationId) {
+            btn.classList.add('selected');
+        }
+    });
+    
+    const finalPrice = parseFloat(priceAdjustment) || basePrice;
+    document.getElementById('finalPrice').innerHTML = `£${finalPrice.toFixed(2)}`;
+    document.getElementById('finalPrice').style.display = 'block';
+    document.getElementById('basePrice').style.display = 'none';
+    
+    fetch(`get_sizes.php?variation_id=${variationId}`)
+        .then(response => response.json())
+        .then(sizes => {
+            const sizeGroup = document.getElementById('sizeGroup');
+            const sizeOptions = document.getElementById('sizeOptions');
+            
+            if (sizes.length > 0) {
+                sizeOptions.innerHTML = '';
+                sizes.forEach(size => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.dataset.sizeId = size.id;
+                    btn.dataset.priceAdjustment = size.price_adjustment || 0;
+                    btn.dataset.size = size.size;
+                    btn.dataset.stock = size.stock_quantity;
+                    btn.textContent = size.size;
+                    btn.onclick = () => selectSize(size.id, size.price_adjustment, size.stock_quantity, size);
+                    if (size.stock_quantity <= 0) {
+                        btn.disabled = true;
+                        btn.textContent += ' (Out of Stock)';
+                    }
+                    sizeOptions.appendChild(btn);
+                });
+                sizeGroup.style.display = 'block';
+            } else {
+                sizeGroup.style.display = 'none';
+                updateAddToCartButton();
+            }
+        });
+}
+
+function selectSize(sizeId, priceAdjustment, stock, sizeData) {
+    selectedSize = sizeId;
+    selectedSizeData = sizeData || {};
+    maxStock = stock;
+    
+    document.querySelectorAll('#sizeOptions .option-btn').forEach(btn => {
+        btn.classList.remove('selected');
+        if (btn.dataset.sizeId == sizeId) {
+            btn.classList.add('selected');
+        }
+    });
+    
+    const finalPrice = parseFloat(priceAdjustment) || (selectedVariationData.price_adjustment > 0 ? selectedVariationData.price_adjustment : basePrice);
+    document.getElementById('finalPrice').innerHTML = `£${finalPrice.toFixed(2)}`;
+    
+    const quantityInput = document.getElementById('quantityInput');
+    quantityInput.max = stock;
+    if (parseInt(quantityInput.value) > stock) {
+        quantityInput.value = stock;
+    }
+    
+    updateAddToCartButton();
+}
+
+function changeQuantity(change) {
+    const input = document.getElementById('quantityInput');
+    const newValue = parseInt(input.value) + change;
+    if (newValue >= 1 && newValue <= maxStock) {
+        input.value = newValue;
+    }
+}
+
+function updateAddToCartButton() {
+    const btn = document.getElementById('addToCartBtn');
+    const sizeGroup = document.getElementById('sizeGroup');
+    
+    if (selectedMaterial && selectedVariation && (sizeGroup.style.display === 'none' || selectedSize)) {
+        btn.disabled = false;
+        btn.textContent = 'Add to Cart';
+        document.getElementById('quantitySelector').style.display = 'block';
+    } else {
+        btn.disabled = true;
+        btn.textContent = 'Select Options';
+        document.getElementById('quantitySelector').style.display = 'none';
+    }
+}
+
+function toggleWishlist() {
+    const btn = event.target;
+    btn.textContent = btn.textContent === '♡ Wishlist' ? '♥ Added' : '♡ Wishlist';
 </script>
 
 <?php include 'includes/footer.php'; ?>

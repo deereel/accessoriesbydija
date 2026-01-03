@@ -37,7 +37,13 @@ try {
         $variation['sizes'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
     
+    // Get product images
+    $stmt = $pdo->prepare("SELECT * FROM product_images WHERE product_id = ? ORDER BY is_primary DESC, id ASC");
+    $stmt->execute([$product_id]);
+    $images = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
     $product['variations'] = $variations;
+    $product['images'] = $images;
     
     header('Content-Type: application/json');
     echo json_encode($product);

@@ -36,29 +36,30 @@ if ($_POST) {
             
             // Handle image uploads
             if (isset($_FILES['images'])) {
-                $upload_dir = 'assets/images/products/';
+                $upload_dir = '../assets/images/products/';
                 if (!is_dir($upload_dir)) {
                     mkdir($upload_dir, 0755, true);
                 }
-                
+
                 // Process each image field
                 for ($i = 0; $i < count($_FILES['images']['name']); $i++) {
                     if (!empty($_FILES['images']['name'][$i]['file'])) {
                         $filename = $_FILES['images']['name'][$i]['file'];
                         $file_ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
                         $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-                        
+
                         if (in_array($file_ext, $allowed_exts)) {
                             $new_filename = $product_id . '_' . time() . '_' . $i . '.' . $file_ext;
                             $upload_path = $upload_dir . $new_filename;
-                            
+                            $image_url = 'assets/images/products/' . $new_filename;
+
                             if (move_uploaded_file($_FILES['images']['tmp_name'][$i]['file'], $upload_path)) {
                                 $tag = $_POST['images'][$i]['tag'] ?? null;
                                 $alt_text = $_POST['images'][$i]['alt_text'] ?? '';
                                 $is_primary = isset($_POST['images'][$i]['is_primary']) ? 1 : 0;
-                                
+
                                 $stmt = $pdo->prepare("INSERT INTO product_images (product_id, image_url, alt_text, is_primary, tag) VALUES (?, ?, ?, ?, ?)");
-                                $stmt->execute([$product_id, $upload_path, $alt_text, $is_primary, $tag]);
+                                $stmt->execute([$product_id, $image_url, $alt_text, $is_primary, $tag]);
                             }
                         }
                     }
@@ -110,29 +111,30 @@ if ($_POST) {
             
             // Handle image uploads for edit
             if (isset($_FILES['images'])) {
-                $upload_dir = 'assets/images/products/';
+                $upload_dir = '../assets/images/products/';
                 if (!is_dir($upload_dir)) {
                     mkdir($upload_dir, 0755, true);
                 }
-                
+
                 // Process each image field
                 for ($i = 0; $i < count($_FILES['images']['name']); $i++) {
                     if (!empty($_FILES['images']['name'][$i]['file'])) {
                         $filename = $_FILES['images']['name'][$i]['file'];
                         $file_ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
                         $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-                        
+
                         if (in_array($file_ext, $allowed_exts)) {
                             $new_filename = $product_id . '_' . time() . '_' . $i . '.' . $file_ext;
                             $upload_path = $upload_dir . $new_filename;
-                            
+                            $image_url = 'assets/images/products/' . $new_filename;
+
                             if (move_uploaded_file($_FILES['images']['tmp_name'][$i]['file'], $upload_path)) {
                                 $tag = $_POST['images'][$i]['tag'] ?? null;
                                 $alt_text = $_POST['images'][$i]['alt_text'] ?? '';
                                 $is_primary = isset($_POST['images'][$i]['is_primary']) ? 1 : 0;
-                                
+
                                 $stmt = $pdo->prepare("INSERT INTO product_images (product_id, image_url, alt_text, is_primary, tag) VALUES (?, ?, ?, ?, ?)");
-                                $stmt->execute([$product_id, $upload_path, $alt_text, $is_primary, $tag]);
+                                $stmt->execute([$product_id, $image_url, $alt_text, $is_primary, $tag]);
                             }
                         }
                     }
@@ -371,6 +373,49 @@ $materials = $stmt->fetchAll();
             updateImageTagOptions();
         }
         
+        function addImageFieldWithData(imageData, index) {
+            const container = document.getElementById('images-container');
+            const imageSrc = imageData.image_url.startsWith('assets/') ? '../' + imageData.image_url : imageData.image_url;
+            const imageHtml = `
+                <div class="image-item">
+                    <button type="button" class="remove-image" onclick="removeImage(this)">&times;</button>
+                    <div class="existing-image" style="margin-bottom: 10px;">
+                        <img src="${imageSrc}" alt="Current image" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px;">
+                        <p style="margin: 5px 0; font-size: 12px; color: #666;">Current: ${imageData.image_url}</p>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Replace Image (Optional)</label>
+                            <input type="file" name="images[${index}][file]" accept="image/*">
+                        </div>
+                        <div class="form-group">
+                            <label>Tag (Optional)</label>
+                            <select name="images[${index}][tag]">
+                                <option value="">General Product Image</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Alt Text</label>
+                            <input type="text" name="images[${index}][alt_text]" value="${imageData.alt_text || ''}" placeholder="Image description">
+                        </div>
+                        <div class="form-group">
+                            <label>Primary Image</label>
+                            <input type="checkbox" name="images[${index}][is_primary]" value="1" ${imageData.is_primary ? 'checked' : ''}>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', imageHtml);
+            
+            // Set the tag value after insertion
+            const tagSelect = container.querySelector(`select[name="images[${index}][tag]"]`);
+            if (tagSelect && imageData.tag) {
+                tagSelect.value = imageData.tag;
+            }
+        }
+        
         function removeImage(button) {
             button.closest('.image-item').remove();
         }
@@ -532,6 +577,22 @@ $materials = $stmt->fetchAll();
                         addVariationToForm({}, 0);
                         variationCount = 1;
                     }
+                    
+                    // Reset images container and add existing images
+                    const imagesContainer = document.getElementById('images-container');
+                    imagesContainer.innerHTML = '';
+                    imageCount = 0;
+                    
+                    // Add existing images if any
+                    if (product.images && product.images.length > 0) {
+                        product.images.forEach((image, index) => {
+                            addImageFieldWithData(image, index);
+                        });
+                        imageCount = product.images.length;
+                    }
+                    
+                    // Add one empty image field
+                    addImageField();
                     
                     // Show modal
                     switchTab('basic');
