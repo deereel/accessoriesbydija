@@ -22,12 +22,49 @@ try {
     // Log or handle the error appropriately
 }
 
+// Fetch all materials
+try {
+    $stmt_mat = $pdo->query("SELECT DISTINCT m.name FROM materials m JOIN product_materials pm ON m.id = pm.material_id ORDER BY m.name ASC");
+    $all_materials = $stmt_mat->fetchAll(PDO::FETCH_COLUMN);
+} catch (Exception $e) {
+    $all_materials = [];
+}
+
+// Fetch all variants, filtered by material if selected
+try {
+    if (!empty($selected_material)) {
+        $stmt_var = $pdo->prepare("SELECT DISTINCT pv.tag FROM product_variants pv JOIN product_materials pm ON pv.product_id = pm.product_id JOIN materials m ON pm.material_id = m.id WHERE LOWER(m.name) = ? ORDER BY pv.tag ASC");
+        $stmt_var->execute([strtolower($selected_material)]);
+    } else {
+        $stmt_var = $pdo->query("SELECT DISTINCT tag FROM product_variants ORDER BY tag ASC");
+    }
+    $all_variants = $stmt_var->fetchAll(PDO::FETCH_COLUMN);
+} catch (Exception $e) {
+    $all_variants = [];
+}
+
+// Fetch all sizes, filtered by variant if selected
+try {
+    if (!empty($selected_variant)) {
+        $stmt_size = $pdo->prepare("SELECT DISTINCT p.size FROM products p JOIN product_variants pv ON p.id = pv.product_id WHERE LOWER(pv.tag) = ? AND p.size IS NOT NULL AND p.size != '' ORDER BY p.size ASC");
+        $stmt_size->execute([strtolower($selected_variant)]);
+    } else {
+        $stmt_size = $pdo->query("SELECT DISTINCT size FROM products WHERE size IS NOT NULL AND size != '' ORDER BY size ASC");
+    }
+    $all_sizes = $stmt_size->fetchAll(PDO::FETCH_COLUMN);
+} catch (Exception $e) {
+    $all_sizes = [];
+}
+
 
 // --- BUILD QUERY BASED ON FILTERS ---
 $selected_gender = $_GET['gender'] ?? '';
 $selected_category = $_GET['category'] ?? '';
 $selected_price_min = $_GET['price_min'] ?? '';
 $selected_price_max = $_GET['price_max'] ?? '';
+$selected_material = $_GET['material'] ?? '';
+$selected_variant = $_GET['variant'] ?? '';
+$selected_size = $_GET['size'] ?? '';
 
 // Base query with all necessary joins
 $sql = "SELECT p.*, 
@@ -67,6 +104,24 @@ if (!empty($selected_price_min)) {
 if (!empty($selected_price_max)) {
     $where[] = "p.price <= ?";
     $params[] = $selected_price_max;
+}
+
+// Handle material filter
+if (!empty($selected_material)) {
+    $where[] = "p.id IN (SELECT pm.product_id FROM product_materials pm JOIN materials m ON pm.material_id = m.id WHERE LOWER(m.name) = ?)";
+    $params[] = strtolower($selected_material);
+}
+
+// Handle variant filter
+if (!empty($selected_variant)) {
+    $where[] = "p.id IN (SELECT pv.product_id FROM product_variants pv WHERE LOWER(pv.tag) = ?)";
+    $params[] = strtolower($selected_variant);
+}
+
+// Handle size filter
+if (!empty($selected_size)) {
+    $where[] = "LOWER(p.size) = ?";
+    $params[] = strtolower($selected_size);
 }
 
 if (!empty($where)) {
@@ -265,11 +320,53 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
                 </div>
             </div>
 
+            <!-- Material Filter -->
+            <div class="filter-section">
+                <h3>MATERIAL</h3>
+                <button class="filter-dropdown-toggle" data-filter="material">
+                    <?= $selected_material ? ucfirst($selected_material) : 'Material' ?>
+                </button>
+                <div class="filter-list mobile-dropdown" data-label="MATERIAL">
+                    <a href="#" class="filter-link <?= !$selected_material ? 'active' : '' ?>" data-filter-key="material" data-filter-value="">All</a>
+                    <?php foreach ($all_materials as $material): ?>
+                        <a href="#" class="filter-link <?= strtolower($selected_material) == strtolower($material) ? 'active' : '' ?>" data-filter-key="material" data-filter-value="<?= htmlspecialchars($material) ?>"><?= htmlspecialchars(ucfirst($material)) ?></a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <!-- Variant Filter -->
+            <div class="filter-section">
+                <h3>VARIANT</h3>
+                <button class="filter-dropdown-toggle" data-filter="variant">
+                    <?= $selected_variant ? ucfirst($selected_variant) : 'Variant' ?>
+                </button>
+                <div class="filter-list mobile-dropdown" data-label="VARIANT">
+                    <a href="#" class="filter-link <?= !$selected_variant ? 'active' : '' ?>" data-filter-key="variant" data-filter-value="">All</a>
+                    <?php foreach ($all_variants as $variant): ?>
+                        <a href="#" class="filter-link <?= strtolower($selected_variant) == strtolower($variant) ? 'active' : '' ?>" data-filter-key="variant" data-filter-value="<?= htmlspecialchars($variant) ?>"><?= htmlspecialchars(ucfirst($variant)) ?></a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <!-- Size Filter -->
+            <div class="filter-section">
+                <h3>SIZE</h3>
+                <button class="filter-dropdown-toggle" data-filter="size">
+                    <?= $selected_size ? ucfirst($selected_size) : 'Size' ?>
+                </button>
+                <div class="filter-list mobile-dropdown" data-label="SIZE">
+                    <a href="#" class="filter-link <?= !$selected_size ? 'active' : '' ?>" data-filter-key="size" data-filter-value="">All</a>
+                    <?php foreach ($all_sizes as $size): ?>
+                        <a href="#" class="filter-link <?= strtolower($selected_size) == strtolower($size) ? 'active' : '' ?>" data-filter-key="size" data-filter-value="<?= htmlspecialchars($size) ?>"><?= htmlspecialchars(ucfirst($size)) ?></a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
             <!-- Price Filter -->
             <div class="filter-section">
                 <h3>FILTER BY PRICE</h3>
                 <button class="filter-dropdown-toggle" data-filter="price">
-                    <?php 
+                    <?php
                         if ($selected_price_min == 0 && $selected_price_max == 50) {
                             echo '£0 - £50';
                         } elseif ($selected_price_min == 50 && $selected_price_max == 100) {
@@ -321,7 +418,8 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
                                        data-product-id="<?= $product['id'] ?>"
                                        data-price="<?= $product['price'] ?>"
                                        data-type="jewelry"
-                                       data-name="<?= htmlspecialchars($product['name']) ?>">
+                                       data-name="<?= htmlspecialchars($product['name']) ?>"
+                                       <?= $product['hover_image'] ? 'data-has-hover-image="true"' : '' ?>>
 
                                     <!-- Wishlist Button -->
                                     <button class="wishlist-btn">
@@ -417,28 +515,132 @@ document.addEventListener('DOMContentLoaded', function () {
         link.addEventListener('click', function (e) {
             e.preventDefault();
 
-            const url = new URL(window.location);
             const key = this.dataset.filterKey;
             const value = this.dataset.filterValue;
 
-            if (key === 'price') {
-                url.searchParams.delete('price_min');
-                url.searchParams.delete('price_max');
-                if (value) {
-                    const [min, max] = value.split('-');
-                    url.searchParams.set('price_min', min);
-                    if(max) url.searchParams.set('price_max', max);
-                }
+            if (key === 'material' || key === 'variant' || key === 'size') {
+                // Handle dependent filters via AJAX
+                updateFilters(key, value);
             } else {
-                if (value) {
-                    url.searchParams.set(key, value);
+                // Reload for other filters
+                const url = new URL(window.location);
+                if (key === 'price') {
+                    url.searchParams.delete('price_min');
+                    url.searchParams.delete('price_max');
+                    if (value) {
+                        const [min, max] = value.split('-');
+                        url.searchParams.set('price_min', min);
+                        if(max) url.searchParams.set('price_max', max);
+                    }
                 } else {
-                    url.searchParams.delete(key);
+                    if (value) {
+                        url.searchParams.set(key, value);
+                    } else {
+                        url.searchParams.delete(key);
+                    }
                 }
+                window.location.href = url.toString();
             }
-            window.location.href = url.toString();
         });
     });
+
+    async function updateFilters(key, value) {
+        const url = new URL(window.location);
+        if (value) {
+            url.searchParams.set(key, value);
+        } else {
+            url.searchParams.delete(key);
+        }
+        // Clear dependent filters
+        if (key === 'material') {
+            url.searchParams.delete('variant');
+            url.searchParams.delete('size');
+        } else if (key === 'variant') {
+            url.searchParams.delete('size');
+        }
+
+        // Update URL without reload
+        window.history.pushState({}, '', url.toString());
+
+        // Update active classes
+        updateActiveClasses(key, value);
+
+        // Fetch new filter options
+        const params = new URLSearchParams();
+        if (key === 'material' && value) params.set('material', value);
+        if (key === 'variant' && value) params.set('variant', value);
+
+        try {
+            const response = await fetch('api/get-filter-options.php?' + params.toString());
+            const data = await response.json();
+
+            // Update variant dropdown
+            if (key === 'material') {
+                updateDropdown('variant', data.variants);
+                updateDropdown('size', []); // Clear sizes
+            }
+            // Update size dropdown
+            if (key === 'variant') {
+                updateDropdown('size', data.sizes);
+            }
+        } catch (error) {
+            console.error('Error updating filters:', error);
+        }
+
+        // Reload products (or update via AJAX, but for now reload)
+        window.location.reload();
+    }
+
+    function updateActiveClasses(key, value) {
+        // Update active classes for the changed filter
+        const filterList = document.querySelector(`[data-label="${key.toUpperCase()}"]`);
+        if (filterList) {
+            filterList.querySelectorAll('.filter-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.dataset.filterValue === value) {
+                    link.classList.add('active');
+                }
+            });
+            // Update toggle text
+            const toggle = filterList.previousElementSibling;
+            if (toggle) {
+                const displayValue = value ? value.charAt(0).toUpperCase() + value.slice(1) : key.charAt(0).toUpperCase() + key.slice(1);
+                toggle.textContent = displayValue;
+            }
+        }
+    }
+
+    function updateDropdown(filterKey, options) {
+        const filterList = document.querySelector(`[data-label="${filterKey.toUpperCase()}"]`);
+        if (filterList) {
+            const links = filterList.querySelectorAll('.filter-link');
+            // Remove existing dynamic links
+            links.forEach(link => {
+                if (link.dataset.filterValue !== '') {
+                    link.remove();
+                }
+            });
+            // Add new options
+            options.forEach(option => {
+                const link = document.createElement('a');
+                link.href = '#';
+                link.className = 'filter-link';
+                link.dataset.filterKey = filterKey;
+                link.dataset.filterValue = option;
+                link.textContent = option.charAt(0).toUpperCase() + option.slice(1);
+                filterList.appendChild(link);
+            });
+            // Re-attach event listeners
+            filterList.querySelectorAll('.filter-link').forEach(link => {
+                link.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const key = this.dataset.filterKey;
+                    const value = this.dataset.filterValue;
+                    updateFilters(key, value);
+                });
+            });
+        }
+    }
     
     // Poll for stock updates every 5 seconds to reflect real-time changes
     setInterval(updateStockBadges, 5000);

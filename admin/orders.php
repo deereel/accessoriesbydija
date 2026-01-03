@@ -157,6 +157,7 @@ $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="card" style="margin:0; box-shadow:none; grid-column: 1 / -1;">
                 <div class="card-header">Actions</div>
                 <div class="card-body">
+                    <div id="quickActions" style="margin-bottom:10px;"></div>
                     <form id="orderUpdateForm" onsubmit="return submitOrderUpdate(event)">
                         <input type="hidden" id="order_id" name="order_id" value="">
 
@@ -250,6 +251,7 @@ $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
         document.getElementById('orderSummary').innerHTML = 'Loading...';
         document.getElementById('orderCustomer').innerHTML = '';
         document.getElementById('orderItems').innerHTML = '';
+        document.getElementById('quickActions').innerHTML = '';
 
         fetch(`get_order.php?id=${encodeURIComponent(orderId)}`)
             .then(r => r.json())
@@ -264,6 +266,22 @@ $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 document.getElementById('status').value = o.status;
                 document.getElementById('payment_status').value = o.payment_status;
                 document.getElementById('notes').value = o.notes || '';
+
+                const currentStatus = o.status;
+                let quickButtons = [];
+                if (currentStatus === 'pending') {
+                    quickButtons.push('<button type="button" class="btn" onclick="quickUpdate(\'processing\')">Process Order</button>');
+                }
+                if (currentStatus === 'processing') {
+                    quickButtons.push('<button type="button" class="btn" onclick="quickUpdate(\'shipped\')">Ship Order</button>');
+                }
+                if (currentStatus === 'shipped') {
+                    quickButtons.push('<button type="button" class="btn" onclick="quickUpdate(\'delivered\')">Mark Delivered</button>');
+                }
+                if (currentStatus !== 'delivered' && currentStatus !== 'cancelled') {
+                    quickButtons.push('<button type="button" class="btn" style="background:#dc3545;" onclick="quickUpdate(\'cancelled\')">Cancel Order</button>');
+                }
+                document.getElementById('quickActions').innerHTML = quickButtons.join(' ');
 
                 const subtotal = parseFloat(o.total_amount || 0) - parseFloat(o.shipping_amount || 0) + parseFloat(o.discount_amount || 0);
                 document.getElementById('orderSummary').innerHTML = `
@@ -383,5 +401,11 @@ $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
             btn.disabled = false;
             btn.textContent = 'Save Changes';
         });
+    }
+
+    function quickUpdate(status) {
+        document.getElementById('status').value = status;
+        const form = document.getElementById('orderUpdateForm');
+        submitOrderUpdate({preventDefault: () => {}, target: form});
     }
 </script>

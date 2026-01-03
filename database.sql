@@ -100,6 +100,15 @@ CREATE TABLE IF NOT EXISTS product_materials (
     FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE
 );
 
+-- Variant materials relationship
+CREATE TABLE IF NOT EXISTS variant_materials (
+    variant_id INT,
+    material_id INT,
+    PRIMARY KEY (variant_id, material_id),
+    FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE CASCADE,
+    FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE CASCADE
+);
+
 -- Product colors relationship
 CREATE TABLE IF NOT EXISTS product_colors (
     product_id INT,
@@ -534,3 +543,24 @@ INSERT IGNORE INTO site_settings (setting_key, setting_value, setting_type, desc
 ('products_per_page', '12', 'number', 'Products per page in listings'),
 ('enable_reviews', 'true', 'boolean', 'Enable product reviews'),
 ('maintenance_mode', 'false', 'boolean', 'Site maintenance mode');
+
+-- Migration: Update product_variants table for new variant system
+ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS tag VARCHAR(255) NULL;
+ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS price_adjustment DECIMAL(10,2) NULL;
+ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS stock_quantity INT DEFAULT 0;
+ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+
+-- Migration: Update product_colors for variant-level colors
+ALTER TABLE product_colors ADD COLUMN IF NOT EXISTS variant_id INT NULL;
+ALTER TABLE product_colors DROP FOREIGN KEY IF EXISTS product_colors_ibfk_1;
+ALTER TABLE product_colors ADD CONSTRAINT fk_product_colors_variant FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE CASCADE;
+
+-- Migration: Update product_adornments for variant-level adornments
+ALTER TABLE product_adornments ADD COLUMN IF NOT EXISTS variant_id INT NULL;
+ALTER TABLE product_adornments DROP FOREIGN KEY IF EXISTS product_adornments_ibfk_1;
+ALTER TABLE product_adornments ADD CONSTRAINT fk_product_adornments_variant FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE CASCADE;
+
+-- Migration: Update product_images variant reference
+ALTER TABLE product_images DROP FOREIGN KEY IF EXISTS product_images_ibfk_2;
+ALTER TABLE product_images ADD CONSTRAINT fk_product_images_variant FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE SET NULL;

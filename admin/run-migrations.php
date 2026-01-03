@@ -6,12 +6,22 @@ if (!isset($_SESSION['admin_logged_in']) || ($_SESSION['admin_role'] ?? '') !== 
 }
 require_once __DIR__ . '/../config/database.php';
 
-$sqlFile = __DIR__ . '/../database.sql';
-if (!file_exists($sqlFile)) {
-    echo json_encode(['success'=>false,'message'=>'Migration file not found']); exit;
+$sqlFiles = [
+    __DIR__ . '/../database.sql',
+    __DIR__ . '/../database_variations.sql',
+    __DIR__ . '/../add_tag_column.sql'
+];
+
+$content = '';
+foreach ($sqlFiles as $sqlFile) {
+    if (file_exists($sqlFile)) {
+        $content .= "\n" . file_get_contents($sqlFile);
+    }
 }
 
-$content = file_get_contents($sqlFile);
+if (empty($content)) {
+    echo json_encode(['success'=>false,'message'=>'No migration files found']); exit;
+}
 // Remove CREATE DATABASE and USE statements to avoid privilege issues
 $content = preg_replace('/CREATE\s+DATABASE[\s\S]*?;|USE\s+[`\w]+\s*;?/i', '', $content);
 

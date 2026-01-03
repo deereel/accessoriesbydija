@@ -53,6 +53,23 @@ try {
             echo json_encode(['success' => false, 'error' => 'Invalid status']);
             exit;
         }
+
+        // Validate allowed transitions
+        $current_status = $existing['status'];
+        $allowed_transitions = [
+            'pending' => ['processing', 'cancelled'],
+            'processing' => ['shipped', 'cancelled'],
+            'shipped' => ['delivered', 'cancelled'],
+            'delivered' => [], // No changes allowed after delivery
+            'cancelled' => []  // No changes allowed after cancellation
+        ];
+
+        if (!in_array($status, $allowed_transitions[$current_status] ?? [], true)) {
+            http_response_code(400);
+            echo json_encode(['success' => false, 'error' => 'Invalid status transition from ' . $current_status . ' to ' . $status]);
+            exit;
+        }
+
         $fields[] = "status = ?";
         $params[] = $status;
     }
