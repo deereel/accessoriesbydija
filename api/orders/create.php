@@ -83,7 +83,7 @@ try {
     if ($customer_id) {
         // Logged-in customer: fetch from database
         $stmt = $pdo->prepare("SELECT c.id, c.product_id, c.quantity, c.material_id, c.variation_id, c.size_id, p.price, p.name, p.sku,
-                               m.name as material_name, pv.color, pv.adornment, vs.size
+                               m.name as material_name, pv.color, pv.adornment, vs.size, pv.tag as variation_tag
                                FROM cart c
                                JOIN products p ON c.product_id = p.id
                                LEFT JOIN materials m ON m.id = c.material_id
@@ -303,8 +303,8 @@ try {
 
         // Insert order items
         $itemStmt = $pdo->prepare("INSERT INTO order_items
-                                   (order_id, product_id, product_name, product_sku, quantity, unit_price, total_price, material_name, color, adornment, size, created_at)
-                                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+                                   (order_id, product_id, product_name, product_sku, quantity, unit_price, total_price, material_name, color, adornment, size, variation_id, variation_tag, created_at)
+                                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         
         foreach ($cart_items as $item) {
             $product_id = intval($item['product_id']);
@@ -334,7 +334,9 @@ try {
                 $item['material_name'] ?? null,
                 $item['color'] ?? null,
                 $item['adornment'] ?? null,
-                $item['size'] ?? null
+                $item['size'] ?? null,
+                $item['variation_id'] ?? null,
+                $item['variation_tag'] ?? null
             ]);
         }
 

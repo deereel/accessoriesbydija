@@ -52,7 +52,11 @@ try {
 
     // Fetch items
     $itemsStmt = $pdo->prepare(
-        "SELECT oi.*, p.slug AS product_slug, oi.product_name
+        "SELECT oi.*, p.slug AS product_slug, oi.product_name, p.description as product_description,
+         COALESCE(
+             (SELECT image_url FROM product_images WHERE variant_id = oi.variation_id LIMIT 1),
+             (SELECT image_url FROM product_images WHERE product_id = oi.product_id AND is_primary = 1 LIMIT 1)
+         ) as product_image
          FROM order_items oi
          LEFT JOIN products p ON oi.product_id = p.id
          WHERE oi.order_id = ?

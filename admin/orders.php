@@ -82,12 +82,11 @@ $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Status</th>
                         <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Total</th>
                         <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Date</th>
-                        <th style="padding:10px; border-bottom:1px solid #ddd; text-align:left;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($orders)): ?>
-                        <tr><td colspan="6" style="text-align:center; padding:20px; color:#666;">No orders found matching your criteria.</td></tr>
+                        <tr><td colspan="5" style="text-align:center; padding:20px; color:#666;">No orders found matching your criteria.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($orders as $order): ?>
                         <tr class="order-row" data-order-id="<?php echo (int)$order['id']; ?>" style="border-bottom:1px solid #eee; cursor:pointer;">
@@ -119,293 +118,21 @@ $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </td>
                             <td style="padding:10px;"><strong>£<?php echo number_format($order['total_amount'], 2); ?></strong></td>
                             <td style="padding:10px;"><?php echo date('M d, Y', strtotime($order['created_at'])); ?></td>
-                            <td style="padding:10px;">
-                                <button type="button" class="btn" style="font-size:12px;" onclick="event.stopPropagation(); openOrderDetails(<?php echo (int)$order['id']; ?>)">View Details</button>
-                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
     </div>
-</div>
-
-<!-- Order Details Modal -->
-<div id="orderModal" class="modal">
-    <div class="modal-content" style="max-width: 900px;">
-        <span class="close" onclick="closeOrderModal()">&times;</span>
-        <h2 style="margin-top:0;">Order Details</h2>
-
-        <div id="orderModalAlert" style="display:none; margin: 10px 0; padding: 10px; border-radius: 6px;"></div>
-
-        <div id="orderDetails" style="display:grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-            <div class="card" style="margin:0; box-shadow:none;">
-                <div class="card-header">Summary</div>
-                <div class="card-body" id="orderSummary"></div>
-            </div>
-
-            <div class="card" style="margin:0; box-shadow:none;">
-                <div class="card-header">Customer / Shipping</div>
-                <div class="card-body" id="orderCustomer"></div>
-            </div>
-
-            <div class="card" style="margin:0; box-shadow:none; grid-column: 1 / -1;">
-                <div class="card-header">Items</div>
-                <div class="card-body" id="orderItems"></div>
-            </div>
-
-            <div class="card" style="margin:0; box-shadow:none; grid-column: 1 / -1;">
-                <div class="card-header">Actions</div>
-                <div class="card-body">
-                    <div id="quickActions" style="margin-bottom:10px;"></div>
-                    <form id="orderUpdateForm" onsubmit="return submitOrderUpdate(event)">
-                        <input type="hidden" id="order_id" name="order_id" value="">
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="status">Order Status</label>
-                                <select id="status" name="status">
-                                    <option value="pending">Pending</option>
-                                    <option value="processing">Processing</option>
-                                    <option value="shipped">Shipped</option>
-                                    <option value="delivered">Delivered</option>
-                                    <option value="cancelled">Cancelled</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="payment_status">Payment Status</label>
-                                <select id="payment_status" name="payment_status">
-                                    <option value="pending">Pending</option>
-                                    <option value="paid">Paid</option>
-                                    <option value="failed">Failed</option>
-                                    <option value="refunded">Refunded</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="notes">Notes</label>
-                            <textarea id="notes" name="notes" rows="4" placeholder="Internal notes / shipping notes..."></textarea>
-                        </div>
-
-                        <div style="display:flex; gap:10px; justify-content:flex-end; align-items:center;">
-                            <button type="button" class="btn" style="background:#6c757d;" onclick="closeOrderModal()">Close</button>
-                            <button type="submit" class="btn btn-success">Save Changes</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    function escapeHtml(str) {
-        if (str === null || str === undefined) return '';
-        return String(str)
-            .replaceAll('&', '&')
-            .replaceAll('<', '<')
-            .replaceAll('>', '>')
-            .replaceAll('"', '"')
-            .replaceAll("'", '&#039;');
-    }
-
-    function money(amount) {
-        const n = parseFloat(amount || 0);
-        return '£' + n.toFixed(2);
-    }
-
-    function showOrderAlert(type, message) {
-        const el = document.getElementById('orderModalAlert');
-        el.style.display = 'block';
-        el.textContent = message;
-
-        if (type === 'success') {
-            el.style.background = '#d4edda';
-            el.style.color = '#155724';
-        } else {
-            el.style.background = '#f8d7da';
-            el.style.color = '#721c24';
-        }
-    }
-
-    function clearOrderAlert() {
-        const el = document.getElementById('orderModalAlert');
-        el.style.display = 'none';
-        el.textContent = '';
-    }
-
-    // Make rows clickable
-    document.querySelectorAll('.order-row').forEach(row => {
-        row.addEventListener('click', () => {
-            const id = row.getAttribute('data-order-id');
-            openOrderDetails(id);
-        });
-    });
-
-    function openOrderDetails(orderId) {
-        clearOrderAlert();
-        document.getElementById('orderModal').style.display = 'block';
-
-        // Reset containers
-        document.getElementById('orderSummary').innerHTML = 'Loading...';
-        document.getElementById('orderCustomer').innerHTML = '';
-        document.getElementById('orderItems').innerHTML = '';
-        document.getElementById('quickActions').innerHTML = '';
-
-        fetch(`get_order.php?id=${encodeURIComponent(orderId)}`)
-            .then(r => r.json())
-            .then(data => {
-                if (!data.success) {
-                    showOrderAlert('error', data.error || 'Could not load order');
-                    return;
-                }
-
-                const o = data.order;
-                document.getElementById('order_id').value = o.id;
-                document.getElementById('status').value = o.status;
-                document.getElementById('payment_status').value = o.payment_status;
-                document.getElementById('notes').value = o.notes || '';
-
-                const currentStatus = o.status;
-                let quickButtons = [];
-                if (currentStatus === 'pending') {
-                    quickButtons.push('<button type="button" class="btn" onclick="quickUpdate(\'processing\')">Process Order</button>');
-                }
-                if (currentStatus === 'processing') {
-                    quickButtons.push('<button type="button" class="btn" onclick="quickUpdate(\'shipped\')">Ship Order</button>');
-                }
-                if (currentStatus === 'shipped') {
-                    quickButtons.push('<button type="button" class="btn" onclick="quickUpdate(\'delivered\')">Mark Delivered</button>');
-                }
-                if (currentStatus !== 'delivered' && currentStatus !== 'cancelled') {
-                    quickButtons.push('<button type="button" class="btn" style="background:#dc3545;" onclick="quickUpdate(\'cancelled\')">Cancel Order</button>');
-                }
-                document.getElementById('quickActions').innerHTML = quickButtons.join(' ');
-
-                const subtotal = parseFloat(o.total_amount || 0) - parseFloat(o.shipping_amount || 0) + parseFloat(o.discount_amount || 0);
-                document.getElementById('orderSummary').innerHTML = `
-                    <div><strong>Order #:</strong> ${escapeHtml(o.order_number)}</div>
-                    <div><strong>Date:</strong> ${escapeHtml(o.created_at)}</div>
-                    <div><strong>Status:</strong> ${escapeHtml(o.status)}</div>
-                    <div><strong>Payment:</strong> ${escapeHtml(o.payment_status)} (${escapeHtml(o.payment_method || '-')})</div>
-                    <hr style="border:none; border-top:1px solid #eee; margin:10px 0;">
-                    <div><strong>Subtotal:</strong> ${money(subtotal)}</div>
-                    <div><strong>Shipping:</strong> ${money(o.shipping_amount)}</div>
-                    <div><strong>Discount:</strong> ${money(o.discount_amount)}</div>
-                    <div><strong>Total:</strong> <strong>${money(o.total_amount)}</strong></div>
-                `;
-
-                const customerName = (o.first_name ? (o.first_name + ' ' + (o.last_name || '')) : (o.contact_name || 'Guest'));
-                const email = o.customer_email || o.email || '-';
-                const phone = o.contact_phone || '-';
-
-                // Address (for guest checkout address may be embedded in notes as JSON)
-                let addressHtml = '';
-                if (o.address_line_1) {
-                    addressHtml = `
-                        <div>${escapeHtml(o.addr_first_name || '')} ${escapeHtml(o.addr_last_name || '')}</div>
-                        ${o.company ? `<div>${escapeHtml(o.company)}</div>` : ''}
-                        <div>${escapeHtml(o.address_line_1)}</div>
-                        ${o.address_line_2 ? `<div>${escapeHtml(o.address_line_2)}</div>` : ''}
-                        <div>${escapeHtml(o.city)}, ${escapeHtml(o.state)} ${escapeHtml(o.postal_code)}</div>
-                        <div>${escapeHtml(o.country)}</div>
-                    `;
-                } else {
-                    addressHtml = `<div style="color:#666; font-size:12px;">No saved address linked to this order (guest address may be stored in Notes).</div>`;
-                }
-
-                document.getElementById('orderCustomer').innerHTML = `
-                    <div><strong>Customer:</strong> ${escapeHtml(customerName)}</div>
-                    <div><strong>Email:</strong> ${escapeHtml(email)}</div>
-                    <div><strong>Phone:</strong> ${escapeHtml(phone)}</div>
-                    <hr style="border:none; border-top:1px solid #eee; margin:10px 0;">
-                    <div><strong>Shipping Address:</strong></div>
-                    ${addressHtml}
-                `;
-
-                const items = Array.isArray(o.items) ? o.items : [];
-                if (!items.length) {
-                    document.getElementById('orderItems').innerHTML = '<div style="color:#666;">No items found.</div>';
-                } else {
-                    const rows = items.map(i => `
-                        <tr>
-                            <td style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(i.product_name)}${i.material_name || i.color || i.adornment || i.size ? ` (${[i.material_name, i.color, i.adornment, i.size].filter(v => v).join(', ')})` : ''}</td>
-                            <td style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(i.product_sku)}</td>
-                            <td style="padding:8px; border-bottom:1px solid #eee; text-align:right;">${escapeHtml(i.quantity)}</td>
-                            <td style="padding:8px; border-bottom:1px solid #eee; text-align:right;">${money(i.unit_price)}</td>
-                            <td style="padding:8px; border-bottom:1px solid #eee; text-align:right;">${money(i.total_price)}</td>
-                        </tr>
-                    `).join('');
-
-                    document.getElementById('orderItems').innerHTML = `
-                        <table style="width:100%; border-collapse:collapse;">
-                            <thead>
-                                <tr style="background:#f5f5f5;">
-                                    <th style="padding:8px; text-align:left; border-bottom:1px solid #ddd;">Product</th>
-                                    <th style="padding:8px; text-align:left; border-bottom:1px solid #ddd;">SKU</th>
-                                    <th style="padding:8px; text-align:right; border-bottom:1px solid #ddd;">Qty</th>
-                                    <th style="padding:8px; text-align:right; border-bottom:1px solid #ddd;">Unit</th>
-                                    <th style="padding:8px; text-align:right; border-bottom:1px solid #ddd;">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>${rows}</tbody>
-                        </table>
-                    `;
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                showOrderAlert('error', 'Failed to load order details');
+    
+    <script>
+        // Make rows clickable
+        document.querySelectorAll('.order-row').forEach(row => {
+            row.addEventListener('click', () => {
+                const id = row.getAttribute('data-order-id');
+                window.location.href = 'order-detail.php?id=' + id;
             });
-    }
-
-    function closeOrderModal() {
-        document.getElementById('orderModal').style.display = 'none';
-    }
-
-    // Close modal when clicking outside
-    window.addEventListener('click', function(event) {
-        const modal = document.getElementById('orderModal');
-        if (event.target === modal) {
-            closeOrderModal();
-        }
-    });
-
-    function submitOrderUpdate(event) {
-        event.preventDefault();
-        clearOrderAlert();
-
-        const form = event.target;
-        const formData = new FormData(form);
-        const btn = form.querySelector('button[type="submit"]');
-        btn.disabled = true;
-        btn.textContent = 'Saving...';
-
-        fetch('update_order.php', {
-            method: 'POST',
-            body: formData
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                showOrderAlert('success', 'Order updated successfully!');
-                setTimeout(() => location.reload(), 1000); // Reload to see changes
-            } else {
-                showOrderAlert('error', data.error || 'Failed to update order.');
-            }
-        }).catch(err => {
-            showOrderAlert('error', 'An unexpected error occurred.');
-            console.error(err);
-        }).finally(() => {
-            btn.disabled = false;
-            btn.textContent = 'Save Changes';
         });
-    }
+    </script>
+</div>
 
-    function quickUpdate(status) {
-        document.getElementById('status').value = status;
-        const form = document.getElementById('orderUpdateForm');
-        submitOrderUpdate({preventDefault: () => {}, target: form});
-    }
-</script>

@@ -33,6 +33,10 @@ try {
         $columnsToAdd[] = "ADD COLUMN size VARCHAR(50) DEFAULT NULL";
     }
 
+    if (!in_array('variation_tag', $columns)) {
+        $columnsToAdd[] = "ADD COLUMN variation_tag VARCHAR(8) DEFAULT NULL";
+    }
+
     if (empty($columnsToAdd)) {
         echo "All required columns already exist in order_items table.\n";
         exit(0);
