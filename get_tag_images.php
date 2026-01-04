@@ -12,27 +12,31 @@ if (!$product_id) {
 }
 
 try {
+    $images = [];
     if ($tag) {
         // Get images for specific tag
         $stmt = $pdo->prepare("
-            SELECT image_url, alt_text, is_primary 
-            FROM product_images 
+            SELECT image_url, alt_text, is_primary
+            FROM product_images
             WHERE product_id = ? AND tag = ?
             ORDER BY is_primary DESC, sort_order ASC, id ASC
         ");
         $stmt->execute([$product_id, $tag]);
-    } else {
-        // Get general product images (no tag)
+        $images = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    // If no images for tag or no tag, get general product images
+    if (empty($images)) {
         $stmt = $pdo->prepare("
-            SELECT image_url, alt_text, is_primary 
-            FROM product_images 
+            SELECT image_url, alt_text, is_primary
+            FROM product_images
             WHERE product_id = ? AND (tag IS NULL OR tag = '')
             ORDER BY is_primary DESC, sort_order ASC, id ASC
         ");
         $stmt->execute([$product_id]);
+        $images = $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
-    
-    $images = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
     echo json_encode($images);
 } catch (Exception $e) {
     echo json_encode([]);

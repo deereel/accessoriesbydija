@@ -1,4 +1,6 @@
 <?php
+require_once 'config/database.php';
+
 $page_title = "New Arrivals";
 $page_description = "Discover our latest jewelry collection with fresh designs and trending styles.";
 include 'includes/header.php';
@@ -37,30 +39,30 @@ include 'includes/header.php';
         <div class="arrivals-grid">
             <?php
               // Fetch 8 most recent products from database
-              $query = "SELECT id, product_name, image_url, price, description FROM products ORDER BY created_at DESC LIMIT 8";
-              $result = $conn->query($query);
-              
+              $query = "SELECT id, name, slug, price, description, (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1) as image_url FROM products p ORDER BY created_at DESC LIMIT 8";
+              $result = $pdo->query($query);
+
               $emoji_list = ['💍', '✨', '👑', '💎', '🌟', '💫', '🎀', '💝'];
               $index = 0;
-              
-              if ($result && $result->num_rows > 0) {
-                while ($row = $result->fetch_assoc()) {
+
+              if ($result) {
+                while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
                   $emoji = $emoji_list[$index % count($emoji_list)];
-                  $image_html = $row['image_url'] ? '<img src="' . htmlspecialchars($row['image_url']) . '" style="width:100%; height:100%; object-fit:cover;" alt="' . htmlspecialchars($row['product_name']) . '">' : '<span>' . $emoji . '</span>';
-                  
-                  echo '<div class="arrival-card">
-                    <div class="arrival-image">
+                  $image_html = $row['image_url'] ? '<img src="' . htmlspecialchars($row['image_url']) . '" style="width:100%; height:100%; object-fit:cover;" alt="' . htmlspecialchars($row['name']) . '">' : '<span>' . $emoji . '</span>';
+
+                  echo '<div class="arrival-card" data-product-id="' . $row['id'] . '" data-price="' . $row['price'] . '" data-product-name="' . htmlspecialchars($row['name']) . '" data-image="' . htmlspecialchars($row['image_url'] ?? '') . '">
+                    <a href="product.php?slug=' . htmlspecialchars($row['slug']) . '" class="arrival-image">
                       <span class="new-badge">NEW</span>
                       ' . $image_html . '
-                    </div>
+                    </a>
                     <div class="arrival-info">
-                      <h3 class="arrival-name">' . htmlspecialchars($row['product_name']) . '</h3>
-                      <p class="arrival-price">₦' . number_format($row['price'], 2) . '</p>
+                      <h3 class="arrival-name"><a href="product.php?slug=' . htmlspecialchars($row['slug']) . '">' . htmlspecialchars($row['name']) . '</a></h3>
+                      <p class="arrival-price product-price" data-price="' . $row['price'] . '">£' . number_format($row['price'], 2) . '</p>
                       <p class="arrival-description">' . substr(htmlspecialchars($row['description'] ?? ''), 0, 50) . '...</p>
-                      <button class="add-to-cart" onclick="addToCart(' . $row['id'] . ')">Add to Cart</button>
+                      <button class="add-to-cart">Add to Cart</button>
                     </div>
                   </div>';
-                  
+
                   $index++;
                 }
               } else {

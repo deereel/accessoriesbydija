@@ -26,9 +26,16 @@ try {
 	if ($method === 'GET') {
 		$customer_id = current_customer_id();
 		if ($customer_id) {
-			$stmt = $pdo->prepare("SELECT c.id as cart_item_id, c.product_id, c.quantity, p.name as product_name, p.price, p.slug,
+			$stmt = $pdo->prepare("SELECT c.id as cart_item_id, c.product_id, c.quantity, c.material_id, c.variation_id, c.size_id, c.selected_price,
+			p.name as product_name, COALESCE(c.selected_price, p.price) as price, p.slug,
+			m.name as material_name, pv.tag as variation_tag, pv.color, pv.finish, vs.size,
 			(SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 ORDER BY is_primary DESC, sort_order ASC LIMIT 1) AS image_url
-			FROM cart c JOIN products p ON p.id = c.product_id WHERE c.customer_id = ?");
+			FROM cart c
+			JOIN products p ON p.id = c.product_id
+			LEFT JOIN materials m ON m.id = c.material_id
+			LEFT JOIN product_variations pv ON pv.id = c.variation_id
+			LEFT JOIN variation_sizes vs ON vs.id = c.size_id
+			WHERE c.customer_id = ?");
 			$stmt->execute([$customer_id]);
 			$items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 			json(['success' => true, 'items' => $items]);
@@ -91,6 +98,10 @@ try {
 
 		$product_id = isset($input['product_id']) ? (int)$input['product_id'] : 0;
 		$quantity = isset($input['quantity']) ? max(1, (int)$input['quantity']) : 1;
+		$material_id = isset($input['material_id']) ? (int)$input['material_id'] : null;
+		$variation_id = isset($input['variation_id']) ? (int)$input['variation_id'] : null;
+		$size_id = isset($input['size_id']) ? (int)$input['size_id'] : null;
+		$selected_price = isset($input['selected_price']) ? (float)$input['selected_price'] : null;
 
 		if (!$product_id) json(['success' => false, 'message' => 'Product ID missing']);
 
@@ -99,7 +110,7 @@ try {
 		$stmt->execute([$product_id]);
 		$product = $stmt->fetch(PDO::FETCH_ASSOC);
 		if (!$product) json(['success' => false, 'message' => 'Product not found']);
-		
+
 		// Check if product has enough stock for requested quantity
 		if ($product['stock_quantity'] <= 0) {
 			json(['success' => false, 'message' => 'This product is out of stock']);
@@ -110,17 +121,17 @@ try {
 
 		$customer_id = current_customer_id();
 		if ($customer_id) {
-			// Insert or update DB cart
-			$stmt = $pdo->prepare('SELECT id, quantity FROM cart WHERE customer_id = ? AND product_id = ?');
-			$stmt->execute([$customer_id, $product_id]);
+			// Insert or update DB cart with specifications
+			$stmt = $pdo->prepare('SELECT id, quantity FROM cart WHERE customer_id = ? AND product_id = ? AND material_id <=> ? AND variation_id <=> ? AND size_id <=> ?');
+			$stmt->execute([$customer_id, $product_id, $material_id, $variation_id, $size_id]);
 			$row = $stmt->fetch(PDO::FETCH_ASSOC);
 			if ($row) {
 				$newQty = $row['quantity'] + $quantity;
-				$upd = $pdo->prepare('UPDATE cart SET quantity = ?, updated_at = NOW() WHERE id = ?');
-				$upd->execute([$newQty, $row['id']]);
+				$upd = $pdo->prepare('UPDATE cart SET quantity = ?, selected_price = ?, updated_at = NOW() WHERE id = ?');
+				$upd->execute([$newQty, $selected_price, $row['id']]);
 			} else {
-				$ins = $pdo->prepare('INSERT INTO cart (customer_id, product_id, quantity) VALUES (?, ?, ?)');
-				$ins->execute([$customer_id, $product_id, $quantity]);
+				$ins = $pdo->prepare('INSERT INTO cart (customer_id, product_id, quantity, material_id, variation_id, size_id, selected_price) VALUES (?, ?, ?, ?, ?, ?, ?)');
+				$ins->execute([$customer_id, $product_id, $quantity, $material_id, $variation_id, $size_id, $selected_price]);
 			}
 
 			json(['success' => true, 'message' => 'Item added to cart (DB)']);
@@ -128,8 +139,35 @@ try {
 
 		// Guest: save to session
 		if (!isset($_SESSION['cart']) || !is_array($_SESSION['cart'])) $_SESSION['cart'] = [];
-		$key = (string)$product_id;
-		
+		$key = $product_id . '_' . ($material_id ?: 'null') . '_' . ($variation_id ?: 'null') . '_' . ($size_id ?: 'null');
+
+		// Fetch names
+		$material_name = null;
+		$variation_tag = null;
+		$color = null;
+		$finish = null;
+		$size = null;
+		if ($material_id) {
+			$mStmt = $pdo->prepare('SELECT name FROM materials WHERE id = ?');
+			$mStmt->execute([$material_id]);
+			$mRow = $mStmt->fetch(PDO::FETCH_ASSOC);
+			$material_name = $mRow['name'] ?? null;
+		}
+		if ($variation_id) {
+			$vStmt = $pdo->prepare('SELECT tag, color, finish FROM product_variations WHERE id = ?');
+			$vStmt->execute([$variation_id]);
+			$vRow = $vStmt->fetch(PDO::FETCH_ASSOC);
+			$variation_tag = $vRow['tag'] ?? null;
+			$color = $vRow['color'] ?? null;
+			$finish = $vRow['finish'] ?? null;
+		}
+		if ($size_id) {
+			$sStmt = $pdo->prepare('SELECT size FROM variation_sizes WHERE id = ?');
+			$sStmt->execute([$size_id]);
+			$sRow = $sStmt->fetch(PDO::FETCH_ASSOC);
+			$size = $sRow['size'] ?? null;
+		}
+
 		// Determine image URL from input or DB
 		$image_url = isset($input['image']) && $input['image'] ? (string)$input['image'] : null;
 		if (!$image_url) {
@@ -140,21 +178,27 @@ try {
 		$image_url = $row['image_url'];
 		}
 		}
-		
+
 		if (isset($_SESSION['cart'][$key])) {
 		$_SESSION['cart'][$key]['quantity'] += $quantity;
-		if (empty($_SESSION['cart'][$key]['image']) && $image_url) {
-		$_SESSION['cart'][$key]['image'] = $image_url;
-		}
 		} else {
 		$_SESSION['cart'][$key] = [
 		'cart_item_id' => $key,
 		'product_id' => $product_id,
 		'product_name' => $product['name'],
-		'price' => (float)$product['price'],
+		'price' => $selected_price ?: (float)$product['price'],
 		'slug' => $product['slug'] ?? '',
 		'quantity' => $quantity,
-		'image' => $image_url
+		'image' => $image_url,
+		'material_id' => $material_id,
+		'variation_id' => $variation_id,
+		'size_id' => $size_id,
+		'selected_price' => $selected_price,
+		'material_name' => $material_name,
+		'variation_tag' => $variation_tag,
+		'color' => $color,
+		'finish' => $finish,
+		'size' => $size
 		];
 		}
 		

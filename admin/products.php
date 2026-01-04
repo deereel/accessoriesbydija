@@ -109,39 +109,86 @@ if ($_POST) {
                 }
             }
             
-            // Handle image uploads for edit
-            if (isset($_FILES['images'])) {
+            // Handle image deletion
+            if (!empty($_POST['deleted_images'])) {
+                $deleted_images = explode(',', rtrim($_POST['deleted_images'], ','));
+                foreach ($deleted_images as $deleted_image_id) {
+                    // Get the image URL to delete the file
+                    $stmt = $pdo->prepare("SELECT image_url FROM product_images WHERE id = ?");
+                    $stmt->execute([$deleted_image_id]);
+                    $image = $stmt->fetch();
+                    if ($image) {
+                        $file_path = '../' . $image['image_url'];
+                        if (file_exists($file_path)) {
+                            unlink($file_path);
+                        }
+                    }
+            
+                    // Delete from the database
+                    $stmt = $pdo->prepare("DELETE FROM product_images WHERE id = ?");
+                    $stmt->execute([$deleted_image_id]);
+                }
+            }
+            
+            // Handle image updates and uploads
+            if (isset($_POST['images']) || isset($_FILES['images'])) {
                 $upload_dir = '../assets/images/products/';
                 if (!is_dir($upload_dir)) {
                     mkdir($upload_dir, 0755, true);
                 }
-
-                // Process each image field
-                for ($i = 0; $i < count($_FILES['images']['name']); $i++) {
-                    if (!empty($_FILES['images']['name'][$i]['file'])) {
-                        $filename = $_FILES['images']['name'][$i]['file'];
+            
+                foreach ($_POST['images'] as $index => $imageData) {
+                    $image_id = $imageData['id'] ?? null;
+                    $tag = $imageData['tag'] ?? null;
+                    $alt_text = $imageData['alt_text'] ?? '';
+                    $is_primary = isset($imageData['is_primary']) ? 1 : 0;
+            
+                    // Check if a new file is uploaded
+                    if (!empty($_FILES['images']['name'][$index]['file'])) {
+                        $filename = $_FILES['images']['name'][$index]['file'];
                         $file_ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
                         $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-
+            
                         if (in_array($file_ext, $allowed_exts)) {
-                            $new_filename = $product_id . '_' . time() . '_' . $i . '.' . $file_ext;
+                            // If it's an existing image, delete the old file
+                            if ($image_id) {
+                                $stmt = $pdo->prepare("SELECT image_url FROM product_images WHERE id = ?");
+                                $stmt->execute([$image_id]);
+                                $image = $stmt->fetch();
+                                if ($image) {
+                                    $file_path = '../' . $image['image_url'];
+                                    if (file_exists($file_path)) {
+                                        unlink($file_path);
+                                    }
+                                }
+                            }
+            
+                            // Upload the new file
+                            $new_filename = $product_id . '_' . time() . '_' . $index . '.' . $file_ext;
                             $upload_path = $upload_dir . $new_filename;
                             $image_url = 'assets/images/products/' . $new_filename;
-
-                            if (move_uploaded_file($_FILES['images']['tmp_name'][$i]['file'], $upload_path)) {
-                                $tag = $_POST['images'][$i]['tag'] ?? null;
-                                $alt_text = $_POST['images'][$i]['alt_text'] ?? '';
-                                $is_primary = isset($_POST['images'][$i]['is_primary']) ? 1 : 0;
-
-                                $stmt = $pdo->prepare("INSERT INTO product_images (product_id, image_url, alt_text, is_primary, tag) VALUES (?, ?, ?, ?, ?)");
-                                $stmt->execute([$product_id, $image_url, $alt_text, $is_primary, $tag]);
+            
+                            if (move_uploaded_file($_FILES['images']['tmp_name'][$index]['file'], $upload_path)) {
+                                if ($image_id) {
+                                    // Update existing image record
+                                    $stmt = $pdo->prepare("UPDATE product_images SET image_url = ?, tag = ?, alt_text = ?, is_primary = ? WHERE id = ?");
+                                    $stmt->execute([$image_url, $tag, $alt_text, $is_primary, $image_id]);
+                                } else {
+                                    // Insert new image record
+                                    $stmt = $pdo->prepare("INSERT INTO product_images (product_id, image_url, alt_text, is_primary, tag) VALUES (?, ?, ?, ?, ?)");
+                                    $stmt->execute([$product_id, $image_url, $alt_text, $is_primary, $tag]);
+                                }
                             }
+                        }
+                    } else {
+                        // If no new file is uploaded, just update the text fields for existing images
+                        if ($image_id) {
+                            $stmt = $pdo->prepare("UPDATE product_images SET tag = ?, alt_text = ?, is_primary = ? WHERE id = ?");
+                            $stmt->execute([$tag, $alt_text, $is_primary, $image_id]);
                         }
                     }
                 }
-            }
-            
-            $pdo->commit();
+            }            $pdo->commit();
             $success = "Product updated successfully!";
         } catch (Exception $e) {
             $pdo->rollBack();
@@ -242,9 +289,9 @@ $materials = $stmt->fetchAll();
             
             <form method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="add_product">
+                <input type="hidden" name="deleted_images" id="deleted_images" value="">
                 
-                <div id="basic-tab" class="tab-content active">
-                    <div class="form-group">
+                <div id="basic-tab" class="tab-content active">                    <div class="form-group">
                         <label>Product Name</label>
                         <input type="text" name="product_name" required onblur="generateSKU()">
                     </div>
@@ -322,24 +369,31 @@ $materials = $stmt->fetchAll();
         let imageCount = 1;
         
         function updateImageTagOptions() {
-            const variations = document.querySelectorAll('.variation-item');
-            const tagOptions = ['<option value="">General Product Image</option>'];
-            
-            variations.forEach(variation => {
-                const tagInput = variation.querySelector('input[name*="[tag]"]');
-                if (tagInput && tagInput.value) {
-                    tagOptions.push(`<option value="${tagInput.value}">${tagInput.value}</option>`);
-                }
-            });
-            
-            document.querySelectorAll('select[name*="[tag]"]').forEach(select => {
-                const currentValue = select.value;
-                select.innerHTML = tagOptions.join('');
-                select.value = currentValue;
-            });
+    const variations = document.querySelectorAll('.variation-item');
+    const tagOptions = ['<option value="">General Product Image</option>'];
+    
+    variations.forEach(variation => {
+        const tagInput = variation.querySelector('input[name*="[tag]"]');
+        if (tagInput && tagInput.value) {
+            tagOptions.push(`<option value="${tagInput.value}">${tagInput.value}</option>`);
         }
-        
-        function addImageField() {
+    });
+    
+    document.querySelectorAll('select[name*="[tag]"]').forEach(select => {
+        const currentValue = select.value;
+        select.innerHTML = tagOptions.join('');
+        select.value = currentValue;
+    });
+}        
+        function handlePrimaryImageChange(checkbox) {
+    const checkboxes = document.querySelectorAll('.primary-image-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = false;
+    });
+    checkbox.checked = true;
+}
+
+function addImageField() {
             const container = document.getElementById('images-container');
             const imageHtml = `
                 <div class="image-item">
@@ -363,7 +417,7 @@ $materials = $stmt->fetchAll();
                                 </div>
                                 <div class="form-group">
                                     <label>Primary Image</label>
-                                    <input type="checkbox" name="images[${imageCount}][is_primary]" value="1">
+                                    <input type="checkbox" name="images[${imageCount}][is_primary]" value="1" class="primary-image-checkbox" onclick="handlePrimaryImageChange(this)">
                                 </div>
                             </div>
                 </div>
@@ -377,7 +431,8 @@ $materials = $stmt->fetchAll();
             const container = document.getElementById('images-container');
             const imageSrc = imageData.image_url.startsWith('assets/') ? '../' + imageData.image_url : imageData.image_url;
             const imageHtml = `
-                <div class="image-item">
+                <div class="image-item" data-image-id="${imageData.id}">
+                    <input type="hidden" name="images[${index}][id]" value="${imageData.id}">
                     <button type="button" class="remove-image" onclick="removeImage(this)">&times;</button>
                     <div class="existing-image" style="margin-bottom: 10px;">
                         <img src="${imageSrc}" alt="Current image" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px;">
@@ -402,24 +457,28 @@ $materials = $stmt->fetchAll();
                         </div>
                         <div class="form-group">
                             <label>Primary Image</label>
-                            <input type="checkbox" name="images[${index}][is_primary]" value="1" ${imageData.is_primary ? 'checked' : ''}>
+                            <input type="checkbox" name="images[${index}][is_primary]" value="1" ${imageData.is_primary ? 'checked' : ''} class="primary-image-checkbox" onclick="handlePrimaryImageChange(this)">
                         </div>
                     </div>
                 </div>
             `;
             container.insertAdjacentHTML('beforeend', imageHtml);
+            updateImageTagOptions();
             
             // Set the tag value after insertion
             const tagSelect = container.querySelector(`select[name="images[${index}][tag]"]`);
             if (tagSelect && imageData.tag) {
                 tagSelect.value = imageData.tag;
             }
-        }
-        
-        function removeImage(button) {
-            button.closest('.image-item').remove();
-        }
-        
+        }        function removeImage(button) {
+            const imageItem = button.closest('.image-item');
+            const imageId = imageItem.dataset.imageId;
+            if (imageId) {
+                const deletedImagesInput = document.getElementById('deleted_images');
+                deletedImagesInput.value += imageId + ',';
+            }
+            imageItem.remove();
+        }        
         function generateSKU() {
             const productName = document.querySelector('input[name="product_name"]').value;
             if (!productName) return;
@@ -581,16 +640,14 @@ $materials = $stmt->fetchAll();
                     // Reset images container and add existing images
                     const imagesContainer = document.getElementById('images-container');
                     imagesContainer.innerHTML = '';
-                    imageCount = 0;
-                    
+                    imageCount = 0;                    
                     // Add existing images if any
                     if (product.images && product.images.length > 0) {
                         product.images.forEach((image, index) => {
                             addImageFieldWithData(image, index);
                         });
                         imageCount = product.images.length;
-                    }
-                    
+                    }                    
                     // Add one empty image field
                     addImageField();
                     
