@@ -116,7 +116,7 @@ class CurrencyConverter {
         document.querySelectorAll('.price-amount[data-price]').forEach(priceEl => {
             const gbpPrice = parseFloat(priceEl.dataset.price);
             if (!isNaN(gbpPrice)) {
-                priceEl.textContent = (gbpPrice * (this.rates[this.currentCurrency] || 1)).toFixed(0);
+                priceEl.textContent = (gbpPrice * (this.rates[this.currentCurrency] || 1)).toFixed(2);
             }
         });
     }

@@ -40,10 +40,12 @@ if (!empty($_GET['stock_status'])) {
 $where_clause = implode(" AND ", $where);
 
 // Main Query for Products
-$sql = "SELECT 
+$sql = "SELECT
             p.id, p.name, p.sku, p.price, p.stock_quantity, p.is_active,
             (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1) as main_image,
-            COALESCE((SELECT SUM(oi.quantity) FROM order_items oi JOIN orders o ON oi.order_id = o.id WHERE oi.product_id = p.id AND o.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)), 0) as units_sold_30d
+            COALESCE((SELECT SUM(oi.quantity) FROM order_items oi JOIN orders o ON oi.order_id = o.id WHERE oi.product_id = p.id AND o.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)), 0) as units_sold_30d,
+            COALESCE((SELECT SUM(pv.stock_quantity) FROM product_variations pv WHERE pv.product_id = p.id), 0) as variation_stock,
+            COALESCE((SELECT SUM(vs.stock_quantity) FROM variation_sizes vs JOIN product_variations pv ON vs.variation_id = pv.id WHERE pv.product_id = p.id), 0) as size_stock
         FROM products p
         WHERE $where_clause
         ORDER BY p.stock_quantity ASC, p.name ASC
@@ -154,14 +156,17 @@ try {
                     <tr style="background:#f5f5f5;">
                         <th style="padding:10px; text-align:left;">Product</th>
                         <th style="padding:10px; text-align:left;">SKU</th>
-                        <th style="padding:10px; text-align:center;">Stock Status</th>
+                        <th style="padding:10px; text-align:center;">Base Stock</th>
+                        <th style="padding:10px; text-align:center;">Variant Stock</th>
+                        <th style="padding:10px; text-align:center;">Size Stock</th>
+                        <th style="padding:10px; text-align:center;">Total Stock</th>
                         <th style="padding:10px; text-align:center;">Units Sold (30d)</th>
                         <th style="padding:10px; text-align:left;">Update Stock</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($products)): ?>
-                        <tr><td colspan="5" style="text-align:center; padding:20px; color:#666;">No products found.</td></tr>
+                        <tr><td colspan="8" style="text-align:center; padding:20px; color:#666;">No products found.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($products as $product): ?>
                         <tr style="border-bottom:1px solid #eee;">
@@ -181,13 +186,40 @@ try {
                                 <?php
                                     $stock = (int)$product['stock_quantity'];
                                     if ($stock > 10) {
-                                        echo '<span class="stock-status-badge stock-in">In Stock (' . $stock . ')</span>';
+                                        echo '<span class="stock-status-badge stock-in">' . $stock . '</span>';
                                     } elseif ($stock > 0) {
-                                        echo '<span class="stock-status-badge stock-low">Low Stock (' . $stock . ')</span>';
+                                        echo '<span class="stock-status-badge stock-low">' . $stock . '</span>';
                                     } else {
-                                        echo '<span class="stock-status-badge stock-out">Out of Stock</span>';
+                                        echo '<span class="stock-status-badge stock-out">0</span>';
                                     }
                                 ?>
+                            </td>
+                            <td style="padding:10px; text-align:center;">
+                                <?php
+                                    $vstock = (int)$product['variation_stock'];
+                                    if ($vstock > 10) {
+                                        echo '<span class="stock-status-badge stock-in">' . $vstock . '</span>';
+                                    } elseif ($vstock > 0) {
+                                        echo '<span class="stock-status-badge stock-low">' . $vstock . '</span>';
+                                    } else {
+                                        echo '<span class="stock-status-badge stock-out">0</span>';
+                                    }
+                                ?>
+                            </td>
+                            <td style="padding:10px; text-align:center;">
+                                <?php
+                                    $sstock = (int)$product['size_stock'];
+                                    if ($sstock > 10) {
+                                        echo '<span class="stock-status-badge stock-in">' . $sstock . '</span>';
+                                    } elseif ($sstock > 0) {
+                                        echo '<span class="stock-status-badge stock-low">' . $sstock . '</span>';
+                                    } else {
+                                        echo '<span class="stock-status-badge stock-out">0</span>';
+                                    }
+                                ?>
+                            </td>
+                            <td style="padding:10px; text-align:center; font-weight:bold;">
+                                <?php echo (int)$product['stock_quantity'] + (int)$product['variation_stock'] + (int)$product['size_stock']; ?>
                             </td>
                             <td style="padding:10px; text-align:center; font-weight:500;"><?php echo (int)$product['units_sold_30d']; ?></td>
                             <td style="padding:10px;">

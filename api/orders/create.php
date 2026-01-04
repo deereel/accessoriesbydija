@@ -1,4 +1,4 @@
-<?php
+ <?php
 header('Content-Type: application/json');
 session_start();
 
@@ -82,7 +82,7 @@ try {
     // Fetch cart items and determine country
     if ($customer_id) {
         // Logged-in customer: fetch from database
-        $stmt = $pdo->prepare("SELECT c.id, c.product_id, c.quantity, c.material_id, c.variation_id, c.size_id, p.price, p.name, p.sku,
+        $stmt = $pdo->prepare("SELECT c.id, c.product_id, c.quantity, c.material_id, c.variation_id, c.size_id, COALESCE(c.selected_price, pv.price_adjustment, p.price) as price, p.name, p.sku,
                                m.name as material_name, pv.color, pv.adornment, vs.size, pv.tag as variation_tag
                                FROM cart c
                                JOIN products p ON c.product_id = p.id
@@ -167,27 +167,61 @@ try {
     foreach ($cart_items as $item) {
         $product_id = intval($item['product_id']);
         $qty = intval($item['quantity']);
-        
+        $variation_id = $item['variation_id'] ?? null;
+        $size_id = $item['size_id'] ?? null;
+
         $stmt = $pdo->prepare("SELECT id, name, stock_quantity FROM products WHERE id = ? AND is_active = 1");
         $stmt->execute([$product_id]);
         $product = $stmt->fetch();
-        
+
         if (!$product) {
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Product not found: ' . htmlspecialchars($item['product_name'] ?? 'Unknown')]);
             exit;
         }
-        
-        if ($product['stock_quantity'] <= 0) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => $product['name'] . ' is out of stock']);
-            exit;
-        }
-        
-        if ($product['stock_quantity'] < $qty) {
-            http_response_code(400);
-            echo json_encode(['success' => false, 'message' => 'Only ' . $product['stock_quantity'] . ' units of ' . $product['name'] . ' available in stock']);
-            exit;
+
+        // Check variation stock if applicable
+        if ($variation_id) {
+            $vstmt = $pdo->prepare("SELECT stock_quantity FROM product_variations WHERE id = ?");
+            $vstmt->execute([$variation_id]);
+            $vstock = $vstmt->fetchColumn();
+            if ($vstock <= 0) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => $product['name'] . ' variation is out of stock']);
+                exit;
+            }
+            if ($vstock < $qty) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Only ' . $vstock . ' units of ' . $product['name'] . ' variation available in stock']);
+                exit;
+            }
+        } elseif ($size_id) {
+            // Check size stock if no variation but has size
+            $sstmt = $pdo->prepare("SELECT stock_quantity FROM variation_sizes WHERE id = ?");
+            $sstmt->execute([$size_id]);
+            $sstock = $sstmt->fetchColumn();
+            if ($sstock <= 0) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => $product['name'] . ' size is out of stock']);
+                exit;
+            }
+            if ($sstock < $qty) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Only ' . $sstock . ' units of ' . $product['name'] . ' size available in stock']);
+                exit;
+            }
+        } else {
+            // Check base product stock
+            if ($product['stock_quantity'] <= 0) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => $product['name'] . ' is out of stock']);
+                exit;
+            }
+            if ($product['stock_quantity'] < $qty) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Only ' . $product['stock_quantity'] . ' units of ' . $product['name'] . ' available in stock']);
+                exit;
+            }
         }
     }
 

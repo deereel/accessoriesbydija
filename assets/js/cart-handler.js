@@ -485,25 +485,13 @@ class CartHandler {
             `;
         }
     }
-// Helper: render price line using current currency rate, with currency symbol and no labels
+// Helper: render price line in GBP only, with no currency conversion
     renderPriceLine(unitGBP, qty) {
-        let rate = 1;
-        let symbol = '£';
-        try {
-            if (window.currencyConverter) {
-                const cc = window.currencyConverter;
-                if (cc.rates && cc.currentCurrency && cc.rates[cc.currentCurrency]) {
-                    rate = cc.rates[cc.currentCurrency];
-                }
-                if (cc.symbols && cc.currentCurrency && cc.symbols[cc.currentCurrency]) {
-                    symbol = cc.symbols[cc.currentCurrency];
-                }
-            }
-        } catch (e) {}
-        const unit = unitGBP * rate;
-        const total = unitGBP * qty * rate;
-        const fmt = (n) => Number(Math.round(n)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
-        return `${symbol} ${fmt(unit)} X ${qty} = ${symbol} ${fmt(total)}`;
+        const symbol = '£';
+        const unit = unitGBP;
+        const total = unitGBP * qty;
+        const fmt = (n) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return `${symbol}${fmt(unit)} X ${qty} = ${symbol}${fmt(total)}`;
     }
 
     refreshPriceLines() {

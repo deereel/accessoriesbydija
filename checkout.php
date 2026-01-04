@@ -38,10 +38,15 @@ $subtotal = 0;
 if ($customer_id) {
     // Get cart from database
     try {
-        $stmt = $pdo->prepare("SELECT c.product_id, c.quantity, p.name, p.price FROM cart c 
-                               JOIN products p ON c.product_id = p.id 
-                               WHERE c.customer_id = ?");
-        $stmt->execute([$customer_id]);
+                $stmt = $pdo->prepare("SELECT c.product_id, c.quantity, c.material_id, c.variation_id, c.size_id,
+                                       p.name, COALESCE(c.selected_price, pv.price_adjustment, p.price) as price, p.slug,
+                                       m.name as material_name, pv.tag as variation_tag, pv.color, pv.adornment, vs.size
+                                       FROM cart c
+                                       JOIN products p ON c.product_id = p.id
+                                       LEFT JOIN materials m ON m.id = c.material_id
+                                       LEFT JOIN product_variations pv ON pv.id = c.variation_id
+                                       LEFT JOIN variation_sizes vs ON vs.id = c.size_id
+                                       WHERE c.customer_id = ?");        $stmt->execute([$customer_id]);
         $cart_items = $stmt->fetchAll();
     } catch (PDOException $e) {
         // Cart fetch error

@@ -29,7 +29,7 @@ try {
 		$customer_id = current_customer_id();
 		if ($customer_id) {
 			$stmt = $pdo->prepare("SELECT c.id as cart_item_id, c.product_id, c.quantity, c.material_id, c.variation_id, c.size_id, c.selected_price,
-			p.name as product_name, COALESCE(c.selected_price, p.price) as price, p.slug,
+			p.name as product_name, COALESCE(c.selected_price, pv.price_adjustment, p.price) as price, p.slug,
 			m.name as material_name, pv.tag as variation_tag, pv.color, pv.adornment, vs.size
 			FROM cart c
 			JOIN products p ON p.id = c.product_id
