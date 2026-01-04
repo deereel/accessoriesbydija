@@ -7,7 +7,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function loadFeaturedProducts() {
     const container = document.getElementById('featured-products');
-    
+    if (!container) return; // Not on a page with featured products
+
     try {
         // Show loading spinner
         container.innerHTML = '<div class="loading-spinner">Loading featured products...</div>';
@@ -78,6 +79,7 @@ async function updateStockBadges() {
 
 function displayFeaturedProducts(products) {
     const container = document.getElementById('featured-products');
+    if (!container) return;
     container.innerHTML = '';
 
     // Ensure only up to 8 products are displayed for a 4x2 grid initially
@@ -129,19 +131,41 @@ function displayFeaturedProducts(products) {
 }
 
 function addToCart(productId) {
+    if (!window.cartHandler) {
+        console.error('Cart handler not available.');
+        return;
+    }
+
     const button = event.target;
-    const originalText = button.textContent;
-    
-    button.textContent = 'Added!';
-    button.style.background = '#C27BA0';
-    
-    // Simulate cart addition
-    setTimeout(() => {
-        button.textContent = originalText;
-        button.style.background = '#222';
-    }, 1500);
-    
-    console.log('Added product to cart:', productId);
+    const productCard = button.closest('.product-card');
+
+    // Get productId from parameter or button data
+    if (!productId) {
+        productId = button.getAttribute('data-product-id');
+    }
+    if (!productId) {
+        console.error('Product ID not found');
+        return;
+    }
+
+    if (productCard) {
+        // From featured products
+        const productData = {
+            product_id: productId,
+            product_name: productCard.getAttribute('data-name') || '',
+            price: parseFloat(productCard.getAttribute('data-price') || 0),
+            image: productCard.querySelector('.product-image img')?.src || '',
+            quantity: 1
+        };
+        window.cartHandler.addToCart(productData);
+    } else {
+        // Assume from product page or other, simple add
+        const productData = {
+            product_id: productId,
+            quantity: 1
+        };
+        window.cartHandler.addToCart(productData);
+    }
 }
 
 function toggleWishlist(productId) {

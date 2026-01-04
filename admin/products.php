@@ -20,8 +20,8 @@ if ($_POST) {
             // Add variations
             if (isset($_POST['variations'])) {
                 foreach ($_POST['variations'] as $variation) {
-                    $stmt = $pdo->prepare("INSERT INTO product_variations (product_id, material_id, tag, color, finish, price_adjustment, stock_quantity) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([$product_id, $variation['material_id'], $variation['tag'], $variation['color'], $variation['finish'], $variation['price_adjustment'], $variation['stock']]);
+                    $stmt = $pdo->prepare("INSERT INTO product_variations (product_id, material_id, tag, color, adornment, price_adjustment, stock_quantity) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([$product_id, $variation['material_id'], $variation['tag'], $variation['color'], $variation['adornment'], $variation['price_adjustment'], $variation['stock']]);
                     $variation_id = $pdo->lastInsertId();
                     
                     // Add sizes for this variation
@@ -93,8 +93,8 @@ if ($_POST) {
             // Add new variations
             if (isset($_POST['variations'])) {
                 foreach ($_POST['variations'] as $variation) {
-                    $stmt = $pdo->prepare("INSERT INTO product_variations (product_id, material_id, tag, color, finish, price_adjustment, stock_quantity) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([$product_id, $variation['material_id'], $variation['tag'], $variation['color'], $variation['finish'], $variation['price_adjustment'], $variation['stock']]);
+                    $stmt = $pdo->prepare("INSERT INTO product_variations (product_id, material_id, tag, color, adornment, price_adjustment, stock_quantity) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([$product_id, $variation['material_id'], $variation['tag'], $variation['color'], $variation['adornment'], $variation['price_adjustment'], $variation['stock']]);
                     $variation_id = $pdo->lastInsertId();
                     
                     // Add sizes for this variation
@@ -699,23 +699,23 @@ function addImageField() {
                         </div>
                         <div class="form-group">
                             <label>Adornments</label>
-                            <select name="variations[${index}][finish]">
+                            <select name="variations[${index}][adornment]">
                                 <option value="">Select Adornment</option>
-                                <option value="Diamond" ${variation.finish === 'Diamond' ? 'selected' : ''}>Diamond</option>
-                                <option value="Ruby" ${variation.finish === 'Ruby' ? 'selected' : ''}>Ruby</option>
-                                <option value="Emerald" ${variation.finish === 'Emerald' ? 'selected' : ''}>Emerald</option>
-                                <option value="Zirconia" ${variation.finish === 'Zirconia' ? 'selected' : ''}>Zirconia</option>
-                                <option value="Sapphire" ${variation.finish === 'Sapphire' ? 'selected' : ''}>Sapphire</option>
-                                <option value="Pearl" ${variation.finish === 'Pearl' ? 'selected' : ''}>Pearl</option>
-                                <option value="Moissanite" ${variation.finish === 'Moissanite' ? 'selected' : ''}>Moissanite</option>
-                                <option value="Blue Gem" ${variation.finish === 'Blue Gem' ? 'selected' : ''}>Blue Gem</option>
-                                <option value="Pink Gem" ${variation.finish === 'Pink Gem' ? 'selected' : ''}>Pink Gem</option>
-                                <option value="White Gem" ${variation.finish === 'White Gem' ? 'selected' : ''}>White Gem</option>
-                                <option value="Red Gem" ${variation.finish === 'Red Gem' ? 'selected' : ''}>Red Gem</option>
-                                <option value="White Stone" ${variation.finish === 'White Stone' ? 'selected' : ''}>White Stone</option>
-                                <option value="Black Stone" ${variation.finish === 'Black Stone' ? 'selected' : ''}>Black Stone</option>
-                                <option value="Red Stone" ${variation.finish === 'Red Stone' ? 'selected' : ''}>Red Stone</option>
-                                <option value="Pink Stone" ${variation.finish === 'Pink Stone' ? 'selected' : ''}>Pink Stone</option>
+                                <option value="Diamond" ${variation.adornment === 'Diamond' ? 'selected' : ''}>Diamond</option>
+                                <option value="Ruby" ${variation.adornment === 'Ruby' ? 'selected' : ''}>Ruby</option>
+                                <option value="Emerald" ${variation.adornment === 'Emerald' ? 'selected' : ''}>Emerald</option>
+                                <option value="Zirconia" ${variation.adornment === 'Zirconia' ? 'selected' : ''}>Zirconia</option>
+                                <option value="Sapphire" ${variation.adornment === 'Sapphire' ? 'selected' : ''}>Sapphire</option>
+                                <option value="Pearl" ${variation.adornment === 'Pearl' ? 'selected' : ''}>Pearl</option>
+                                <option value="Moissanite" ${variation.adornment === 'Moissanite' ? 'selected' : ''}>Moissanite</option>
+                                <option value="Blue Gem" ${variation.adornment === 'Blue Gem' ? 'selected' : ''}>Blue Gem</option>
+                                <option value="Pink Gem" ${variation.adornment === 'Pink Gem' ? 'selected' : ''}>Pink Gem</option>
+                                <option value="White Gem" ${variation.adornment === 'White Gem' ? 'selected' : ''}>White Gem</option>
+                                <option value="Red Gem" ${variation.adornment === 'Red Gem' ? 'selected' : ''}>Red Gem</option>
+                                <option value="White Stone" ${variation.adornment === 'White Stone' ? 'selected' : ''}>White Stone</option>
+                                <option value="Black Stone" ${variation.adornment === 'Black Stone' ? 'selected' : ''}>Black Stone</option>
+                                <option value="Red Stone" ${variation.adornment === 'Red Stone' ? 'selected' : ''}>Red Stone</option>
+                                <option value="Pink Stone" ${variation.adornment === 'Pink Stone' ? 'selected' : ''}>Pink Stone</option>
                             </select>
                         </div>
                     </div>

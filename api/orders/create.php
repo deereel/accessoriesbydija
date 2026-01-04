@@ -82,9 +82,13 @@ try {
     // Fetch cart items and determine country
     if ($customer_id) {
         // Logged-in customer: fetch from database
-        $stmt = $pdo->prepare("SELECT c.id, c.product_id, c.quantity, p.price, p.name, p.sku 
-                               FROM cart c 
-                               JOIN products p ON c.product_id = p.id 
+        $stmt = $pdo->prepare("SELECT c.id, c.product_id, c.quantity, c.material_id, c.variation_id, c.size_id, p.price, p.name, p.sku,
+                               m.name as material_name, pv.color, pv.adornment, vs.size
+                               FROM cart c
+                               JOIN products p ON c.product_id = p.id
+                               LEFT JOIN materials m ON m.id = c.material_id
+                               LEFT JOIN product_variations pv ON pv.id = c.variation_id
+                               LEFT JOIN variation_sizes vs ON vs.id = c.size_id
                                WHERE c.customer_id = ?");
         $stmt->execute([$customer_id]);
         $cart_items = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -298,9 +302,9 @@ try {
         $order_id = $pdo->lastInsertId();
 
         // Insert order items
-        $itemStmt = $pdo->prepare("INSERT INTO order_items 
-                                   (order_id, product_id, product_name, product_sku, quantity, unit_price, total_price, created_at) 
-                                   VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+        $itemStmt = $pdo->prepare("INSERT INTO order_items
+                                   (order_id, product_id, product_name, product_sku, quantity, unit_price, total_price, material_name, color, adornment, size, created_at)
+                                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
         
         foreach ($cart_items as $item) {
             $product_id = intval($item['product_id']);
@@ -326,7 +330,11 @@ try {
                 $product_sku,
                 $quantity,
                 $unit_price,
-                $total_price
+                $total_price,
+                $item['material_name'] ?? null,
+                $item['color'] ?? null,
+                $item['adornment'] ?? null,
+                $item['size'] ?? null
             ]);
         }
 

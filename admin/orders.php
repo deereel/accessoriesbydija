@@ -330,7 +330,7 @@ $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 } else {
                     const rows = items.map(i => `
                         <tr>
-                            <td style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(i.product_name)}</td>
+                            <td style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(i.product_name)}${i.material_name || i.color || i.adornment || i.size ? ` (${[i.material_name, i.color, i.adornment, i.size].filter(v => v).join(', ')})` : ''}</td>
                             <td style="padding:8px; border-bottom:1px solid #eee;">${escapeHtml(i.product_sku)}</td>
                             <td style="padding:8px; border-bottom:1px solid #eee; text-align:right;">${escapeHtml(i.quantity)}</td>
                             <td style="padding:8px; border-bottom:1px solid #eee; text-align:right;">${money(i.unit_price)}</td>

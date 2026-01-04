@@ -189,7 +189,7 @@ $page_description = substr($product['description'], 0, 160);
             </div>
             
             <div class="product-actions">
-                <button class="btn btn-primary" id="addToCartBtn" onclick="addToCart()" disabled>Select Options</button>
+                <button class="btn btn-primary" id="addToCartBtn" onclick="addToCartFromProduct()" data-product-id="<?= $product['id'] ?>" disabled>Select Options</button>
                 <button class="btn btn-secondary" onclick="toggleWishlist()">♡ Wishlist</button>
             </div>
         </div>
@@ -255,26 +255,28 @@ function changeImage(thumbnail) {
 }
 
 function selectMaterial(materialId) {
+    console.log('Selected material:', materialId);
     selectedMaterial = materialId;
     selectedVariation = null;
     selectedSize = null;
-    
+
     const materialBtn = document.querySelector(`[data-material-id="${materialId}"]`);
     selectedMaterialName = materialBtn.textContent;
-    
+
     document.querySelectorAll('#materialOptions .option-btn').forEach(btn => {
         btn.classList.remove('selected');
         if (btn.dataset.materialId == materialId) {
             btn.classList.add('selected');
         }
     });
-    
+
     fetch(`get_variations.php?product_id=<?= $product['id'] ?>&material_id=${materialId}`)
         .then(response => response.json())
         .then(variations => {
+            console.log('Variations received:', variations);
             const variationGroup = document.getElementById('variationGroup');
             const variationOptions = document.getElementById('variationOptions');
-            
+
             if (variations.length > 0) {
                 variationOptions.innerHTML = '';
                 variations.forEach(variation => {
@@ -283,7 +285,7 @@ function selectMaterial(materialId) {
                     btn.dataset.variationId = variation.id;
                     btn.dataset.priceAdjustment = variation.price_adjustment || 0;
                     btn.dataset.color = variation.color || '';
-                    btn.dataset.finish = variation.finish || '';
+                    btn.dataset.adornment = variation.adornment || '';
                     btn.dataset.stock = variation.stock_quantity || 0;
                     btn.textContent = variation.tag || 'Standard';
                     btn.onclick = () => selectVariation(variation.id, variation.price_adjustment, variation);
@@ -293,14 +295,14 @@ function selectMaterial(materialId) {
             } else {
                 variationGroup.style.display = 'none';
             }
-            
+
             document.getElementById('sizeGroup').style.display = 'none';
             updateComponentSummary();
             updateAddToCartButton();
         });
 }
-
 function selectVariation(variationId, priceAdjustment, variationData) {
+    console.log('Selected variation:', variationId, variationData);
     selectedVariation = variationId;
     selectedSize = null;
     selectedVariationData = variationData || {};
@@ -312,7 +314,7 @@ function selectVariation(variationId, priceAdjustment, variationData) {
         if (image) {
             const mainImage = document.getElementById('mainImage');
             mainImage.innerHTML = `<img src="/${image.image_url}" alt="${image.alt_text || 'Product image'}" style="width:100%;height:100%;object-fit:cover;">`;
-            
+
             // Update active thumbnail
             document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
             const newActiveThumbnail = document.querySelector(`.thumbnail[data-image-id="${image.id}"]`);
@@ -320,122 +322,125 @@ function selectVariation(variationId, priceAdjustment, variationData) {
                 newActiveThumbnail.classList.add('active');
             }
         }    }
-    
+
     document.querySelectorAll('#variationOptions .option-btn').forEach(btn => {
         btn.classList.remove('selected');
         if (btn.dataset.variationId == variationId) {
             btn.classList.add('selected');
         }
     });
-    
+
     const selectedBtn = document.querySelector(`[data-variation-id="${variationId}"]`);
     const stock = selectedBtn ? selectedBtn.dataset.stock : 0;
     document.getElementById('stockInfo').textContent = `${stock} in stock`;
-    
-    const finalPrice = parseFloat(priceAdjustment) || basePrice;
-    
-    document.getElementById('finalPrice').innerHTML = `£${finalPrice.toFixed(2)}`;
-    
-    document.getElementById('finalPrice').style.display = 'block';
-    
-    document.getElementById('basePrice').style.display = 'none';
-    
-    
-    
-    console.log('Fetching sizes for variation ID:', variationId);
-    
-    fetch(`get_sizes.php?variation_id=${variationId}`)
-    
-        .then(response => response.json())
-    
-        .then(sizes => {
-    
-            console.log('Sizes received:', sizes);
-    
-            const sizeGroup = document.getElementById('sizeGroup');
-    
-            const sizeOptions = document.getElementById('sizeOptions');
-    
-            
-    
-            if (sizes.length > 0) {
-    
-                sizeOptions.innerHTML = '';
-    
-                sizes.forEach(size => {
-    
-                    const btn = document.createElement('button');
-    
-                    btn.className = 'option-btn';
-    
-                    btn.dataset.sizeId = size.id;
-    
-                    btn.dataset.priceAdjustment = size.price_adjustment || 0;
-    
-                    btn.dataset.size = size.size;
-    
-                    btn.dataset.stock = size.stock_quantity;
-    
-                    btn.textContent = size.size;
-    
-                    btn.onclick = () => selectSize(size.id, size.price_adjustment, size.stock_quantity, size);
-    
-                    if (size.stock_quantity <= 0) {
-    
-                        btn.disabled = true;
-    
-                        btn.textContent += ' (Out of Stock)';
-    
-                    }
-    
-                    sizeOptions.appendChild(btn);
-    
-                });
-    
-                sizeGroup.style.display = 'block';
-    
-            } else {
-    
-                sizeGroup.style.display = 'none';
-    
-                updateAddToCartButton();
-    
-            }
-    
-            
-    
-            updateComponentSummary();
-    
-        })
-    
-        .catch(error => {
-    
-            console.error('Error fetching sizes:', error);
-    
-        });}
 
+    const finalPrice = parseFloat(priceAdjustment) || basePrice;
+
+    document.getElementById('finalPrice').innerHTML = `£${finalPrice.toFixed(2)}`;
+
+    document.getElementById('finalPrice').style.display = 'block';
+
+    document.getElementById('basePrice').style.display = 'none';
+
+
+
+    console.log('Fetching sizes for variation ID:', variationId);
+
+    fetch(`get_sizes.php?variation_id=${variationId}`)
+
+        .then(response => response.json())
+
+        .then(sizes => {
+
+            console.log('Sizes received:', sizes);
+
+            const sizeGroup = document.getElementById('sizeGroup');
+
+            const sizeOptions = document.getElementById('sizeOptions');
+
+
+
+
+
+            if (sizes.length > 0) {
+
+                sizeOptions.innerHTML = '';
+
+                sizes.forEach(size => {
+
+                    const btn = document.createElement('button');
+
+                    btn.className = 'option-btn';
+
+                    btn.dataset.sizeId = size.id;
+
+                    btn.dataset.priceAdjustment = size.price_adjustment || 0;
+
+                    btn.dataset.size = size.size;
+
+                    btn.dataset.stock = size.stock_quantity;
+
+                    btn.textContent = size.size;
+
+                    btn.onclick = () => selectSize(size.id, size.price_adjustment, size.stock_quantity, size);
+
+                    if (size.stock_quantity <= 0) {
+
+                        btn.disabled = true;
+
+                        btn.textContent += ' (Out of Stock)';
+
+                    }
+
+                    sizeOptions.appendChild(btn);
+
+                });
+
+                sizeGroup.style.display = 'block';
+
+            } else {
+
+                sizeGroup.style.display = 'none';
+
+                updateAddToCartButton();
+
+            }
+
+
+
+
+            updateComponentSummary();
+
+        })
+
+        .catch(error => {
+
+            console.error('Error fetching sizes:', error);
+
+        });}
 function selectSize(sizeId, priceAdjustment, stock, sizeData) {
+    console.log('Selected size:', sizeId, sizeData);
     selectedSize = sizeId;
     selectedSizeData = sizeData || {};
     maxStock = stock;
-    
+
     document.querySelectorAll('#sizeOptions .option-btn').forEach(btn => {
         btn.classList.remove('selected');
         if (btn.dataset.sizeId == sizeId) {
             btn.classList.add('selected');
         }
     });
-    
-    const finalPrice = parseFloat(priceAdjustment) || (selectedVariationData.price_adjustment > 0 ? selectedVariationData.price_adjustment : basePrice);
+
+    const finalPrice = parseFloat(priceAdjustment) || (selectedVariationData.price_adjustment > 0 ? parseFloat(selectedVariationData.price_adjustment) : basePrice);
     document.getElementById('finalPrice').innerHTML = `£${finalPrice.toFixed(2)}`;
     document.getElementById('stockInfo').textContent = `${stock} in stock`;
-    
+
     const quantityInput = document.getElementById('quantityInput');
     quantityInput.max = stock;
     if (parseInt(quantityInput.value) > stock) {
         quantityInput.value = stock;
     }
-    
+
     updateComponentSummary();
     updateAddToCartButton();
 }
@@ -455,8 +460,8 @@ function updateComponentSummary() {
         summaryHtml += `<strong>Color:</strong> ${selectedVariationData.color}<br>`;
     }
     
-    if (selectedVariationData.finish) {
-        summaryHtml += `<strong>Adornment:</strong> ${selectedVariationData.finish}<br>`;
+    if (selectedVariationData.adornment) {
+        summaryHtml += `<strong>Adornment:</strong> ${selectedVariationData.adornment}<br>`;
     }
     
     if (selectedSize && selectedSizeData.size) {
@@ -491,7 +496,17 @@ function updateAddToCartButton() {
     const btn = document.getElementById('addToCartBtn');
     const variationGroup = document.getElementById('variationGroup');
     const sizeGroup = document.getElementById('sizeGroup');
+    const materialOptions = document.getElementById('materialOptions');
 
+    // If no materials exist (simple product), enable button
+    if (materialOptions.children.length === 0) {
+        btn.disabled = false;
+        btn.textContent = 'Add to Cart';
+        document.getElementById('quantitySelector').style.display = 'block';
+        return;
+    }
+
+    // For products with variations
     if (selectedMaterial && (variationGroup.style.display === 'none' || selectedVariation) && (sizeGroup.style.display === 'none' || selectedSize)) {
         btn.disabled = false;
         btn.textContent = 'Add to Cart';
@@ -507,7 +522,7 @@ function updateAddToCartButton() {
 }
 
 
-function addToCart() {
+function addToCartFromProduct() {
     if (!window.cartHandler) {
         console.error('Cart handler not available.');
         alert('Could not add to cart. Please refresh the page.');
@@ -515,7 +530,7 @@ function addToCart() {
     }
 
     const quantity = document.getElementById('quantityInput').value;
-    
+
     let price = basePrice;
     if (selectedSize && selectedSizeData.price_adjustment > 0) {
         price = selectedSizeData.price_adjustment;
@@ -525,18 +540,20 @@ function addToCart() {
 
     const productData = {
         product_id: <?= $product['id'] ?>,
-        quantity: quantity,
+        quantity: parseInt(quantity),
         material_id: selectedMaterial,
         variation_id: selectedVariation,
         size_id: selectedSize,
         selected_price: price,
-        // Passing names for display purposes in the cart
-        product_name: "<?= htmlspecialchars($product['name']) ?>",
-        image: "/<?= htmlspecialchars($images[0]['image_url'] ?? '') ?>"
+        variation_name: selectedVariationData.tag || '',
+        image: document.getElementById('mainImage').querySelector('img')?.src || ''
     };
+    console.log('Constructed productData:', productData);
+    console.log('productData.material_id:', productData.material_id);
 
-    window.cartHandler.addToCart(productData);
-}
+    console.log('Final selections - Material:', selectedMaterial, 'Variation:', selectedVariation, 'Size:', selectedSize);
+    console.log('Sending productData to cart:', productData);
+    window.cartHandler.addToCart(productData);}
 
 function toggleWishlist() {
     const btn = event.target;

@@ -1,3 +1,4 @@
+if (typeof CartHandler === 'undefined') {
 class CartHandler {
     constructor() {
         this.userId = null;
@@ -121,6 +122,7 @@ class CartHandler {
     }
 
     async addToCart(productData) {
+        console.log('CartHandler received productData:', productData);
         try {
             const response = await fetch('/api/cart.php', {
                 method: 'POST',
@@ -131,6 +133,7 @@ class CartHandler {
             });
 
             const result = await response.json();
+            console.log('Cart API response:', result);
 
             if (result.success) {
                 this.showNotification('Item added to cart!', 'success');
@@ -402,6 +405,7 @@ class CartHandler {
         try {
             const cart = await this.getCart();
             const items = Array.isArray(cart.items) ? cart.items : [];
+            console.log('Loaded cart items:', items); // Debug: check if items have variation details
 
             if (!items.length) {
                 container.innerHTML = '';
@@ -425,15 +429,19 @@ class CartHandler {
                 const lineTotal = price * qty;
                 subtotal += lineTotal;
                 const cartItemId = item.cart_item_id || item.id || item.product_id; // support both shapes
-                const name = item.product_name || item.name || 'Item';
+                let name = item.product_name || item.name || 'Item';
+                if (item.variation_name) {
+                    name += ' - ' + item.variation_name;
+                }
                 const image = item.image || item.image_url || item.main_image || '';
                 const slug = item.slug || '';
                 const productLink = slug ? `/product.php?slug=${encodeURIComponent(slug)}` : '#';
                 const imageHtml = image ? `<img src="${image}" alt="${name}">` : '';
+                const material = item.material_name || '';
                 const color = item.color || '';
+                const adornment = item.adornment || '';
                 const size = item.size || '';
-                const width = item.width || '';
-                const variant = [color ? `Color: ${color}` : '', size ? `Size: ${size}` : '', width ? `Width: ${width}` : ''].filter(Boolean).join(' | ');
+                const variant = [material ? `Material: ${material}` : '', color ? `Color: ${color}` : '', adornment ? `Adornment: ${adornment}` : '', size ? `Size: ${size}` : ''].filter(Boolean).join(' | ');
                 return `
                     <div class="cart-item" data-cart-item-id="${cartItemId}" data-price="${price}">
                         <a href="${productLink}" class="thumb" style="text-decoration: none; color: inherit; display: block;">${imageHtml}</a>
@@ -517,3 +525,4 @@ document.addEventListener('DOMContentLoaded', function() {
         window.cartHandler = new CartHandler();
     }
 });
+}

@@ -4,16 +4,14 @@ header('Content-Type: application/json');
 try {
     require_once __DIR__ . '/../config/database.php';
     
-    $stmt = $pdo->prepare("SELECT id, name, slug, price FROM products ORDER BY created_at DESC LIMIT 9");
+    $stmt = $pdo->prepare("
+        SELECT p.id, p.name, p.slug, p.price, pi.image_url
+        FROM products p
+        LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1
+        ORDER BY p.created_at DESC LIMIT 8
+    ");
     $stmt->execute();
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
-    if (count($products) > 9) {
-        $seed = floor(time() / (6 * 3600));
-        mt_srand($seed);
-        shuffle($products);
-        $products = array_slice($products, 0, 9);
-    }
     
     echo json_encode(['success' => true, 'products' => $products]);
     

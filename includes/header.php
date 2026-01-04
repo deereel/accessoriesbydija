@@ -30,6 +30,7 @@ require_once 'config/cache.php';
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="assets/js/header.js" defer></script>
     <script src="assets/js/new-nav.js" defer></script>
+    <script src="assets/js/cart-handler.js"></script>
     <script>
     // Lightweight client-side event tracker that posts to server for basic analytics
     window.trackEvent = function(eventName, payload) {

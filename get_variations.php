@@ -13,8 +13,8 @@ if (!$product_id || !$material_id) {
 
 try {
     $stmt = $pdo->prepare("
-        SELECT id, tag, color, finish, price_adjustment, stock_quantity 
-        FROM product_variations 
+        SELECT id, tag, color, adornment, price_adjustment, stock_quantity
+        FROM product_variations
         WHERE product_id = ? AND material_id = ?
         ORDER BY tag
     ");
