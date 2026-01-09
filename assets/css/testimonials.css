@@ -28,15 +28,18 @@
     max-width: 1200px;
     margin: 0 auto;
     overflow: hidden;
+    padding: 0 0.5rem;
 }
 
 .testimonials-slider .swiper-wrapper {
     display: flex;
+    align-items: stretch;
 }
 
 .testimonials-slider .swiper-slide {
-    flex-shrink: 0;
-    width: auto;
+    height: auto;
+    display: flex;
+    justify-content: center;
 }
 
 .testimonial-card {
@@ -44,7 +47,8 @@
     border-radius: 12px;
     padding: 2rem;
     box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    margin: 0 1rem;
+    width: 100%;
+    max-width: 380px;
     text-align: center;
 }
 
@@ -162,7 +166,7 @@
     }
     
     .testimonial-card {
-        margin: 0 0.5rem;
         padding: 1.5rem;
+        max-width: 100%;
     }
 }

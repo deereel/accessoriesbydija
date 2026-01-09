@@ -293,6 +293,16 @@ $is_paid = $order['status'] !== 'pending';
                 }
                 try { localStorage.setItem(key, '1'); } catch(e) {}
             }
+
+            // Log inventory errors to console
+            <?php
+            if (isset($_SESSION['inventory_errors']) && is_array($_SESSION['inventory_errors'])) {
+                foreach ($_SESSION['inventory_errors'] as $error) {
+                    echo "console.error('Inventory Error:', " . json_encode($error) . ");\n";
+                }
+                unset($_SESSION['inventory_errors']); // Clear after logging
+            }
+            ?>
         } catch (e) { console.warn('order tracking failed', e); }
     });
     </script>

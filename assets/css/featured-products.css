@@ -20,7 +20,8 @@
     gap: 2rem;
     max-width: 1200px; /* Adjust as needed */
     margin: 0 auto;
-    overflow: hidden; /* Hide extra items if more than 8 are loaded */
+    /* JS already limits to 8 items; keep shadows visible */
+    overflow: visible;
     grid-auto-rows: minmax(auto, auto); /* Ensure rows adjust to content */
 }
 
@@ -73,6 +74,12 @@
     aspect-ratio: 1;
     background: #f8f8f8;
     overflow: hidden;
+}
+
+.featured-image a {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 .featured-image img {

@@ -80,8 +80,8 @@ function displayTestimonials(testimonials) {
                 </div>
                 <div class="testimonial-author">${testimonial.customer_name}</div>
                 <div class="testimonial-date">${formatDate(testimonial.created_at)}</div>
-                ${testimonial.product_id ? 
-                    `<a href="product.php?id=${testimonial.product_id}" class="testimonial-cta">Shop This Style</a>` :
+                ${(testimonial.product_slug || testimonial.product_id) ? 
+                    `<a href="product.php?${testimonial.product_slug ? `slug=${encodeURIComponent(testimonial.product_slug)}` : `id=${encodeURIComponent(testimonial.product_id)}`}" class="testimonial-cta">Shop This Style</a>` :
                     `<a href="products.php" class="testimonial-cta">Browse Collection</a>`
                 }
             </div>
@@ -123,27 +123,42 @@ function formatDate(dateString) {
 }
 
 function initTestimonialsSlider() {
-    setTimeout(() => {
-        new Swiper('.testimonials-slider', {
-            slidesPerView: 1,
-            spaceBetween: 30,
-            loop: false,
-            autoplay: {
-                delay: 5000,
-                disableOnInteraction: false,
-            },
-            navigation: {
-                nextEl: '.testimonials-next',
-                prevEl: '.testimonials-prev',
-            },
-            breakpoints: {
-                768: {
-                    slidesPerView: 2,
-                },
-                1024: {
-                    slidesPerView: 3,
-                }
-            }
-        });
-    }, 100);
+    const sliderEl = document.querySelector('.testimonials-slider');
+    if (!sliderEl) return;
+
+    // If Swiper isn't loaded yet, retry shortly (but don't spam)
+    if (typeof Swiper === 'undefined') {
+        console.warn('Testimonials: Swiper not loaded yet. Ensure swiper-bundle.min.js loads before testimonials.js');
+        return;
+    }
+
+    // Destroy existing instance if this runs more than once
+    if (sliderEl.swiper) {
+        sliderEl.swiper.destroy(true, true);
+    }
+
+    // Init
+    new Swiper(sliderEl, {
+        slidesPerView: 1,
+        spaceBetween: 24,
+        loop: false,
+        watchOverflow: true,
+        autoHeight: true,
+        autoplay: {
+            delay: 5000,
+            disableOnInteraction: false,
+        },
+        pagination: {
+            el: sliderEl.querySelector('.swiper-pagination'),
+            clickable: true,
+        },
+        navigation: {
+            nextEl: '.testimonials-next',
+            prevEl: '.testimonials-prev',
+        },
+        breakpoints: {
+            768: { slidesPerView: 2 },
+            1024: { slidesPerView: 3 }
+        }
+    });
 }

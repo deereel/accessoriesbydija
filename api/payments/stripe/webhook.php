@@ -212,85 +212,143 @@ function handleCheckoutSessionCompleted($event, $pdo) {
                 error_log("Stripe: WARNING - inventory_transactions table does not exist. Inventory will not be logged. Run /api/setup/init-db.php?key=your-key to create tables.");
             }
             
-            $itemsStmt = $pdo->prepare("SELECT product_id, quantity FROM order_items WHERE order_id = ?");
+            $itemsStmt = $pdo->prepare("SELECT product_id, quantity, variation_id, size_id FROM order_items WHERE order_id = ?");
             $itemsStmt->execute([$order_id]);
             $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             if (empty($items)) {
                 error_log("Stripe: No order items found for order {$order_id}");
             } else {
                 error_log("Stripe: Found " . count($items) . " order items");
             }
-            
+
             $inventory_updated_count = 0;
             foreach ($items as $item) {
                 try {
                     $product_id = intval($item['product_id']);
                     $quantity = intval($item['quantity']);
-                    
+                    $variation_id = $item['variation_id'] ? intval($item['variation_id']) : null;
+                    $size_id = $item['size_id'] ? intval($item['size_id']) : null;
+
                     if ($quantity <= 0) {
                         error_log("Stripe: Skipping item with invalid quantity: {$quantity}");
                         continue;
                     }
-                    
-                    // Get current stock
-                    $stockStmt = $pdo->prepare("SELECT stock_quantity FROM products WHERE id = ?");
-                    if (!$stockStmt->execute([$product_id])) {
-                        error_log("Stripe: DB ERROR - Failed to fetch stock for product {$product_id}. PDO error: " . implode(", ", $stockStmt->errorInfo()));
-                        // Optionally notify admin here
-                        continue;
-                    }
-                    $product = $stockStmt->fetch();
-                    
-                    if (!$product) {
-                        error_log("Stripe: Product {$product_id} not found for order {$order_id}");
-                        // Optionally notify admin here
-                        continue;
-                    }
-                    
-                    $old_stock = intval($product['stock_quantity']);
-                    $new_stock = max(0, $old_stock - $quantity);
-                    
-                    // Only update inventory if tables exist
-                    if ($has_tables) {
-                        // Log transaction
-                        $logStmt = $pdo->prepare("INSERT INTO inventory_transactions (product_id, transaction_type, quantity_change, reference_id, reference_type, previous_stock, new_stock, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                        if (!$logStmt->execute([
-                            $product_id,
-                            'sale',
-                            -$quantity,
-                            $order_id,
-                            'order',
-                            $old_stock,
-                            $new_stock,
-                            "Sold to {$customer_name} - Order #{$order_id}"
-                        ])) {
-                            error_log("Stripe: DB ERROR - Failed to log inventory transaction for product {$product_id}. PDO error: " . implode(", ", $logStmt->errorInfo()));
-                            // Optionally notify admin here
-                        }
-                    
-                    // Log to admin logs (include quantity_change and reason)
-                    $adminLogStmt = $pdo->prepare("INSERT INTO inventory_logs (product_id, user_id, action, quantity_change, old_quantity, new_quantity, reason) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                    $admin_user_id = null; // system action; no admin user
-                    $quantity_change = $new_stock - $old_stock;
-                    $reason = "Sold to {$customer_name} - Order #{$order_id}";
-                    if (!$adminLogStmt->execute([$product_id, $admin_user_id, 'sale', $quantity_change, $old_stock, $new_stock, $reason])) {
-                        error_log("Stripe: DB ERROR - Failed to log admin inventory for product {$product_id}. PDO error: " . implode(", ", $adminLogStmt->errorInfo()));
-                    }
-                    }
-                
-                    // Update product stock (ALWAYS do this, even if logging tables don't exist)
-                    $updateStmt = $pdo->prepare("UPDATE products SET stock_quantity = ? WHERE id = ?");
-                    $ok = $updateStmt->execute([$new_stock, $product_id]);
-                    $affected = $updateStmt->rowCount();
 
-                    if (!$ok) {
-                        error_log("Stripe: DB ERROR - FAILED to update stock for Product {$product_id}. PDO error: " . implode(", ", $updateStmt->errorInfo()));
+                    // Cascading stock reduction
+                    $stocks_to_reduce = [];
+                    error_log("Stripe: Product {$product_id} - variation_id: " . ($variation_id ?? 'null') . ", size_id: " . ($size_id ?? 'null'));
+
+                    if ($size_id) {
+                        // Reduce size stock, variation stock, and base stock
+                        $stocks_to_reduce[] = ['table' => 'variation_sizes', 'id' => $size_id, 'type' => 'size'];
+                        if ($variation_id) {
+                            $stocks_to_reduce[] = ['table' => 'product_variations', 'id' => $variation_id, 'type' => 'variation'];
+                        }
+                        $stocks_to_reduce[] = ['table' => 'products', 'id' => $product_id, 'type' => 'base'];
+                    } elseif ($variation_id) {
+                        // Reduce variation stock, base stock, and the size with highest stock for this variation
+                        $stocks_to_reduce[] = ['table' => 'product_variations', 'id' => $variation_id, 'type' => 'variation'];
+                        $stocks_to_reduce[] = ['table' => 'products', 'id' => $product_id, 'type' => 'base'];
+
+                        // Find size with highest stock for this variation
+                        $sizeStmt = $pdo->prepare("SELECT id FROM variation_sizes WHERE variation_id = ? ORDER BY stock_quantity DESC LIMIT 1");
+                        if ($sizeStmt->execute([$variation_id])) {
+                            $size_row = $sizeStmt->fetch();
+                            if ($size_row) {
+                                $stocks_to_reduce[] = ['table' => 'variation_sizes', 'id' => intval($size_row['id']), 'type' => 'size'];
+                            }
+                        }
                     } else {
-                        $inventory_updated_count++;
-                        error_log("Stripe: Stock updated - Product {$product_id}: {$old_stock} → {$new_stock} (-{$quantity} units for Order #{$order_id})");
+                        // Reduce base stock, and the variation and size with highest stock
+                        $stocks_to_reduce[] = ['table' => 'products', 'id' => $product_id, 'type' => 'base'];
+
+                        // Find variation with highest stock for this product
+                        $variationStmt = $pdo->prepare("SELECT id FROM product_variations WHERE product_id = ? ORDER BY stock_quantity DESC LIMIT 1");
+                        if ($variationStmt->execute([$product_id])) {
+                            $variation_row = $variationStmt->fetch();
+                            if ($variation_row) {
+                                $variation_id_highest = intval($variation_row['id']);
+                                $stocks_to_reduce[] = ['table' => 'product_variations', 'id' => $variation_id_highest, 'type' => 'variation'];
+
+                                // Find size with highest stock for this variation
+                                $sizeStmt = $pdo->prepare("SELECT id FROM variation_sizes WHERE variation_id = ? ORDER BY stock_quantity DESC LIMIT 1");
+                                if ($sizeStmt->execute([$variation_id_highest])) {
+                                    $size_row = $sizeStmt->fetch();
+                                    if ($size_row) {
+                                        $stocks_to_reduce[] = ['table' => 'variation_sizes', 'id' => intval($size_row['id']), 'type' => 'size'];
+                                    }
+                                }
+                            }
+                        }
                     }
-                
+
+                    error_log("Stripe: Product {$product_id} - stocks_to_reduce: " . json_encode($stocks_to_reduce));
+
+                    foreach ($stocks_to_reduce as $stock_info) {
+                        $table = $stock_info['table'];
+                        $id = $stock_info['id'];
+                        $type = $stock_info['type'];
+
+                        $stockStmt = $pdo->prepare("SELECT stock_quantity FROM {$table} WHERE id = ?");
+                        if (!$stockStmt->execute([$id])) {
+                            error_log("Stripe: DB ERROR - Failed to fetch {$type} stock for {$table} {$id}. PDO error: " . implode(", ", $stockStmt->errorInfo()));
+                            continue;
+                        }
+                        $stock_row = $stockStmt->fetch();
+
+                        if ($stock_row) {
+                            $old_stock = intval($stock_row['stock_quantity']);
+                            $new_stock = max(0, $old_stock - $quantity);
+
+                            // Update stock
+                            try {
+                                $updateStmt = $pdo->prepare("UPDATE {$table} SET stock_quantity = ? WHERE id = ?");
+                                $ok = $updateStmt->execute([$new_stock, $id]);
+                                $affected = $updateStmt->rowCount();
+
+                                if ($ok && $affected > 0) {
+                                    $inventory_updated_count++;
+                                    // Log if tables exist
+                                    if ($has_tables) {
+                                        $notes = "Sold to {$customer_name} - Order #{$order_id} ({$type} stock)";
+                                        $logStmt = $pdo->prepare("INSERT INTO inventory_transactions (product_id, transaction_type, quantity_change, reference_id, reference_type, previous_stock, new_stock, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                                        if (!$logStmt->execute([
+                                            $product_id,
+                                            'sale',
+                                            -$quantity,
+                                            $order_id,
+                                            'order',
+                                            $old_stock,
+                                            $new_stock,
+                                            $notes
+                                        ])) {
+                                            error_log("Stripe: DB ERROR - Failed to log inventory transaction for product {$product_id}. PDO error: " . implode(", ", $logStmt->errorInfo()));
+                                        }
+
+                                        $adminLogStmt = $pdo->prepare("INSERT INTO inventory_logs (product_id, user_id, action, quantity_change, old_quantity, new_quantity, reason) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                                        $admin_user_id = null; // system action; no admin user
+                                        $quantity_change = -$quantity; // negative for sale
+                                        $reason = $notes;
+                                        if (!$adminLogStmt->execute([$product_id, $admin_user_id, 'sale', $quantity_change, $old_stock, $new_stock, $reason])) {
+                                            error_log("Stripe: DB ERROR - Failed to log admin inventory for product {$product_id}. PDO error: " . implode(", ", $adminLogStmt->errorInfo()));
+                                        }
+                                    }
+
+                                    error_log("Stripe: Stock updated - Product {$product_id} ({$type}): {$old_stock} → {$new_stock} (-{$quantity} units for Order #{$order_id})");
+                                } else {
+                                    $error_msg = "FAILED to update {$type} stock for Product {$product_id} in table {$table} id {$id} - ok: {$ok}, affected: {$affected}, old: {$old_stock}, new: {$new_stock}";
+                                    error_log("Stripe: " . $error_msg);
+                                    $_SESSION['inventory_errors'][] = $error_msg;
+                                }
+                            } catch (Exception $e) {
+                                $error_msg = "EXCEPTION updating {$type} stock for Product {$product_id} in table {$table} id {$id}: " . $e->getMessage();
+                                error_log("Stripe: " . $error_msg);
+                                $_SESSION['inventory_errors'][] = $error_msg;
+                            }
+                        }
+                    }
+
                 } catch (Exception $itemEx) {
                     error_log('Stripe: ERROR processing inventory for item ' . ($item['product_id'] ?? 'unknown') . ': ' . $itemEx->getMessage());
                     // Optionally notify admin here
@@ -409,7 +467,7 @@ function handlePaymentIntentSucceeded($event, $pdo) {
 
         // Update inventory
         try {
-            $itemsStmt = $pdo->prepare("SELECT product_id, quantity FROM order_items WHERE order_id = ?");
+            $itemsStmt = $pdo->prepare("SELECT product_id, quantity, variation_id, size_id FROM order_items WHERE order_id = ?");
             $itemsStmt->execute([$order_id]);
             $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -418,10 +476,63 @@ function handlePaymentIntentSucceeded($event, $pdo) {
             } else {
                 $inventory_updated_count = 0;
                 foreach ($items as $item) {
-                    // Reduce stock for each item
-                    $updateStmt = $pdo->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ?");
-                    $updateStmt->execute([$item['quantity'], $item['product_id']]);
-                    $inventory_updated_count++;
+                    $product_id = intval($item['product_id']);
+                    $quantity = intval($item['quantity']);
+                    $variation_id = $item['variation_id'] ? intval($item['variation_id']) : null;
+                    $size_id = $item['size_id'] ? intval($item['size_id']) : null;
+
+                    // Cascading stock reduction
+                    $stocks_to_reduce = [];
+
+                    if ($size_id) {
+                        // Reduce size stock, variation stock, and base stock
+                        $stocks_to_reduce[] = ['table' => 'variation_sizes', 'id' => $size_id, 'type' => 'size'];
+                        if ($variation_id) {
+                            $stocks_to_reduce[] = ['table' => 'product_variations', 'id' => $variation_id, 'type' => 'variation'];
+                        }
+                        $stocks_to_reduce[] = ['table' => 'products', 'id' => $product_id, 'type' => 'base'];
+                    } elseif ($variation_id) {
+                        // Reduce variation stock, base stock, and the size with highest stock for this variation
+                        $stocks_to_reduce[] = ['table' => 'product_variations', 'id' => $variation_id, 'type' => 'variation'];
+                        $stocks_to_reduce[] = ['table' => 'products', 'id' => $product_id, 'type' => 'base'];
+
+                        // Find size with highest stock for this variation
+                        $sizeStmt = $pdo->prepare("SELECT id FROM variation_sizes WHERE variation_id = ? ORDER BY stock_quantity DESC LIMIT 1");
+                        if ($sizeStmt->execute([$variation_id])) {
+                            $size_row = $sizeStmt->fetch();
+                            if ($size_row) {
+                                $stocks_to_reduce[] = ['table' => 'variation_sizes', 'id' => intval($size_row['id']), 'type' => 'size'];
+                            }
+                        }
+                    } else {
+                        // Reduce only base stock
+                        $stocks_to_reduce[] = ['table' => 'products', 'id' => $product_id, 'type' => 'base'];
+                    }
+
+                    foreach ($stocks_to_reduce as $stock_info) {
+                        $table = $stock_info['table'];
+                        $id = $stock_info['id'];
+                        $type = $stock_info['type'];
+
+                        // Reduce stock for each item
+                        try {
+                            $updateStmt = $pdo->prepare("UPDATE {$table} SET stock_quantity = stock_quantity - ? WHERE id = ?");
+                            $ok = $updateStmt->execute([$quantity, $id]);
+                            $affected = $updateStmt->rowCount();
+                            if ($ok && $affected > 0) {
+                                $inventory_updated_count++;
+                                error_log("Stripe PI: Stock updated - {$table} id {$id} reduced by {$quantity}");
+                            } else {
+                                $error_msg = "FAILED to update {$table} id {$id} - ok: {$ok}, affected: {$affected}";
+                                error_log("Stripe PI: " . $error_msg);
+                                $_SESSION['inventory_errors'][] = $error_msg;
+                            }
+                        } catch (Exception $e) {
+                            $error_msg = "EXCEPTION updating {$table} id {$id}: " . $e->getMessage();
+                            error_log("Stripe PI: " . $error_msg);
+                            $_SESSION['inventory_errors'][] = $error_msg;
+                        }
+                    }
                 }
                 error_log("Stripe: Inventory updated for {$inventory_updated_count} product(s) in order {$order_id}.");
             }

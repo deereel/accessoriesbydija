@@ -390,7 +390,7 @@ try {
                 'postal_code' => $addr['postal_code'],
                 'country' => $addr['country']
             ]);
-            
+
             // Update order notes with guest address
             $updateStmt = $pdo->prepare("UPDATE orders SET notes = CONCAT(notes, '\n\nGuest Address: ', ?) WHERE id = ?");
             $updateStmt->execute([$addr_note, $order_id]);
@@ -400,6 +400,150 @@ try {
         if ($promo_id) {
             $pdo->prepare("UPDATE promo_codes SET usage_count = usage_count + 1 WHERE id = ?")
                 ->execute([$promo_id]);
+        }
+
+        // Update inventory/stock levels after order creation
+        try {
+            error_log("Order Create: Starting inventory update for order {$order_id}");
+
+            // Get customer name for inventory logs
+            $customer_name = "Customer";
+            if (!empty($data['contact_name'])) {
+                $customer_name = htmlspecialchars($data['contact_name']);
+            } else if ($customer_id) {
+                $cstmt = $pdo->prepare("SELECT CONCAT(first_name, ' ', last_name) as name FROM customers WHERE id = ?");
+                $cstmt->execute([$customer_id]);
+                $cdata = $cstmt->fetch(PDO::FETCH_ASSOC);
+                if ($cdata && !empty($cdata['name'])) {
+                    $customer_name = htmlspecialchars($cdata['name']);
+                }
+            }
+
+            // Verify inventory tables exist
+            $check = $pdo->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'inventory_transactions'");
+            $has_tables = ($check->fetch(PDO::FETCH_NUM)[0] > 0);
+            if (!$has_tables) {
+                error_log("Order Create: WARNING - inventory_transactions table does not exist. Inventory will not be logged. Run /api/setup/init-db.php?key=your-key to create tables.");
+            }
+
+            foreach ($cart_items as $item) {
+                $product_id = intval($item['product_id']);
+                $quantity = intval($item['quantity']);
+                $variation_id = $item['variation_id'] ?? null;
+                $size_id = $item['size_id'] ?? null;
+
+                // Cascading stock reduction
+                $stocks_to_reduce = [];
+                error_log("Order Create: Product {$product_id} - variation_id: " . ($variation_id ?? 'null') . ", size_id: " . ($size_id ?? 'null'));
+
+                if ($size_id) {
+                    // Reduce size stock, variation stock, and base stock
+                    $stocks_to_reduce[] = ['table' => 'variation_sizes', 'id' => $size_id, 'type' => 'size'];
+                    if ($variation_id) {
+                        $stocks_to_reduce[] = ['table' => 'product_variations', 'id' => $variation_id, 'type' => 'variation'];
+                    }
+                    $stocks_to_reduce[] = ['table' => 'products', 'id' => $product_id, 'type' => 'base'];
+                } elseif ($variation_id) {
+                    // Reduce variation stock, base stock, and the size with highest stock for this variation
+                    $stocks_to_reduce[] = ['table' => 'product_variations', 'id' => $variation_id, 'type' => 'variation'];
+                    $stocks_to_reduce[] = ['table' => 'products', 'id' => $product_id, 'type' => 'base'];
+
+                    // Find size with highest stock for this variation
+                    $sizeStmt = $pdo->prepare("SELECT id FROM variation_sizes WHERE variation_id = ? ORDER BY stock_quantity DESC LIMIT 1");
+                    $sizeStmt->execute([$variation_id]);
+                    $size_row = $sizeStmt->fetch(PDO::FETCH_ASSOC);
+                    if ($size_row) {
+                        $stocks_to_reduce[] = ['table' => 'variation_sizes', 'id' => intval($size_row['id']), 'type' => 'size'];
+                    }
+                } else {
+                    // Reduce base stock, and the variation and size with highest stock
+                    $stocks_to_reduce[] = ['table' => 'products', 'id' => $product_id, 'type' => 'base'];
+
+                    // Find variation with highest stock for this product
+                    $variationStmt = $pdo->prepare("SELECT id FROM product_variations WHERE product_id = ? ORDER BY stock_quantity DESC LIMIT 1");
+                    $variationStmt->execute([$product_id]);
+                    $variation_row = $variationStmt->fetch(PDO::FETCH_ASSOC);
+                    if ($variation_row) {
+                        $variation_id_highest = intval($variation_row['id']);
+                        $stocks_to_reduce[] = ['table' => 'product_variations', 'id' => $variation_id_highest, 'type' => 'variation'];
+
+                        // Find size with highest stock for this variation
+                        $sizeStmt = $pdo->prepare("SELECT id FROM variation_sizes WHERE variation_id = ? ORDER BY stock_quantity DESC LIMIT 1");
+                        $sizeStmt->execute([$variation_id_highest]);
+                        $size_row = $sizeStmt->fetch(PDO::FETCH_ASSOC);
+                        if ($size_row) {
+                            $stocks_to_reduce[] = ['table' => 'variation_sizes', 'id' => intval($size_row['id']), 'type' => 'size'];
+                        }
+                    }
+                }
+
+                error_log("Order Create: Product {$product_id} - stocks_to_reduce: " . json_encode($stocks_to_reduce));
+
+                // Update all stocks but log only once per item for the most specific stock
+                $logged = false;
+                foreach ($stocks_to_reduce as $stock_info) {
+                    $table = $stock_info['table'];
+                    $id = $stock_info['id'];
+                    $type = $stock_info['type'];
+   
+                    $stockStmt = $pdo->prepare("SELECT stock_quantity FROM {$table} WHERE id = ?");
+                    $stockStmt->execute([$id]);
+                    $stock_row = $stockStmt->fetch(PDO::FETCH_ASSOC);
+   
+                    if ($stock_row) {
+                        $old_stock = intval($stock_row['stock_quantity']);
+                        $new_stock = max(0, $old_stock - $quantity);
+   
+                        // Update stock
+                        try {
+                            $updateStmt = $pdo->prepare("UPDATE {$table} SET stock_quantity = ? WHERE id = ?");
+                            $update_success = $updateStmt->execute([$new_stock, $id]);
+                            $rows_affected = $updateStmt->rowCount();
+   
+                            if ($update_success && $rows_affected > 0) {
+                                // Log only once per item, for the most specific stock (size > variation > base)
+                                if (!$logged && (($type === 'size' && in_array('size', array_column($stocks_to_reduce, 'type'))) ||
+                                                ($type === 'variation' && !in_array('size', array_column($stocks_to_reduce, 'type'))) ||
+                                                ($type === 'base' && !in_array('variation', array_column($stocks_to_reduce, 'type')) && !in_array('size', array_column($stocks_to_reduce, 'type'))))) {
+                                    if ($has_tables) {
+                                        $notes = "Sold to {$customer_name} - Order #{$order_id}";
+                                        $logStmt = $pdo->prepare("INSERT INTO inventory_transactions (product_id, transaction_type, quantity_change, reference_id, reference_type, previous_stock, new_stock, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                                        $logStmt->execute([
+                                            $product_id,
+                                            'sale',
+                                            -$quantity,
+                                            $order_id,
+                                            'order',
+                                            $old_stock,
+                                            $new_stock,
+                                            $notes
+                                        ]);
+   
+                                        $adminLogStmt = $pdo->prepare("INSERT INTO inventory_logs (product_id, user_id, action, quantity_change, old_quantity, new_quantity, reason) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                                        $admin_user_id = null; // system action; no admin user
+                                        $adminLogStmt->execute([$product_id, $admin_user_id, 'sale', -$quantity, $old_stock, $new_stock, $notes]);
+                                    }
+                                    $logged = true;
+                                }
+   
+                                error_log("Order Create: Inventory reduced - Product {$product_id} ({$type}): {$old_stock} → {$new_stock} (-{$quantity} units for Order #{$order_id})");
+                            } else {
+                                $error_msg = "FAILED to update stock for Product {$product_id} ({$type}) in table {$table} id {$id} - success: {$update_success}, rows: {$rows_affected}, old: {$old_stock}, new: {$new_stock}";
+                                error_log("Order Create: " . $error_msg);
+                                $_SESSION['inventory_errors'][] = $error_msg;
+                            }
+                        } catch (Exception $e) {
+                            $error_msg = "EXCEPTION updating stock for Product {$product_id} ({$type}) in table {$table} id {$id}: " . $e->getMessage();
+                            error_log("Order Create: " . $error_msg);
+                            $_SESSION['inventory_errors'][] = $error_msg;
+                        }
+                    }
+                }
+            }
+
+            error_log("Order Create: Inventory update completed for order {$order_id}");
+        } catch (Exception $e) {
+            error_log('Order Create: ERROR during inventory update for order ' . $order_id . ': ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
         }
 
         // NOTE: Do NOT clear the customer's cart here. The cart should be cleared

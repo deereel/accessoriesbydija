@@ -30,41 +30,10 @@ try {
     $all_materials = [];
 }
 
-// Fetch all variants, filtered by material if selected
-try {
-    if (!empty($selected_material)) {
-        $stmt_var = $pdo->prepare("SELECT DISTINCT pv.tag FROM product_variants pv JOIN product_materials pm ON pv.product_id = pm.product_id JOIN materials m ON pm.material_id = m.id WHERE LOWER(m.name) = ? ORDER BY pv.tag ASC");
-        $stmt_var->execute([strtolower($selected_material)]);
-    } else {
-        $stmt_var = $pdo->query("SELECT DISTINCT tag FROM product_variants ORDER BY tag ASC");
-    }
-    $all_variants = $stmt_var->fetchAll(PDO::FETCH_COLUMN);
-} catch (Exception $e) {
-    $all_variants = [];
-}
-
-// Fetch all sizes, filtered by variant if selected
-try {
-    if (!empty($selected_variant)) {
-        $stmt_size = $pdo->prepare("SELECT DISTINCT p.size FROM products p JOIN product_variants pv ON p.id = pv.product_id WHERE LOWER(pv.tag) = ? AND p.size IS NOT NULL AND p.size != '' ORDER BY p.size ASC");
-        $stmt_size->execute([strtolower($selected_variant)]);
-    } else {
-        $stmt_size = $pdo->query("SELECT DISTINCT size FROM products WHERE size IS NOT NULL AND size != '' ORDER BY size ASC");
-    }
-    $all_sizes = $stmt_size->fetchAll(PDO::FETCH_COLUMN);
-} catch (Exception $e) {
-    $all_sizes = [];
-}
-
-
-// --- BUILD QUERY BASED ON FILTERS ---
-$selected_gender = $_GET['gender'] ?? '';
-$selected_category = $_GET['category'] ?? '';
-$selected_price_min = $_GET['price_min'] ?? '';
-$selected_price_max = $_GET['price_max'] ?? '';
-$selected_material = $_GET['material'] ?? '';
-$selected_variant = $_GET['variant'] ?? '';
-$selected_size = $_GET['size'] ?? '';
+$selected_genders = isset($_GET['gender']) && is_array($_GET['gender']) ? $_GET['gender'] : [];
+$selected_categories = isset($_GET['category']) && is_array($_GET['category']) ? $_GET['category'] : [];
+$selected_prices = isset($_GET['price']) && is_array($_GET['price']) ? $_GET['price'] : [];
+$selected_materials = isset($_GET['material']) && is_array($_GET['material']) ? $_GET['material'] : [];
 
 // Base query with all necessary joins
 $sql = "SELECT p.*, 
@@ -79,56 +48,62 @@ $where = ["p.is_active = 1"];
 $params = [];
 
 // Handle gender filter using the products.gender column
-if (!empty($selected_gender)) {
-    $selected_gender_lower = strtolower($selected_gender);
-    if ($selected_gender_lower === 'men') {
-        // Show products for men: gender = 'men' OR gender = 'unisex'
-        $where[] = "LOWER(p.gender) IN ('men', 'unisex')";
-    } elseif ($selected_gender_lower === 'women') {
-        // Show products for women: gender = 'women' OR gender = 'unisex'
-        $where[] = "LOWER(p.gender) IN ('women', 'unisex')";
+if (!empty($selected_genders)) {
+    $gender_placeholders = implode(',', array_fill(0, count($selected_genders), '?'));
+    $where[] = "LOWER(p.gender) IN (" . $gender_placeholders . ")";
+    foreach ($selected_genders as $gender) {
+        $params[] = strtolower($gender);
     }
 }
 
 // Handle category filter
-if (!empty($selected_category)) {
-    $where[] = "p.id IN (SELECT product_id FROM product_categories pc_cat JOIN categories c_cat ON pc_cat.category_id = c_cat.id WHERE LOWER(c_cat.name) = ?)";
-    $params[] = strtolower($selected_category);
+if (!empty($selected_categories)) {
+    $category_placeholders = implode(',', array_fill(0, count($selected_categories), '?'));
+    $where[] = "p.id IN (SELECT product_id FROM product_categories pc_cat JOIN categories c_cat ON pc_cat.category_id = c_cat.id WHERE LOWER(c_cat.name) IN (" . $category_placeholders . "))";
+    foreach ($selected_categories as $category) {
+        $params[] = strtolower($category);
+    }
 }
 
 // Handle price filters
-if (!empty($selected_price_min)) {
-    $where[] = "p.price >= ?";
-    $params[] = $selected_price_min;
-}
-if (!empty($selected_price_max)) {
-    $where[] = "p.price <= ?";
-    $params[] = $selected_price_max;
+if (!empty($selected_prices)) {
+    $price_conditions = [];
+    foreach ($selected_prices as $price_range) {
+        list($min, $max) = explode('-', $price_range);
+        $price_conditions[] = "(p.price >= ? AND p.price <= ?)";
+        $params[] = $min;
+        $params[] = $max;
+    }
+    $where[] = "(" . implode(" OR ", $price_conditions) . ")";
 }
 
 // Handle material filter
-if (!empty($selected_material)) {
-    $where[] = "p.id IN (SELECT pm.product_id FROM product_materials pm JOIN materials m ON pm.material_id = m.id WHERE LOWER(m.name) = ?)";
-    $params[] = strtolower($selected_material);
+if (!empty($selected_materials)) {
+    $material_placeholders = implode(',', array_fill(0, count($selected_materials), '?'));
+    $where[] = "p.id IN (SELECT pm.product_id FROM product_materials pm JOIN materials m ON pm.material_id = m.id WHERE LOWER(m.name) IN (" . $material_placeholders . "))";
+    foreach ($selected_materials as $material) {
+        $params[] = strtolower($material);
+    }
 }
 
-// Handle variant filter
-if (!empty($selected_variant)) {
-    $where[] = "p.id IN (SELECT pv.product_id FROM product_variants pv WHERE LOWER(pv.tag) = ?)";
-    $params[] = strtolower($selected_variant);
-}
 
-// Handle size filter
-if (!empty($selected_size)) {
-    $where[] = "LOWER(p.size) = ?";
-    $params[] = strtolower($selected_size);
-}
 
 if (!empty($where)) {
     $sql .= " WHERE " . implode(" AND ", $where);
 }
 
-$sql .= " GROUP BY p.id ORDER BY p.created_at DESC";
+$current_sort = '';
+$sort_order = "COALESCE(p.created_at, '1970-01-01') DESC, p.id DESC";
+if (isset($_GET['sort']) && is_string($_GET['sort'])) {
+    if ($_GET['sort'] === 'price-low') {
+        $current_sort = 'price-low';
+        $sort_order = 'CAST(p.price AS DECIMAL(10,2)) ASC, p.id ASC';
+    } elseif ($_GET['sort'] === 'price-high') {
+        $current_sort = 'price-high';
+        $sort_order = 'CAST(p.price AS DECIMAL(10,2)) DESC, p.id DESC';
+    }
+}
+$sql .= " GROUP BY p.id ORDER BY " . $sort_order;
 
 try {
     $stmt = $pdo->prepare($sql);
@@ -142,6 +117,8 @@ try {
 ?>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <style>
 /* Products Page Styles */
 main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
@@ -151,19 +128,15 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
 .breadcrumb a { color: #666; text-decoration: none; }
 .breadcrumb span { margin: 0 0.5rem; }
 
-.products-layout { display: flex; gap: 2rem; }
-.filters-sidebar { width: 250px; }
-.products-area { flex: 1; position: relative; }
+.filters-horizontal { display: flex; gap: 1rem; margin-bottom: 2rem; align-items: center; }
+.filter-dropdown { position: relative; }
+.filter-dropdown-toggle { padding: 0.5rem 1rem; border: 1px solid #ddd; border-radius: 4px; background: white; cursor: pointer; }
+.filter-dropdown-content { display: none; position: absolute; background: white; border: 1px solid #ddd; border-radius: 4px; padding: 1rem; z-index: 10; min-width: 200px; }
+.filter-dropdown-content label { display: block; margin-bottom: 0.5rem; }
+.filter-dropdown:hover .filter-dropdown-content { display: block; }
 
-.filter-section { margin-bottom: 1.5rem; }
-.filter-section h3 { font-weight: 500; margin-bottom: 0.75rem; }
-.filter-list a { display: block; padding: 0.3rem 0; text-decoration: none; color: #333; }
-.filter-list a:hover { color: #C27BA0; }
-.filter-list a.active { font-weight: 700; color: #C27BA0; }
-
-
-.price-filters { display: flex; flex-direction: column; gap: 0.5rem; }
-.price-filters label { display: flex; align-items: center; gap: 0.5rem; }
+.products-layout { display: flex; flex-direction: column; gap: 2rem; }
+.products-area { position: relative; }
 
 .products-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
 .products-header h2 { font-size: 1.5rem; font-weight: 300; }
@@ -288,121 +261,63 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
     </div>
 
     <div class="products-layout">
-        <!-- Filters Sidebar -->
-        <div class="filters-sidebar">
-            <a href="/products.php" class="clear-btn">Clear Filters</a>
-
-            <!-- Gender Filter -->
-            <div class="filter-section">
-                <h3>GENDER</h3>
-                <button class="filter-dropdown-toggle" data-filter="gender">
-                    <?= $selected_gender ? ucfirst($selected_gender) : 'Gender' ?>
-                </button>
-                <div class="filter-list mobile-dropdown" data-label="GENDER">
-                    <a href="#" class="filter-link <?= !$selected_gender ? 'active' : '' ?>" data-filter-key="gender" data-filter-value="">All</a>
-                    <?php foreach ($all_genders as $gender): ?>
-                        <a href="#" class="filter-link <?= strtolower($selected_gender) == strtolower($gender) ? 'active' : '' ?>" data-filter-key="gender" data-filter-value="<?= htmlspecialchars($gender) ?>"><?= htmlspecialchars(ucfirst($gender)) ?></a>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
-            <!-- Category Filter -->
-            <div class="filter-section">
-                <h3>CATEGORY</h3>
-                <button class="filter-dropdown-toggle" data-filter="category">
-                    <?= $selected_category ? ucfirst($selected_category) : 'Category' ?>
-                </button>
-                <div class="filter-list mobile-dropdown" data-label="CATEGORY">
-                    <a href="#" class="filter-link <?= !$selected_category ? 'active' : '' ?>" data-filter-key="category" data-filter-value="">All</a>
-                    <?php foreach ($all_categories as $category): ?>
-                        <a href="#" class="filter-link <?= strtolower($selected_category) == strtolower($category) ? 'active' : '' ?>" data-filter-key="category" data-filter-value="<?= htmlspecialchars($category) ?>"><?= htmlspecialchars(ucfirst($category)) ?></a>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
-            <!-- Material Filter -->
-            <div class="filter-section">
-                <h3>MATERIAL</h3>
-                <button class="filter-dropdown-toggle" data-filter="material">
-                    <?= $selected_material ? ucfirst($selected_material) : 'Material' ?>
-                </button>
-                <div class="filter-list mobile-dropdown" data-label="MATERIAL">
-                    <a href="#" class="filter-link <?= !$selected_material ? 'active' : '' ?>" data-filter-key="material" data-filter-value="">All</a>
-                    <?php foreach ($all_materials as $material): ?>
-                        <a href="#" class="filter-link <?= strtolower($selected_material) == strtolower($material) ? 'active' : '' ?>" data-filter-key="material" data-filter-value="<?= htmlspecialchars($material) ?>"><?= htmlspecialchars(ucfirst($material)) ?></a>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
-            <!-- Variant Filter -->
-            <div class="filter-section">
-                <h3>VARIANT</h3>
-                <button class="filter-dropdown-toggle" data-filter="variant">
-                    <?= $selected_variant ? ucfirst($selected_variant) : 'Variant' ?>
-                </button>
-                <div class="filter-list mobile-dropdown" data-label="VARIANT">
-                    <a href="#" class="filter-link <?= !$selected_variant ? 'active' : '' ?>" data-filter-key="variant" data-filter-value="">All</a>
-                    <?php foreach ($all_variants as $variant): ?>
-                        <a href="#" class="filter-link <?= strtolower($selected_variant) == strtolower($variant) ? 'active' : '' ?>" data-filter-key="variant" data-filter-value="<?= htmlspecialchars($variant) ?>"><?= htmlspecialchars(ucfirst($variant)) ?></a>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
-            <!-- Size Filter -->
-            <div class="filter-section">
-                <h3>SIZE</h3>
-                <button class="filter-dropdown-toggle" data-filter="size">
-                    <?= $selected_size ? ucfirst($selected_size) : 'Size' ?>
-                </button>
-                <div class="filter-list mobile-dropdown" data-label="SIZE">
-                    <a href="#" class="filter-link <?= !$selected_size ? 'active' : '' ?>" data-filter-key="size" data-filter-value="">All</a>
-                    <?php foreach ($all_sizes as $size): ?>
-                        <a href="#" class="filter-link <?= strtolower($selected_size) == strtolower($size) ? 'active' : '' ?>" data-filter-key="size" data-filter-value="<?= htmlspecialchars($size) ?>"><?= htmlspecialchars(ucfirst($size)) ?></a>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
-            <!-- Price Filter -->
-            <div class="filter-section">
-                <h3>FILTER BY PRICE</h3>
-                <button class="filter-dropdown-toggle" data-filter="price">
-                    <?php
-                        if ($selected_price_min == 0 && $selected_price_max == 50) {
-                            echo '£0 - £50';
-                        } elseif ($selected_price_min == 50 && $selected_price_max == 100) {
-                            echo '£50 - £100';
-                        } elseif ($selected_price_min == 100 && $selected_price_max == 200) {
-                            echo '£100 - £200';
-                        } elseif ($selected_price_min == 200 && $selected_price_max == 9999) {
-                            echo '£200+';
-                        } else {
-                            echo 'Price';
-                        }
-                    ?>
-                </button>
-                <div class="filter-list mobile-dropdown" data-label="PRICE">
-                    <a href="#" class="filter-link <?= (!$selected_price_min && !$selected_price_max) ? 'active' : '' ?>" data-filter-key="price" data-filter-value="">All</a>
-                    <a href="#" class="filter-link <?= ($selected_price_min == 0 && $selected_price_max == 50) ? 'active' : '' ?>" data-filter-key="price" data-filter-value="0-50">£0 - £50</a>
-                    <a href="#" class="filter-link <?= ($selected_price_min == 50 && $selected_price_max == 100) ? 'active' : '' ?>" data-filter-key="price" data-filter-value="50-100">£50 - £100</a>
-                    <a href="#" class="filter-link <?= ($selected_price_min == 100 && $selected_price_max == 200) ? 'active' : '' ?>" data-filter-key="price" data-filter-value="100-200">£100 - £200</a>
-                    <a href="#" class="filter-link <?= ($selected_price_min == 200 && $selected_price_max == 9999) ? 'active' : '' ?>" data-filter-key="price" data-filter-value="200-9999">£200+</a>
-                </div>
-            </div>
+        <div class="filters-horizontal">
+    <!-- Gender Filter -->
+    <div class="filter-dropdown">
+        <button class="filter-dropdown-toggle">Gender</button>
+        <div class="filter-dropdown-content">
+            <?php foreach ($all_genders as $gender): ?>
+                <label><input type="checkbox" name="gender[]" value="<?= htmlspecialchars($gender) ?>" <?= (isset($_GET['gender']) && in_array($gender, (array)$_GET['gender'])) ? 'checked' : '' ?>> <?= htmlspecialchars(ucfirst($gender)) ?></label>
+            <?php endforeach; ?>
         </div>
+    </div>
+
+    <!-- Category Filter -->
+    <div class="filter-dropdown">
+        <button class="filter-dropdown-toggle">Category</button>
+        <div class="filter-dropdown-content">
+            <?php foreach ($all_categories as $category): ?>
+                <label><input type="checkbox" name="category[]" value="<?= htmlspecialchars($category) ?>" <?= (isset($_GET['category']) && in_array($category, (array)$_GET['category'])) ? 'checked' : '' ?>> <?= htmlspecialchars(ucfirst($category)) ?></label>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <!-- Material Filter -->
+    <div class="filter-dropdown">
+        <button class="filter-dropdown-toggle">Material</button>
+        <div class="filter-dropdown-content">
+            <?php foreach ($all_materials as $material): ?>
+                <label><input type="checkbox" name="material[]" value="<?= htmlspecialchars($material) ?>" <?= (isset($_GET['material']) && in_array($material, (array)$_GET['material'])) ? 'checked' : '' ?>> <?= htmlspecialchars(ucfirst($material)) ?></label>
+            <?php endforeach; ?>
+        </div>
+    </div>
+
+    <!-- Price Filter -->
+    <div class="filter-dropdown">
+        <button class="filter-dropdown-toggle">Price</button>
+        <div class="filter-dropdown-content">
+            <label><input type="checkbox" name="price[]" value="0-50" <?= (isset($_GET['price']) && in_array('0-50', (array)$_GET['price'])) ? 'checked' : '' ?>> £0 - £50</label>
+            <label><input type="checkbox" name="price[]" value="50-100" <?= (isset($_GET['price']) && in_array('50-100', (array)$_GET['price'])) ? 'checked' : '' ?>> £50 - £100</label>
+            <label><input type="checkbox" name="price[]" value="100-200" <?= (isset($_GET['price']) && in_array('100-200', (array)$_GET['price'])) ? 'checked' : '' ?>> £100 - £200</label>
+            <label><input type="checkbox" name="price[]" value="200-9999" <?= (isset($_GET['price']) && in_array('200-9999', (array)$_GET['price'])) ? 'checked' : '' ?>> £200+</label>
+        </div>
+    </div>
+    <a href="/products.php" class="clear-btn">Clear Filters</a>
+</div>
 
         <!-- Products Area -->
         <div class="products-area">
             <div class="products-header">
                 <h2>All Products (<?= count($products) ?>)</h2>
                 <select id="sort-select" class="sort-select">
-                    <option value="">Sort by latest</option>
-                    <option value="price-low">Price: Low to High</option>
-                    <option value="price-high">Price: High to Low</option>
+                    <option value="" <?= $current_sort === '' ? 'selected' : '' ?>>Sort by latest</option>
+                    <option value="price-low" <?= $current_sort === 'price-low' ? 'selected' : '' ?>>Price: Low to High</option>
+                    <option value="price-high" <?= $current_sort === 'price-high' ? 'selected' : '' ?>>Price: High to Low</option>
                 </select>
             </div>
 
             <!-- Products Grid -->
-            <div class="swiper-container products-swiper">
+            <div class="swiper products-swiper">
                 <div class="swiper-wrapper">
                     <?php
                     $chunks = array_chunk($products, 16);
@@ -479,331 +394,94 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
     </div>
 </main>
 
+
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const filterLinks = document.querySelectorAll('.filter-link');
-    const filterToggles = document.querySelectorAll('.filter-dropdown-toggle');
+    const filterCheckboxes = document.querySelectorAll('.filter-dropdown-content input[type="checkbox"]');
+    const sortSelect = document.getElementById('sort-select');
 
-    // Mobile dropdown toggle functionality
-    filterToggles.forEach(toggle => {
-        toggle.addEventListener('click', function() {
-            const filterType = this.getAttribute('data-filter');
-            const filterList = this.nextElementSibling;
-            
-            // Close other dropdowns
-            document.querySelectorAll('.filter-list.mobile-dropdown.active').forEach(list => {
-                if (list !== filterList) {
-                    list.classList.remove('active');
-                }
-            });
-            
-            // Toggle current dropdown
-            filterList.classList.toggle('active');
+    filterCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function () {
+            updateUrl();
         });
     });
 
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('.filter-section')) {
-            document.querySelectorAll('.filter-list.mobile-dropdown.active').forEach(list => {
-                list.classList.remove('active');
-            });
-        }
+    sortSelect.addEventListener('change', function () {
+        updateUrl();
     });
 
-    filterLinks.forEach(link => {
-        link.addEventListener('click', function (e) {
-            e.preventDefault();
-
-            const key = this.dataset.filterKey;
-            const value = this.dataset.filterValue;
-
-            if (key === 'material' || key === 'variant' || key === 'size') {
-                // Handle dependent filters via AJAX
-                updateFilters(key, value);
-            } else {
-                // Reload for other filters
-                const url = new URL(window.location);
-                if (key === 'price') {
-                    url.searchParams.delete('price_min');
-                    url.searchParams.delete('price_max');
-                    if (value) {
-                        const [min, max] = value.split('-');
-                        url.searchParams.set('price_min', min);
-                        if(max) url.searchParams.set('price_max', max);
-                    }
-                } else {
-                    if (value) {
-                        url.searchParams.set(key, value);
-                    } else {
-                        url.searchParams.delete(key);
-                    }
-                }
-                window.location.href = url.toString();
-            }
-        });
-    });
-
-    async function updateFilters(key, value) {
-        const url = new URL(window.location);
-        if (value) {
-            url.searchParams.set(key, value);
-        } else {
-            url.searchParams.delete(key);
-        }
-        // Clear dependent filters
-        if (key === 'material') {
-            url.searchParams.delete('variant');
-            url.searchParams.delete('size');
-        } else if (key === 'variant') {
-            url.searchParams.delete('size');
-        }
-
-        // Update URL without reload
-        window.history.pushState({}, '', url.toString());
-
-        // Update active classes
-        updateActiveClasses(key, value);
-
-        // Fetch new filter options
+    function updateUrl() {
+        const url = new URL(window.location.href.split('?')[0]);
         const params = new URLSearchParams();
-        if (key === 'material' && value) params.set('material', value);
-        if (key === 'variant' && value) params.set('variant', value);
 
-        try {
-            const response = await fetch('api/get-filter-options.php?' + params.toString());
-            const data = await response.json();
-
-            // Update variant dropdown
-            if (key === 'material') {
-                updateDropdown('variant', data.variants);
-                updateDropdown('size', []); // Clear sizes
-            }
-            // Update size dropdown
-            if (key === 'variant') {
-                updateDropdown('size', data.sizes);
-            }
-        } catch (error) {
-            console.error('Error updating filters:', error);
-        }
-
-        // Reload products (or update via AJAX, but for now reload)
-        window.location.reload();
-    }
-
-    function updateActiveClasses(key, value) {
-        // Update active classes for the changed filter
-        const filterList = document.querySelector(`[data-label="${key.toUpperCase()}"]`);
-        if (filterList) {
-            filterList.querySelectorAll('.filter-link').forEach(link => {
-                link.classList.remove('active');
-                if (link.dataset.filterValue === value) {
-                    link.classList.add('active');
-                }
-            });
-            // Update toggle text
-            const toggle = filterList.previousElementSibling;
-            if (toggle) {
-                const displayValue = value ? value.charAt(0).toUpperCase() + value.slice(1) : key.charAt(0).toUpperCase() + key.slice(1);
-                toggle.textContent = displayValue;
-            }
-        }
-    }
-
-    function updateDropdown(filterKey, options) {
-        const filterList = document.querySelector(`[data-label="${filterKey.toUpperCase()}"]`);
-        if (filterList) {
-            const links = filterList.querySelectorAll('.filter-link');
-            // Remove existing dynamic links
-            links.forEach(link => {
-                if (link.dataset.filterValue !== '') {
-                    link.remove();
-                }
-            });
-            // Add new options
-            options.forEach(option => {
-                const link = document.createElement('a');
-                link.href = '#';
-                link.className = 'filter-link';
-                link.dataset.filterKey = filterKey;
-                link.dataset.filterValue = option;
-                link.textContent = option.charAt(0).toUpperCase() + option.slice(1);
-                filterList.appendChild(link);
-            });
-            // Re-attach event listeners
-            filterList.querySelectorAll('.filter-link').forEach(link => {
-                link.addEventListener('click', function (e) {
-                    e.preventDefault();
-                    const key = this.dataset.filterKey;
-                    const value = this.dataset.filterValue;
-                    updateFilters(key, value);
-                });
-            });
-        }
-    }
-    
-    // Poll for stock updates every 5 seconds to reflect real-time changes
-    setInterval(updateStockBadges, 5000);
-});
-
-// Poll for stock updates without reloading entire page
-async function updateStockBadges() {
-    const productCards = document.querySelectorAll('.product-card[data-product-id]');
-    if (productCards.length === 0) return;
-    
-    const productIds = Array.from(productCards).map(card => card.getAttribute('data-product-id'));
-    
-    try {
-        const response = await fetch('api/check-stock-levels.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ product_ids: productIds })
-        });
-        
-        const data = await response.json();
-        if (!data.success) return;
-        
-        // Update each product card with fresh stock data
-        Object.entries(data.stocks || {}).forEach(([productId, stockData]) => {
-            const card = document.querySelector(`.product-card[data-product-id="${productId}"]`);
-            if (card) {
-                const stockBadge = card.querySelector('.stock-badge');
-                const addBtn = card.querySelector('.add-to-cart');
-                
-                if (stockBadge && stockData.stock_quantity !== undefined) {
-                    const qty = parseInt(stockData.stock_quantity);
-                    let badgeHtml;
-                    
-                    if (qty <= 0) {
-                        badgeHtml = '<span style="color: #d32f2f; background-color: #ffebee; padding: 4px 8px; border-radius: 4px; display: inline-block;">Out of Stock</span>';
-                        if (addBtn) addBtn.disabled = true;
-                    } else if (qty < 10) {
-                        badgeHtml = `<span style="color: #f57c00; background-color: #fff3e0; padding: 4px 8px; border-radius: 4px; display: inline-block;">Only ${qty} left</span>`;
-                        if (addBtn) addBtn.disabled = false;
-                    } else {
-                        badgeHtml = '<span style="color: #388e3c; background-color: #e8f5e9; padding: 4px 8px; border-radius: 4px; display: inline-block;">In Stock</span>';
-                        if (addBtn) addBtn.disabled = false;
-                    }
-                    
-                    stockBadge.innerHTML = badgeHtml;
-                }
+        filterCheckboxes.forEach(checkbox => {
+            if (checkbox.checked) {
+                params.append(checkbox.name, checkbox.value);
             }
         });
-    } catch (error) {
-        console.error('Error updating stock badges:', error);
-    }
-}
 
-// Cart functionality is handled centrally by assets/js/cart-handler.js
-
-// Wishlist functionality
-document.querySelectorAll('.wishlist-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const icon = this.querySelector('i');
-        icon.classList.toggle('far');
-        icon.classList.toggle('fas');
-    });
-});
-
-// Custom Swiper functionality
-document.addEventListener('DOMContentLoaded', function() {
-    const swiperContainer = document.querySelector('.swiper-container.products-swiper');
-    if (!swiperContainer) return;
-
-    const slides = swiperContainer.querySelectorAll('.swiper-slide');
-    const navigation = swiperContainer.querySelector('.swiper-navigation');
-    const pagination = navigation.querySelector('.swiper-pagination');
-    const nextBtn = navigation.querySelector('.swiper-button-next');
-    const prevBtn = navigation.querySelector('.swiper-button-prev');
-
-    if (slides.length === 0) return;
-
-    let currentSlide = 0;
-
-    // Initialize pagination bullets
-    slides.forEach((_, index) => {
-        const bullet = document.createElement('span');
-        bullet.className = 'swiper-pagination-bullet';
-        bullet.textContent = index + 1;
-        bullet.addEventListener('click', () => goToSlide(index));
-        pagination.appendChild(bullet);
-    });
-
-    // Show navigation buttons if more than one slide
-    if (slides.length > 1) {
-        nextBtn.style.display = 'flex';
-        prevBtn.style.display = 'flex';
-    } else {
-        // For testing, show arrows even with one slide
-        nextBtn.style.display = 'flex';
-        prevBtn.style.display = 'flex';
-    }
-
-    function goToSlide(index) {
-        // Hide current slide
-        slides[currentSlide].classList.remove('active');
-
-        // Update pagination
-        const bullets = pagination.querySelectorAll('.swiper-pagination-bullet');
-        bullets[currentSlide].classList.remove('swiper-pagination-bullet-active');
-
-        // Set new slide
-        currentSlide = index;
-
-        // Show new slide
-        slides[currentSlide].classList.add('active');
-
-        // Update pagination
-        bullets[currentSlide].classList.add('swiper-pagination-bullet-active');
-
-        // Scroll to top of products area
-        const productsHeader = document.querySelector('.products-header');
-        if (productsHeader) {
-            productsHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (sortSelect.value) {
+            params.set('sort', sortSelect.value);
         }
+
+        url.search = params.toString();
+        window.location.href = url.toString();
     }
 
-    function nextSlide() {
-        const nextIndex = (currentSlide + 1) % slides.length;
-        goToSlide(nextIndex);
+    const swiper = new Swiper('.products-swiper', {
+        slidesPerView: 1,
+        spaceBetween: 0,
+        // We'll manage height updates manually so 4x4 grid never gets clipped.
+        autoHeight: true,
+        navigation: {
+            nextEl: '.products-swiper .swiper-button-next',
+            prevEl: '.products-swiper .swiper-button-prev',
+        },
+        pagination: {
+            el: '.products-swiper .swiper-pagination',
+            clickable: true,
+        },
+        on: {
+            init() {
+                // Wait a tick for layout, then size to content
+                setTimeout(() => this.updateAutoHeight(0), 0);
+            }
+        }
+    });
+
+    // Recompute height when images finish loading (prevents footer creeping up / clipped rows)
+    function updateSwiperHeight() {
+        if (!swiper || typeof swiper.updateAutoHeight !== 'function') return;
+        swiper.updateAutoHeight(0);
     }
 
-    function prevSlide() {
-        const prevIndex = currentSlide === 0 ? slides.length - 1 : currentSlide - 1;
-        goToSlide(prevIndex);
-    }
+    // When the whole page is loaded (images included)
+    window.addEventListener('load', updateSwiperHeight);
 
-    // Event listeners
-    nextBtn.addEventListener('click', nextSlide);
-    prevBtn.addEventListener('click', prevSlide);
-
-    // Initialize first slide
-    goToSlide(0);
+    // Also after slide changes/transition ends
+    swiper.on('slideChangeTransitionEnd', updateSwiperHeight);
 });
 </script>
 
-
-
 <style>
 /* Custom swiper container and slides */
-.swiper-container {
+.products-swiper {
     width: 100%;
     height: auto;
     position: relative;
+    overflow: hidden; /* required so only the active slide is visible */
 }
 
-.swiper-slide {
-    display: none; /* Hidden by default, shown by JavaScript */
-    opacity: 0;
-    transition: opacity 0.3s ease; /* Only opacity transition */
-    min-height: 400px;
-}
+/* IMPORTANT: allow slides to grow to fit 16-product grid */
+.products-swiper .swiper-wrapper { display: flex !important; flex-wrap: nowrap !important; align-items: flex-start; }
+.products-swiper .swiper-slide { flex: 0 0 100% !important; width: 100% !important; height: auto !important; }
 
-.swiper-slide.active {
-    display: block;
-    opacity: 1;
+/* Keep navigation in normal flow (Swiper's defaults are absolute positioned) */
+.products-swiper .swiper-button-next,
+.products-swiper .swiper-button-prev {
+    position: static !important;
+    margin: 0 !important;
 }
 
 /* Navigation controls container */
@@ -854,9 +532,8 @@ document.addEventListener('DOMContentLoaded', function() {
     color: #C27BA0;
     cursor: pointer;
     transition: all 0.3s ease;
-    display: none; /* Hidden by default, shown by JavaScript */
-    font-size: 16px;
     display: flex;
+    font-size: 16px;
     align-items: center;
     justify-content: center;
 }

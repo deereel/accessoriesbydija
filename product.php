@@ -513,7 +513,7 @@ function updateAddToCartButton() {
         document.getElementById('quantitySelector').style.display = 'block';
     } else {
         btn.disabled = true;
-        btn.textContent = 'Select Options';
+        btn.textContent = 'Select Your Preferred Material to Proceed';
         document.getElementById('quantitySelector').style.display = 'none';
         if (!selectedVariation) {
             document.getElementById('componentSummary').style.display = 'none';

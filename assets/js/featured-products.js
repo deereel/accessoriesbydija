@@ -29,7 +29,8 @@ async function loadFeaturedProducts() {
 
 // Poll for stock updates without reloading entire page
 async function updateStockBadges() {
-    const productCards = document.querySelectorAll('.product-card[data-product-id]');
+    // Featured section uses .featured-card
+    const productCards = document.querySelectorAll('.featured-card[data-product-id]');
     if (productCards.length === 0) return;
     
     const productIds = Array.from(productCards).map(card => card.getAttribute('data-product-id'));
@@ -48,7 +49,7 @@ async function updateStockBadges() {
         
         // Update each product card with fresh stock data
         Object.entries(data.stocks || {}).forEach(([productId, stockData]) => {
-            const card = document.querySelector(`.product-card[data-product-id="${productId}"]`);
+            const card = document.querySelector(`.featured-card[data-product-id="${productId}"]`);
             if (card) {
                 const stockBadge = card.querySelector('.stock-badge');
                 const addBtn = card.querySelector('.add-to-cart');
@@ -86,38 +87,46 @@ function displayFeaturedProducts(products) {
     const productsToDisplay = products.slice(0, 8); // Take first 8 products
 
     productsToDisplay.forEach(product => {
-        const productCard = document.createElement('div');
-        productCard.className = 'product-card';
-        productCard.setAttribute('data-product-id', product.id);
-        productCard.setAttribute('data-price', product.price);
-        productCard.setAttribute('data-name', product.name);
+        const card = document.createElement('div');
+        card.className = 'featured-card';
+        card.setAttribute('data-product-id', product.id);
+        card.setAttribute('data-price', product.price);
+        card.setAttribute('data-name', product.name);
 
-        productCard.innerHTML = `
-            <!-- Wishlist Button -->
-            <button class="wishlist-btn">
+        const price = Number.parseFloat(product.price || 0);
+        const desc = product.description ? String(product.description).trim() : '';
+        const shortDesc = desc ? (desc.length > 80 ? desc.substring(0, 80) + '…' : desc) : '';
+
+        card.innerHTML = `
+            <button class="wishlist-btn" onclick="toggleWishlist(${product.id})" aria-label="Add to wishlist">
                 <i class="far fa-heart"></i>
             </button>
 
-            <!-- Product Image -->
-            <a href="product.php?slug=${product.slug}" class="product-image">
-                ${product.image_url ?
-                    `<img class="main-img" src="${product.image_url}" alt="${product.name}" loading="lazy">` :
-                    `<div class="main-img placeholder">${product.name.substring(0, 3)}</div>`
-                }
-            </a>
+            <div class="featured-image">
+                <a href="product.php?slug=${product.slug}" aria-label="View ${escapeHtml(product.name)}">
+                    ${product.image_url ?
+                        `<img src="${product.image_url}" alt="${escapeHtml(product.name)}" loading="lazy">` :
+                        `<div class="featured-placeholder">${escapeHtml(product.name.substring(0, 2).toUpperCase())}</div>`
+                    }
+                </a>
+            </div>
 
-            <!-- Product Info -->
-            <div class="product-info">
-                <h3><a href="product.php?slug=${product.slug}" style="text-decoration:none;color:inherit;">${product.name}</a></h3>
-                <p>${product.description ? product.description.substring(0, 50) + '...' : ''}</p>
-                ${product.weight ? `<p style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem;">⚖️ ${product.weight}g</p>` : ''}
-                <div class="product-footer">
-                    <span class="product-price" data-price="${product.price}">£${parseFloat(product.price).toFixed(2)}</span>
-                    <button class="cart-btn add-to-cart" data-product-id="${product.id}" ${product.stock_quantity <= 0 ? 'disabled' : ''}>Add to Cart</button>
+            <div class="featured-info">
+                <h3><a href="product.php?slug=${product.slug}" style="text-decoration:none;color:inherit;">${escapeHtml(product.name)}</a></h3>
+                ${shortDesc ? `<p class="featured-description">${escapeHtml(shortDesc)}</p>` : ''}
+                ${product.weight ? `<p style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem;">⚖️ ${escapeHtml(String(product.weight))}g</p>` : ''}
+
+                <div class="featured-footer">
+                    <span class="featured-price" data-price="${price}">£${price.toFixed(2)}</span>
+                    <div class="featured-actions">
+                        <button class="action-btn add-to-cart" onclick="addToCart(${product.id})" data-product-id="${product.id}" ${product.stock_quantity <= 0 ? 'disabled' : ''}>
+                            Add to Cart
+                        </button>
+                    </div>
                 </div>
-                <!-- Stock Status Badge -->
+
                 <div class="stock-badge" style="margin-top: 8px; text-align: center; font-size: 0.85rem; font-weight: 500;">
-                    ${product.stock_quantity <= 0 ? 
+                    ${product.stock_quantity <= 0 ?
                         '<span style="color: #d32f2f; background-color: #ffebee; padding: 4px 8px; border-radius: 4px; display: inline-block;">Out of Stock</span>' :
                         product.stock_quantity < 10 ?
                         `<span style="color: #f57c00; background-color: #fff3e0; padding: 4px 8px; border-radius: 4px; display: inline-block;">Only ${product.stock_quantity} left</span>` :
@@ -126,8 +135,18 @@ function displayFeaturedProducts(products) {
                 </div>
             </div>
         `;
-        container.appendChild(productCard);
+        container.appendChild(card);
     });
+}
+
+// Simple HTML escape for text we inject into templates
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 function addToCart(productId) {
@@ -137,7 +156,7 @@ function addToCart(productId) {
     }
 
     const button = event.target;
-    const productCard = button.closest('.product-card');
+    const card = button.closest('.featured-card') || button.closest('.product-card');
 
     // Get productId from parameter or button data
     if (!productId) {
@@ -148,13 +167,13 @@ function addToCart(productId) {
         return;
     }
 
-    if (productCard) {
-        // From featured products
+    if (card) {
+        // From featured products / product grids
         const productData = {
             product_id: productId,
-            product_name: productCard.getAttribute('data-name') || '',
-            price: parseFloat(productCard.getAttribute('data-price') || 0),
-            image: productCard.querySelector('.product-image img')?.src || '',
+            product_name: card.getAttribute('data-name') || '',
+            price: parseFloat(card.getAttribute('data-price') || 0),
+            image: card.querySelector('img')?.src || '',
             quantity: 1
         };
         window.cartHandler.addToCart(productData);

@@ -333,12 +333,20 @@ include 'includes/header.php';
                 const data = await response.json();
                 
                 if (data.success && data.items) {
-                    const itemsHtml = data.items.map(item => `
+                    const itemsHtml = data.items.map(item => {
+                        let details = [];
+                        if (item.material_name) details.push(item.material_name);
+                        if (item.color) details.push(item.color);
+                        if (item.adornment) details.push(item.adornment);
+                        if (item.size) details.push(item.size);
+                        if (item.variation_tag) details.push(item.variation_tag);
+                        const detailStr = details.length > 0 ? ` (${details.join(', ')})` : '';
+                        return `
                         <div class="cart-item">
-                            <span class="cart-item-name">${escapeHtml(item.name || item.product_name || ('Product #' + (item.product_id || '')))} x${item.quantity}</span>
+                            <span class="cart-item-name">${escapeHtml(item.name || item.product_name || ('Product #' + (item.product_id || '')))}${detailStr} x${item.quantity}</span>
                             <span>£${(item.price * item.quantity).toFixed(2)}</span>
                         </div>
-                    `).join('');
+                    `}).join('');
                     
                         document.getElementById('cart-items-summary').innerHTML = itemsHtml;
                         // Store current items for promo re-validation

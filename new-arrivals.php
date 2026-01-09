@@ -38,8 +38,8 @@ include 'includes/header.php';
 
         <div class="arrivals-grid">
             <?php
-              // Fetch 8 most recent products from database
-              $query = "SELECT id, name, slug, price, description, (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1) as image_url FROM products p ORDER BY created_at DESC LIMIT 8";
+              // Fetch products added in the last 30 days from database
+              $query = "SELECT id, name, slug, price, description, (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1) as image_url FROM products p WHERE p.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) ORDER BY created_at DESC";
               $result = $pdo->query($query);
 
               $emoji_list = ['💍', '✨', '👑', '💎', '🌟', '💫', '🎀', '💝'];

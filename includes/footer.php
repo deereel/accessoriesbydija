@@ -78,6 +78,7 @@
     <script src="assets/js/currency.js"></script>
     <script src="assets/js/featured-products.js"></script>
     <script src="assets/js/custom-cta.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
     <script src="assets/js/testimonials.js"></script>
     <script>
     // Currency conversion for price ranges
@@ -87,8 +88,7 @@
         }
     });
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
-    <button class="scroll-top" id="scrollTopBtn" aria-label="Scroll to top">↑</button>
+<button class="scroll-top" id="scrollTopBtn" aria-label="Scroll to top">↑</button>
     <script>
     (function(){
         const btn = document.getElementById('scrollTopBtn');

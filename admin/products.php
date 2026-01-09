@@ -13,8 +13,8 @@ if ($_POST) {
         $pdo->beginTransaction();
         try {
             $slug = strtolower(str_replace(' ', '-', $_POST['product_name']));
-            $stmt = $pdo->prepare("INSERT INTO products (name, slug, description, sku, price, stock_quantity, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-            $stmt->execute([$_POST['product_name'], $slug, $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock']]);
+            $stmt = $pdo->prepare("INSERT INTO products (name, slug, description, sku, price, stock_quantity, gender, category_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            $stmt->execute([$_POST['product_name'], $slug, $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], $_POST['gender'], $_POST['category_id']]);
             $product_id = $pdo->lastInsertId();
             
             // Add variations
@@ -81,8 +81,8 @@ if ($_POST) {
             $slug = strtolower(str_replace(' ', '-', $_POST['product_name']));
             
             // Update product
-            $stmt = $pdo->prepare("UPDATE products SET name = ?, slug = ?, description = ?, sku = ?, price = ?, stock_quantity = ? WHERE id = ?");
-            $stmt->execute([$_POST['product_name'], $slug, $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], $product_id]);
+            $stmt = $pdo->prepare("UPDATE products SET name = ?, slug = ?, description = ?, sku = ?, price = ?, stock_quantity = ?, gender = ?, category_id = ? WHERE id = ?");
+            $stmt->execute([$_POST['product_name'], $slug, $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], $_POST['gender'], $_POST['category_id'], $product_id]);
             
             // Delete existing variations and sizes
             $stmt = $pdo->prepare("DELETE FROM variation_sizes WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id = ?)");
@@ -204,6 +204,10 @@ $products = $stmt->fetchAll();
 // Fetch materials for form
 $stmt = $pdo->query("SELECT * FROM materials ORDER BY name");
 $materials = $stmt->fetchAll();
+
+// Fetch categories for form
+$stmt = $pdo->query("SELECT * FROM categories ORDER BY name");
+$categories = $stmt->fetchAll();
 ?>
 
 
@@ -310,6 +314,26 @@ $materials = $stmt->fetchAll();
                     <div class="form-group">
                         <label>Description</label>
                         <textarea name="description" rows="3"></textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <select name="gender" required>
+                                <option value="Unisex">Unisex</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select name="category_id" required>
+                                <option value="">Select Category</option>
+                                <?php foreach ($categories as $category): ?>
+                                    <option value="<?= $category['id'] ?>"><?= htmlspecialchars($category['name']) ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -604,6 +628,8 @@ function addImageField() {
                     document.querySelector('input[name="price"]').value = product.price || '';
                     document.querySelector('textarea[name="description"]').value = product.description || '';
                     document.querySelector('input[name="stock"]').value = product.stock_quantity || '';
+                    document.querySelector('select[name="gender"]').value = product.gender || 'Unisex';
+                    document.querySelector('select[name="category_id"]').value = product.category_id || '';
                     
                     // Update form action for editing
                     const form = document.querySelector('#productModal form');

@@ -159,77 +159,88 @@ try {
                         <th style="padding:10px; text-align:center;">Base Stock</th>
                         <th style="padding:10px; text-align:center;">Variant Stock</th>
                         <th style="padding:10px; text-align:center;">Size Stock</th>
-                        <th style="padding:10px; text-align:center;">Total Stock</th>
                         <th style="padding:10px; text-align:center;">Units Sold (30d)</th>
                         <th style="padding:10px; text-align:left;">Update Stock</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($products)): ?>
-                        <tr><td colspan="8" style="text-align:center; padding:20px; color:#666;">No products found.</td></tr>
+                        <tr><td colspan="7" style="text-align:center; padding:20px; color:#666;">No products found.</td></tr>
                     <?php endif; ?>
                     <?php foreach ($products as $product): ?>
-                        <tr style="border-bottom:1px solid #eee;">
-                            <td style="padding:10px; display:flex; align-items:center; gap:10px;">
-                                <?php if (!empty($product['main_image'])): ?>
-                                    <img src="../<?php echo htmlspecialchars($product['main_image']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" style="width:40px; height:40px; object-fit:cover; border-radius:4px;">
-                                <?php else: ?>
-                                    <div style="width:40px; height:40px; background:#f0f0f0; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:12px; color:#666;">Img</div>
-                                <?php endif; ?>
-                                <div>
-                                    <strong><?php echo htmlspecialchars($product['name']); ?></strong>
-                                    <div style="font-size:12px; color:#666;">Price: £<?php echo number_format($product['price'], 2); ?></div>
-                                </div>
-                            </td>
-                            <td style="padding:10px;"><?php echo htmlspecialchars($product['sku']); ?></td>
-                            <td style="padding:10px; text-align:center;">
-                                <?php
-                                    $stock = (int)$product['stock_quantity'];
-                                    if ($stock > 10) {
-                                        echo '<span class="stock-status-badge stock-in">' . $stock . '</span>';
-                                    } elseif ($stock > 0) {
-                                        echo '<span class="stock-status-badge stock-low">' . $stock . '</span>';
-                                    } else {
-                                        echo '<span class="stock-status-badge stock-out">0</span>';
-                                    }
-                                ?>
-                            </td>
-                            <td style="padding:10px; text-align:center;">
-                                <?php
-                                    $vstock = (int)$product['variation_stock'];
-                                    if ($vstock > 10) {
-                                        echo '<span class="stock-status-badge stock-in">' . $vstock . '</span>';
-                                    } elseif ($vstock > 0) {
-                                        echo '<span class="stock-status-badge stock-low">' . $vstock . '</span>';
-                                    } else {
-                                        echo '<span class="stock-status-badge stock-out">0</span>';
-                                    }
-                                ?>
-                            </td>
-                            <td style="padding:10px; text-align:center;">
-                                <?php
-                                    $sstock = (int)$product['size_stock'];
-                                    if ($sstock > 10) {
-                                        echo '<span class="stock-status-badge stock-in">' . $sstock . '</span>';
-                                    } elseif ($sstock > 0) {
-                                        echo '<span class="stock-status-badge stock-low">' . $sstock . '</span>';
-                                    } else {
-                                        echo '<span class="stock-status-badge stock-out">0</span>';
-                                    }
-                                ?>
-                            </td>
-                            <td style="padding:10px; text-align:center; font-weight:bold;">
-                                <?php echo (int)$product['stock_quantity'] + (int)$product['variation_stock'] + (int)$product['size_stock']; ?>
-                            </td>
-                            <td style="padding:10px; text-align:center; font-weight:500;"><?php echo (int)$product['units_sold_30d']; ?></td>
-                            <td style="padding:10px;">
-                                <form class="inline-stock-update" onsubmit="return updateStock(event, <?php echo (int)$product['id']; ?>)">
-                                    <input type="number" name="stock_quantity" placeholder="Enter new quantity" required>
-                                    <button type="submit" class="btn btn-success">Save</button>
-                                </form>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
+                         <tr style="border-bottom:1px solid #eee; cursor:pointer;" onclick="toggleDetails(<?php echo (int)$product['id']; ?>)">
+                             <td style="padding:10px; display:flex; align-items:center; gap:10px;">
+                                 <span class="expand-icon" id="icon-<?php echo (int)$product['id']; ?>" style="font-size:12px; color:#666;">▶</span>
+                                 <?php if (!empty($product['main_image'])): ?>
+                                     <img src="../<?php echo htmlspecialchars($product['main_image']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" style="width:40px; height:40px; object-fit:cover; border-radius:4px;">
+                                 <?php else: ?>
+                                     <div style="width:40px; height:40px; background:#f0f0f0; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:12px; color:#666;">Img</div>
+                                 <?php endif; ?>
+                                 <div>
+                                     <strong><?php echo htmlspecialchars($product['name']); ?></strong>
+                                     <div style="font-size:12px; color:#666;">Price: £<?php echo number_format($product['price'], 2); ?></div>
+                                 </div>
+                             </td>
+                             <td style="padding:10px;"><?php echo htmlspecialchars($product['sku']); ?></td>
+                             <td style="padding:10px; text-align:center;">
+                                 <?php
+                                     $stock = (int)$product['stock_quantity'];
+                                     if ($stock > 10) {
+                                         echo '<span class="stock-status-badge stock-in">' . $stock . '</span>';
+                                     } elseif ($stock > 0) {
+                                         echo '<span class="stock-status-badge stock-low">' . $stock . '</span>';
+                                     } else {
+                                         echo '<span class="stock-status-badge stock-out">0</span>';
+                                     }
+                                 ?>
+                             </td>
+                             <td style="padding:10px; text-align:center;">
+                                 <?php
+                                     $vstock = (int)$product['variation_stock'];
+                                     if ($vstock > 10) {
+                                         echo '<span class="stock-status-badge stock-in">' . $vstock . '</span>';
+                                     } elseif ($vstock > 0) {
+                                         echo '<span class="stock-status-badge stock-low">' . $vstock . '</span>';
+                                     } else {
+                                         echo '<span class="stock-status-badge stock-out">0</span>';
+                                     }
+                                 ?>
+                             </td>
+                             <td style="padding:10px; text-align:center;">
+                                 <?php
+                                     $sstock = (int)$product['size_stock'];
+                                     if ($sstock > 10) {
+                                         echo '<span class="stock-status-badge stock-in">' . $sstock . '</span>';
+                                     } elseif ($sstock > 0) {
+                                         echo '<span class="stock-status-badge stock-low">' . $sstock . '</span>';
+                                     } else {
+                                         echo '<span class="stock-status-badge stock-out">0</span>';
+                                     }
+                                 ?>
+                             </td>
+                             <td style="padding:10px; text-align:center; font-weight:500;"><?php echo (int)$product['units_sold_30d']; ?></td>
+                             <td style="padding:10px;">
+                                 <form class="inline-stock-update" onsubmit="return updateStock(event, <?php echo (int)$product['id']; ?>)">
+                                     <input type="number" name="stock_quantity" placeholder="Enter new quantity" required>
+                                     <button type="submit" class="btn btn-success">Save</button>
+                                 </form>
+                             </td>
+                         </tr>
+                         <tr id="details-<?php echo (int)$product['id']; ?>" style="display:none; background:#f9f9f9;">
+                             <td colspan="7" style="padding:10px;">
+                                 <div id="details-content-<?php echo (int)$product['id']; ?>" style="display:flex; gap:20px;">
+                                     <div style="flex:1;">
+                                         <strong>Variant Stock Details:</strong><br>
+                                         <div id="variant-details-<?php echo (int)$product['id']; ?>">Loading...</div>
+                                     </div>
+                                     <div style="flex:1;">
+                                         <strong>Size Stock Details:</strong><br>
+                                         <div id="size-details-<?php echo (int)$product['id']; ?>">Loading...</div>
+                                     </div>
+                                 </div>
+                             </td>
+                         </tr>
+                     <?php endforeach; ?>
                 </tbody>
             </table>
         </div>
@@ -349,6 +360,46 @@ function updateStock(event, productId) {
     });
 
     return false;
+}
+
+function toggleDetails(productId) {
+    const detailsRow = document.getElementById('details-' + productId);
+    const icon = document.getElementById('icon-' + productId);
+    const variantDiv = document.getElementById('variant-details-' + productId);
+    const sizeDiv = document.getElementById('size-details-' + productId);
+
+    if (detailsRow.style.display === 'none') {
+        detailsRow.style.display = 'table-row';
+        icon.textContent = '▼';
+        // Fetch details if not already loaded
+        if (variantDiv.textContent === 'Loading...') {
+            fetchDetails(productId);
+        }
+    } else {
+        detailsRow.style.display = 'none';
+        icon.textContent = '▶';
+    }
+}
+
+function fetchDetails(productId) {
+    fetch('get_inventory_details.php?product_id=' + productId)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const variantDetails = data.variations.map(v => `${v.tag}: ${v.stock_quantity}`).join('<br>');
+            const sizeDetails = data.sizes.map(s => `${s.size}: ${s.stock_quantity}`).join('<br>');
+            document.getElementById('variant-details-' + productId).innerHTML = variantDetails || 'No variants';
+            document.getElementById('size-details-' + productId).innerHTML = sizeDetails || 'No sizes';
+        } else {
+            document.getElementById('variant-details-' + productId).textContent = 'Error loading details';
+            document.getElementById('size-details-' + productId).textContent = 'Error loading details';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('variant-details-' + productId).textContent = 'Error loading details';
+        document.getElementById('size-details-' + productId).textContent = 'Error loading details';
+    });
 }
 </script>
 

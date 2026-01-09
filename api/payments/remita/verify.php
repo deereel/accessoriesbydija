@@ -173,56 +173,120 @@ try {
             error_log("Remita: WARNING - inventory_transactions table does not exist. Inventory will not be logged. Run /api/setup/init-db.php?key=your-key to create tables.");
         }
         
-        $itemsStmt = $pdo->prepare("SELECT product_id, quantity FROM order_items WHERE order_id = ?");
+        $itemsStmt = $pdo->prepare("SELECT product_id, quantity, variation_id, size_id FROM order_items WHERE order_id = ?");
         $itemsStmt->execute([$order['id']]);
         $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
-        
+
         if (empty($items)) {
             error_log("Remita: No order items found for order {$order['id']}");
         } else {
             error_log("Remita: Found " . count($items) . " order items");
         }
-        
+
         foreach ($items as $item) {
             $product_id = intval($item['product_id']);
             $quantity = intval($item['quantity']);
-            
-            // Get current stock
-            $stockStmt = $pdo->prepare("SELECT stock_quantity FROM products WHERE id = ?");
-            $stockStmt->execute([$product_id]);
-            $product = $stockStmt->fetch();
-            
-            if ($product) {
-                $old_stock = intval($product['stock_quantity']);
-                $new_stock = max(0, $old_stock - $quantity);
-                
-                // Only update inventory if tables exist
-                if ($has_tables) {
-                    // Log transaction
-                    $logStmt = $pdo->prepare("INSERT INTO inventory_transactions (product_id, transaction_type, quantity_change, reference_id, reference_type, previous_stock, new_stock, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                    $logStmt->execute([
-                        $product_id,
-                        'sale',
-                        -$quantity,
-                        $order['id'],
-                        'order',
-                        $old_stock,
-                        $new_stock,
-                        "Sold to {$customer_name} - Order #{$order['id']}"
-                    ]);
-                    
-                    // Log to admin logs with notes containing customer name
-                    $adminLogStmt = $pdo->prepare("INSERT INTO inventory_logs (product_id, action, old_quantity, new_quantity, notes) VALUES (?, ?, ?, ?, ?)");
-                    $adminLogStmt->execute([$product_id, 'sale', $old_stock, $new_stock, "Sold to {$customer_name}"]);
+            $variation_id = $item['variation_id'] ? intval($item['variation_id']) : null;
+            $size_id = $item['size_id'] ? intval($item['size_id']) : null;
+
+            // Cascading stock reduction
+            $stocks_to_reduce = [];
+            error_log("Remita: Product {$product_id} - variation_id: " . ($variation_id ?? 'null') . ", size_id: " . ($size_id ?? 'null'));
+
+            if ($size_id) {
+                // Reduce size stock, variation stock, and base stock
+                $stocks_to_reduce[] = ['table' => 'variation_sizes', 'id' => $size_id, 'type' => 'size'];
+                if ($variation_id) {
+                    $stocks_to_reduce[] = ['table' => 'product_variations', 'id' => $variation_id, 'type' => 'variation'];
                 }
-                
-                // Update product stock (always do this)
-                $updateStmt = $pdo->prepare("UPDATE products SET stock_quantity = ? WHERE id = ?");
-                $updateStmt->execute([$new_stock, $product_id]);
-                
-                error_log("Remita: Inventory reduced - Product {$product_id}: {$old_stock} → {$new_stock} (-{$quantity} units for Order #{$order['id']})");
+                $stocks_to_reduce[] = ['table' => 'products', 'id' => $product_id, 'type' => 'base'];
+            } elseif ($variation_id) {
+                // Reduce variation stock, base stock, and the size with highest stock for this variation
+                $stocks_to_reduce[] = ['table' => 'product_variations', 'id' => $variation_id, 'type' => 'variation'];
+                $stocks_to_reduce[] = ['table' => 'products', 'id' => $product_id, 'type' => 'base'];
+
+                // Find size with highest stock for this variation
+                $sizeStmt = $pdo->prepare("SELECT id FROM variation_sizes WHERE variation_id = ? ORDER BY stock_quantity DESC LIMIT 1");
+                $sizeStmt->execute([$variation_id]);
+                $size_row = $sizeStmt->fetch();
+                if ($size_row) {
+                    $stocks_to_reduce[] = ['table' => 'variation_sizes', 'id' => intval($size_row['id']), 'type' => 'size'];
+                }
             } else {
-                error_log("Remita: Product {$product_id} not found for order {$order['id']}");
+                // Reduce base stock, and the variation and size with highest stock
+                $stocks_to_reduce[] = ['table' => 'products', 'id' => $product_id, 'type' => 'base'];
+
+                // Find variation with highest stock for this product
+                $variationStmt = $pdo->prepare("SELECT id FROM product_variations WHERE product_id = ? ORDER BY stock_quantity DESC LIMIT 1");
+                $variationStmt->execute([$product_id]);
+                $variation_row = $variationStmt->fetch();
+                if ($variation_row) {
+                    $variation_id_highest = intval($variation_row['id']);
+                    $stocks_to_reduce[] = ['table' => 'product_variations', 'id' => $variation_id_highest, 'type' => 'variation'];
+
+                    // Find size with highest stock for this variation
+                    $sizeStmt = $pdo->prepare("SELECT id FROM variation_sizes WHERE variation_id = ? ORDER BY stock_quantity DESC LIMIT 1");
+                    $sizeStmt->execute([$variation_id_highest]);
+                    $size_row = $sizeStmt->fetch();
+                    if ($size_row) {
+                        $stocks_to_reduce[] = ['table' => 'variation_sizes', 'id' => intval($size_row['id']), 'type' => 'size'];
+                    }
+                }
+            }
+
+            error_log("Remita: Product {$product_id} - stocks_to_reduce: " . json_encode($stocks_to_reduce));
+
+            foreach ($stocks_to_reduce as $stock_info) {
+                $table = $stock_info['table'];
+                $id = $stock_info['id'];
+                $type = $stock_info['type'];
+
+                $stockStmt = $pdo->prepare("SELECT stock_quantity FROM {$table} WHERE id = ?");
+                $stockStmt->execute([$id]);
+                $stock_row = $stockStmt->fetch();
+
+                if ($stock_row) {
+                    $old_stock = intval($stock_row['stock_quantity']);
+                    $new_stock = max(0, $old_stock - $quantity);
+
+                    // Update stock
+                    try {
+                        $updateStmt = $pdo->prepare("UPDATE {$table} SET stock_quantity = ? WHERE id = ?");
+                        $update_success = $updateStmt->execute([$new_stock, $id]);
+                        $rows_affected = $updateStmt->rowCount();
+
+                        if ($update_success && $rows_affected > 0) {
+                            // Log if tables exist
+                            if ($has_tables) {
+                                $notes = "Sold to {$customer_name} - Order #{$order['id']} ({$type} stock)";
+                                $logStmt = $pdo->prepare("INSERT INTO inventory_transactions (product_id, transaction_type, quantity_change, reference_id, reference_type, previous_stock, new_stock, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                                $logStmt->execute([
+                                    $product_id,
+                                    'sale',
+                                    -$quantity,
+                                    $order['id'],
+                                    'order',
+                                    $old_stock,
+                                    $new_stock,
+                                    $notes
+                                ]);
+
+                                $adminLogStmt = $pdo->prepare("INSERT INTO inventory_logs (product_id, action, quantity_change, old_quantity, new_quantity, notes) VALUES (?, ?, ?, ?, ?, ?)");
+                                $adminLogStmt->execute([$product_id, 'sale', -$quantity, $old_stock, $new_stock, $notes]);
+                            }
+
+                            error_log("Remita: Inventory reduced - Product {$product_id} ({$type}): {$old_stock} → {$new_stock} (-{$quantity} units for Order #{$order['id']})");
+                        } else {
+                            $error_msg = "FAILED to update stock for Product {$product_id} ({$type}) in table {$table} id {$id} - success: {$update_success}, rows: {$rows_affected}, old: {$old_stock}, new: {$new_stock}";
+                            error_log("Remita: " . $error_msg);
+                            $_SESSION['inventory_errors'][] = $error_msg;
+                        }
+                    } catch (Exception $e) {
+                        $error_msg = "EXCEPTION updating stock for Product {$product_id} ({$type}) in table {$table} id {$id}: " . $e->getMessage();
+                        error_log("Remita: " . $error_msg);
+                        $_SESSION['inventory_errors'][] = $error_msg;
+                    }
+                }
             }
         }
         

@@ -9,7 +9,9 @@ require_once __DIR__ . '/../config/database.php';
 $sqlFiles = [
     __DIR__ . '/../database.sql',
     __DIR__ . '/../database_variations.sql',
-    __DIR__ . '/../add_tag_column.sql'
+    __DIR__ . '/../add_tag_column.sql',
+    __DIR__ . '/../sql/2026_01_05_add_gender_and_category_to_products.sql',
+    __DIR__ . '/../sql/2026_01_05_add_fk_to_category_id.sql'
 ];
 
 $content = '';

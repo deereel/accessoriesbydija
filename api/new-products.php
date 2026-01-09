@@ -8,7 +8,8 @@ try {
         SELECT p.id, p.name, p.slug, p.price, pi.image_url
         FROM products p
         LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1
-        ORDER BY p.created_at DESC LIMIT 8
+        WHERE p.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        ORDER BY p.created_at DESC
     ");
     $stmt->execute();
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
