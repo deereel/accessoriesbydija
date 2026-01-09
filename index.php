@@ -304,21 +304,31 @@ include 'includes/header.php';
 
 
     <!-- Testimonials Section -->
+     <!-- Testimonials Section -->
     <section class="testimonials-section">
         <div class="container">
             <h2>What Our Customers Say</h2>
-            <p class="testimonials-intro">Real reviews from satisfied customers who chose Dija Accessories for their special moments</p>
+            <p class="testimonials-intro">
+                Real reviews from satisfied customers who chose Dija Accessories
+            </p>
 
-            <div class="testimonials-slider swiper" id="testimonials-slider">
+            <div id="testimonials-slider" class="testimonials-slider swiper">
                 <div class="swiper-wrapper">
-                    <!-- Testimonials loaded via JavaScript -->
+                    <!-- Slides injected by testimonials.js -->
                 </div>
-                <div class="swiper-pagination"></div>
-            </div>
 
-            <div class="testimonials-nav">
-                <button class="testimonials-prev"><i class="fas fa-chevron-left"></i></button>
-                <button class="testimonials-next"><i class="fas fa-chevron-right"></i></button>
+                <!-- Pagination -->
+                <div class="swiper-pagination"></div>
+
+                <!-- Navigation (MUST be inside slider for Swiper) -->
+                <div class="testimonials-nav">
+                    <button class="testimonials-prev">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button class="testimonials-next">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </section>

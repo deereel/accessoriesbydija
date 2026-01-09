@@ -1,7 +1,17 @@
 /* Testimonials Section */
+.testimonials-slider .swiper-slide {
+    flex-shrink: 0;
+}
+
+
 .testimonials-section {
     padding: 4rem 0;
     background: #fff;
+}
+
+.testimonials-section .container {
+    max-width: auto;
+    padding: 0 20px;
 }
 
 .testimonials-section h2 {
@@ -25,8 +35,7 @@
 
 .testimonials-slider {
     position: relative;
-    max-width: 1200px;
-    margin: 0 auto;
+    width: 100%;
     overflow: hidden;
     padding: 0 0.5rem;
 }
@@ -48,7 +57,7 @@
     padding: 2rem;
     box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     width: 100%;
-    max-width: 600px;
+    max-width: 380px;
     text-align: center;
 }
 

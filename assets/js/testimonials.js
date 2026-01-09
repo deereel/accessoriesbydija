@@ -124,40 +124,41 @@ function formatDate(dateString) {
 
 function initTestimonialsSlider() {
     const sliderEl = document.querySelector('.testimonials-slider');
-    if (!sliderEl) return;
+    if (!sliderEl || typeof Swiper === 'undefined') return;
 
-    // If Swiper isn't loaded yet, retry shortly (but don't spam)
-    if (typeof Swiper === 'undefined') {
-        console.warn('Testimonials: Swiper not loaded yet. Ensure swiper-bundle.min.js loads before testimonials.js');
-        return;
-    }
-
-    // Destroy existing instance if this runs more than once
     if (sliderEl.swiper) {
         sliderEl.swiper.destroy(true, true);
     }
 
-    // Init
     new Swiper(sliderEl, {
         slidesPerView: 1,
         spaceBetween: 24,
         loop: true,
-        autoHeight: true,
+        centeredSlides: false,
+        watchOverflow: true,
+
         autoplay: {
             delay: 5000,
             disableOnInteraction: false,
         },
+
         pagination: {
             el: sliderEl.querySelector('.swiper-pagination'),
             clickable: true,
         },
+
         navigation: {
             nextEl: '.testimonials-next',
             prevEl: '.testimonials-prev',
         },
+
         breakpoints: {
-            768: { slidesPerView: 2 },
-            1024: { slidesPerView: 3 }
+            768: {
+                slidesPerView: 2,
+            },
+            1024: {
+                slidesPerView: 3,
+            }
         }
     });
 }

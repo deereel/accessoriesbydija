@@ -142,6 +142,25 @@ $page_description = substr($product['description'], 0, 160);
 .review-title { margin: 0 0 0.5rem 0; color: #333; font-size: 1.1rem; }
 .review-content { color: #555; line-height: 1.6; margin: 0; }
 .no-reviews { text-align: center; padding: 2rem; color: #666; font-style: italic; }
+
+/* Accordion Styles */
+.product-accordion { background: #f9f9f9; padding: 3rem 0; }
+.product-accordion h2 { text-align: center; margin-bottom: 2rem; color: #333; font-size: 2rem; }
+.accordion { width: 100%; }
+.accordion-item { border: 1px solid #ddd; margin-bottom: 0.5rem; border-radius: 8px; overflow: hidden; }
+.accordion-header { width: 100%; background: white; border: none; padding: 1.5rem; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 1.1rem; font-weight: 600; color: #333; transition: background 0.3s; }
+.accordion-header:hover { background: #f5f5f5; }
+.accordion-header i { transition: transform 0.3s; }
+.accordion-header .fa-chevron-up { transform: rotate(180deg); }
+.accordion-content { background: white; padding: 0; max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+.accordion-content p { margin-bottom: 1rem; }
+.accordion-content ul { padding-left: 1.5rem; }
+.accordion-content li { margin-bottom: 0.5rem; }
+.size-chart { margin-top: 1rem; }
+.size-chart h4 { margin-bottom: 1rem; color: #333; }
+.size-chart table { width: 100%; border-collapse: collapse; }
+.size-chart th, .size-chart td { padding: 0.5rem; text-align: center; border: 1px solid #ddd; }
+.size-chart th { background: #f5f5f5; font-weight: 600; }
 </style>
 
 <main>
@@ -223,11 +242,97 @@ $page_description = substr($product['description'], 0, 160);
             </div>
             
             <div class="product-actions">
-                <button class="btn btn-primary" id="addToCartBtn" onclick="addToCartFromProduct()" data-product-id="<?= $product['id'] ?>" disabled>Select Options</button>
+                <button class="btn btn-primary" id="addToCartBtn" onclick="addToCartFromProduct()" data-product-id="<?= $product['id'] ?>" disabled>Select Your Preferred Material to Proceed</button>
                 <button class="btn btn-secondary" onclick="toggleWishlist()">♡ Wishlist</button>
             </div>
         </div>
     </div>
+
+    <!-- Accordion Section -->
+    <section class="product-accordion">
+        <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+            <h2 style="text-align: left;">Product Information</h2>
+            <div class="accordion" style="max-width: none;">
+                <div class="accordion-item">
+                    <button class="accordion-header" onclick="toggleAccordion(this)">
+                        <span>Product Details</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="accordion-content">
+                        <p>Our jewelry is crafted with the finest materials and attention to detail. Each piece is designed to last a lifetime and comes with our quality guarantee.</p>
+                        <ul>
+                            <li>Premium materials sourced ethically</li>
+                            <li>Handcrafted by skilled artisans</li>
+                            <li>Lifetime warranty on all pieces</li>
+                            <li>Free shipping on orders over £100</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <button class="accordion-header" onclick="toggleAccordion(this)">
+                        <span>Shipping & Delivery</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="accordion-content">
+                        <p>We offer fast and reliable shipping worldwide. Orders are typically processed within 1-2 business days.</p>
+                        <ul>
+                            <li>Free standard shipping on orders over £100</li>
+                            <li>Express delivery available</li>
+                            <li>International shipping to most countries</li>
+                            <li>Track your order with provided tracking number</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <button class="accordion-header" onclick="toggleAccordion(this)">
+                        <span>Care Instructions</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="accordion-content">
+                        <p>To keep your jewelry looking its best, follow these simple care instructions:</p>
+                        <ul>
+                            <li>Store in a cool, dry place away from direct sunlight</li>
+                            <li>Avoid contact with perfumes, lotions, and chemicals</li>
+                            <li>Clean with a soft cloth and mild soap when needed</li>
+                            <li>Remove before swimming or strenuous activities</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <button class="accordion-header" onclick="toggleAccordion(this)">
+                        <span>Size Guide</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="accordion-content">
+                        <p>Find your perfect fit with our size guide. If you're unsure about your size, please contact our customer service team for assistance.</p>
+                        <div class="size-chart">
+                            <h4>Ring Sizes</h4>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>UK Size</th>
+                                        <th>US Size</th>
+                                        <th>EU Size</th>
+                                        <th>Circumference (mm)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>H</td><td>4</td><td>46.8</td><td>46.8</td></tr>
+                                    <tr><td>I</td><td>4.5</td><td>48</td><td>48</td></tr>
+                                    <tr><td>J</td><td>5</td><td>49.3</td><td>49.3</td></tr>
+                                    <tr><td>K</td><td>5.5</td><td>50.6</td><td>50.6</td></tr>
+                                    <tr><td>L</td><td>6</td><td>51.9</td><td>51.9</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
     <!-- Reviews Section -->
     <section class="product-reviews">
@@ -524,14 +629,11 @@ function selectVariation(variationId, priceAdjustment, variationData) {
 
                 sizeGroup.style.display = 'none';
 
-                updateAddToCartButton();
-
             }
 
-
-
-
             updateComponentSummary();
+
+            updateAddToCartButton();
 
         })
 
@@ -635,10 +737,20 @@ function updateAddToCartButton() {
         document.getElementById('quantitySelector').style.display = 'block';
     } else {
         btn.disabled = true;
-        btn.textContent = 'Select Your Preferred Material to Proceed';
         document.getElementById('quantitySelector').style.display = 'none';
         if (!selectedVariation) {
             document.getElementById('componentSummary').style.display = 'none';
+        }
+
+        // Determine the next step message
+        if (!selectedMaterial) {
+            btn.textContent = 'Select Your Preferred Material to Proceed';
+        } else if (variationGroup.style.display !== 'none' && !selectedVariation) {
+            btn.textContent = 'Select Your Preferred Variation';
+        } else if (sizeGroup.style.display !== 'none' && !selectedSize) {
+            btn.textContent = 'Select Preferred Size';
+        } else {
+            btn.textContent = 'Select Your Preferred Material to Proceed'; // fallback
         }
     }
 }
@@ -692,6 +804,35 @@ function toggleReviewForm() {
     } else {
         formContainer.style.display = 'none';
         btn.textContent = 'Write a Review';
+    }
+}
+
+function toggleAccordion(header) {
+    const item = header.parentElement;
+    const content = item.querySelector('.accordion-content');
+    const icon = header.querySelector('i');
+
+    // Close all other accordions
+    document.querySelectorAll('.accordion-item').forEach(otherItem => {
+        if (otherItem !== item) {
+            otherItem.querySelector('.accordion-content').style.maxHeight = '0';
+            otherItem.querySelector('.accordion-header').classList.remove('active');
+            otherItem.querySelector('.accordion-header i').classList.remove('fa-chevron-up');
+            otherItem.querySelector('.accordion-header i').classList.add('fa-chevron-down');
+        }
+    });
+
+    // Toggle current accordion
+    if (content.style.maxHeight === '0px' || !content.style.maxHeight) {
+        content.style.maxHeight = content.scrollHeight + 'px';
+        header.classList.add('active');
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+    } else {
+        content.style.maxHeight = '0';
+        header.classList.remove('active');
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
     }
 }
 
