@@ -74,14 +74,19 @@ if (empty($images)) {
 
 // Get all materials for this product
 $stmt = $pdo->prepare("
-    SELECT DISTINCT m.id, m.name 
-    FROM materials m 
-    JOIN product_variations pv ON m.id = pv.material_id 
+    SELECT DISTINCT m.id, m.name
+    FROM materials m
+    JOIN product_variations pv ON m.id = pv.material_id
     WHERE pv.product_id = ?
     ORDER BY m.name
 ");
 $stmt->execute([$product['id']]);
 $materials = $stmt->fetchAll();
+
+// Get reviews for this product
+$stmt = $pdo->prepare("SELECT * FROM testimonials WHERE product_id = ? AND is_approved = 1 ORDER BY created_at DESC");
+$stmt->execute([$product['id']]);
+$reviews = $stmt->fetchAll();
 
 $page_title = $product['name'];
 $page_description = substr($product['description'], 0, 160);
@@ -108,6 +113,35 @@ $page_description = substr($product['description'], 0, 160);
 .btn-secondary { background: transparent; border: 1px solid #ddd; }
 .price-display { font-size: 1.2rem; margin-bottom: 1rem; }
 .stock-info { color: #666; margin-bottom: 1rem; }
+
+/* Reviews Styles */
+.product-reviews { background: #f9f9f9; padding: 3rem 0; }
+.product-reviews h2 { text-align: center; margin-bottom: 2rem; color: #333; }
+.product-reviews .container { max-width: 800px; margin: 0 auto; padding: 0 1rem; }
+
+.review-form-container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+.review-form-container h3 { margin-bottom: 1.5rem; color: #333; }
+.form-row { display: flex; gap: 1rem; margin-bottom: 1rem; }
+.form-row .form-group { flex: 1; }
+.form-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #555; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem; }
+.form-group textarea { resize: vertical; }
+
+.reviews-list { background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+.review-item { padding: 1.5rem; border-bottom: 1px solid #eee; }
+.review-item:last-child { border-bottom: none; }
+.review-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+.review-author { display: flex; align-items: center; gap: 1rem; }
+.review-avatar { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; }
+.review-avatar-placeholder { width: 50px; height: 50px; border-radius: 50%; background: #C27BA0; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; }
+.review-meta { flex: 1; }
+.review-rating { margin-top: 0.25rem; }
+.star { color: #ddd; font-size: 1.2rem; }
+.star.filled { color: #ffc107; }
+.review-date { color: #666; font-size: 0.9rem; }
+.review-title { margin: 0 0 0.5rem 0; color: #333; font-size: 1.1rem; }
+.review-content { color: #555; line-height: 1.6; margin: 0; }
+.no-reviews { text-align: center; padding: 2rem; color: #666; font-style: italic; }
 </style>
 
 <main>
@@ -194,6 +228,94 @@ $page_description = substr($product['description'], 0, 160);
             </div>
         </div>
     </div>
+
+    <!-- Reviews Section -->
+    <section class="product-reviews">
+        <div class="container">
+            <h2>Customer Reviews</h2>
+
+            <!-- Review Button -->
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <button id="writeReviewBtn" class="btn btn-primary" onclick="toggleReviewForm()">Write a Review</button>
+            </div>
+
+            <!-- Review Form -->
+            <div class="review-form-container" id="reviewFormContainer" style="display: none;">
+                <h3>Write a Review</h3>
+                <form id="reviewForm" onsubmit="submitReview(event)">
+                    <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="customer_name">Name *</label>
+                            <input type="text" id="customer_name" name="customer_name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email *</label>
+                            <input type="email" id="email" name="email" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="rating">Rating *</label>
+                        <select id="rating" name="rating" required>
+                            <option value="">Select Rating</option>
+                            <option value="5">5 Stars - Excellent</option>
+                            <option value="4">4 Stars - Very Good</option>
+                            <option value="3">3 Stars - Good</option>
+                            <option value="2">2 Stars - Fair</option>
+                            <option value="1">1 Star - Poor</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="title">Review Title</label>
+                        <input type="text" id="title" name="title" placeholder="Summarize your experience">
+                    </div>
+                    <div class="form-group">
+                        <label for="content">Review *</label>
+                        <textarea id="content" name="content" rows="4" required placeholder="Tell others about your experience with this product"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Submit Review</button>
+                </form>
+            </div>
+
+            <!-- Reviews Display -->
+            <div class="reviews-list">
+                <?php if (empty($reviews)): ?>
+                    <p class="no-reviews">No reviews yet. Be the first to review this product!</p>
+                <?php else: ?>
+                    <?php foreach ($reviews as $review): ?>
+                    <div class="review-item">
+                        <div class="review-header">
+                            <div class="review-author">
+                                <?php if ($review['client_image']): ?>
+                                    <img src="<?= htmlspecialchars($review['client_image']) ?>" alt="Reviewer" class="review-avatar">
+                                <?php else: ?>
+                                    <div class="review-avatar-placeholder">
+                                        <?= strtoupper(substr($review['customer_name'], 0, 1)) ?>
+                                    </div>
+                                <?php endif; ?>
+                                <div class="review-meta">
+                                    <strong><?= htmlspecialchars($review['customer_name']) ?></strong>
+                                    <div class="review-rating">
+                                        <?php for($i = 1; $i <= 5; $i++): ?>
+                                            <span class="star <?= $i <= $review['rating'] ? 'filled' : '' ?>">★</span>
+                                        <?php endfor; ?>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="review-date">
+                                <?= date('M d, Y', strtotime($review['created_at'])) ?>
+                            </div>
+                        </div>
+                        <?php if ($review['title']): ?>
+                            <h4 class="review-title"><?= htmlspecialchars($review['title']) ?></h4>
+                        <?php endif; ?>
+                        <p class="review-content"><?= nl2br(htmlspecialchars($review['content'])) ?></p>
+                    </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+        </div>
+    </section>
 </main>
 
 <script>
@@ -558,6 +680,54 @@ function addToCartFromProduct() {
 function toggleWishlist() {
     const btn = event.target;
     btn.textContent = btn.textContent === '♡ Wishlist' ? '♥ Added' : '♡ Wishlist';
+}
+
+function toggleReviewForm() {
+    const formContainer = document.getElementById('reviewFormContainer');
+    const btn = document.getElementById('writeReviewBtn');
+
+    if (formContainer.style.display === 'none') {
+        formContainer.style.display = 'block';
+        btn.textContent = 'Cancel Review';
+    } else {
+        formContainer.style.display = 'none';
+        btn.textContent = 'Write a Review';
+    }
+}
+
+function submitReview(event) {
+    event.preventDefault();
+    const form = event.target;
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]');
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+
+    fetch('api/submit-review.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Thank you for your review! It will be published after approval.');
+            form.reset();
+            toggleReviewForm(); // Hide the form after submission
+        } else {
+            alert('Error submitting review: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while submitting your review.');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Review';
+    });
+
+    return false;
 }
 </script>
 

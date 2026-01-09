@@ -218,7 +218,7 @@ try {
                                         $logStmt = $pdo->prepare("INSERT INTO inventory_transactions (product_id, transaction_type, quantity_change, reference_id, reference_type, previous_stock, new_stock, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
                                         $logStmt->execute([
                                             $product_id,
-                                            'return',
+                                            'cancellation',
                                             $quantity,
                                             $order_id,
                                             'order',

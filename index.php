@@ -308,13 +308,14 @@ include 'includes/header.php';
         <div class="container">
             <h2>What Our Customers Say</h2>
             <p class="testimonials-intro">Real reviews from satisfied customers who chose Dija Accessories for their special moments</p>
-            
-            <div class="testimonials-slider swiper-container" id="testimonials-slider">
+
+            <div class="testimonials-slider swiper" id="testimonials-slider">
                 <div class="swiper-wrapper">
                     <!-- Testimonials loaded via JavaScript -->
                 </div>
+                <div class="swiper-pagination"></div>
             </div>
-            
+
             <div class="testimonials-nav">
                 <button class="testimonials-prev"><i class="fas fa-chevron-left"></i></button>
                 <button class="testimonials-next"><i class="fas fa-chevron-right"></i></button>

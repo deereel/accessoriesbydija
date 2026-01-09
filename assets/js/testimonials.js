@@ -141,8 +141,7 @@ function initTestimonialsSlider() {
     new Swiper(sliderEl, {
         slidesPerView: 1,
         spaceBetween: 24,
-        loop: false,
-        watchOverflow: true,
+        loop: true,
         autoHeight: true,
         autoplay: {
             delay: 5000,
