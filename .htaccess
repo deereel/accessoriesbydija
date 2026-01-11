@@ -1,5 +1,9 @@
 RewriteEngine On
 
+# Force HTTPS
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
 # SEO-friendly URLs
 RewriteRule ^category/([^/]+)/?$ category.php?cat=$1 [L,QSA]
 RewriteRule ^category/([^/]+)/([^/]+)/?$ category.php?cat=$1&sub=$2 [L,QSA]
@@ -11,6 +15,7 @@ Header always set X-Content-Type-Options nosniff
 Header always set X-Frame-Options DENY
 Header always set X-XSS-Protection "1; mode=block"
 Header always set Referrer-Policy "strict-origin-when-cross-origin"
+Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" env=HTTPS
 
 # Compression
 <IfModule mod_deflate.c>
