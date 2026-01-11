@@ -325,6 +325,7 @@ include 'includes/header.php';
         let SHIPPING_COST = <?php echo $shipping_cost; ?>; // Start with default, will be updated dynamically
         let currentDiscountPercent = 0;
         let currentDiscountAbsolute = 0; // GBP absolute discount
+        const csrfToken = '<?php require_once "config/security.php"; echo generateCSRFToken(); ?>';
 
         // Load cart items from database or localStorage
         async function loadCartItems() {
@@ -495,7 +496,7 @@ include 'includes/header.php';
                 const response = await fetch('/api/promo/validate.php', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code, subtotal: parseFloat((document.getElementById('subtotal-display')?.textContent || '£0').replace(/[^0-9.]/g,'')) || 0 })
+                    body: JSON.stringify({ code, subtotal: parseFloat((document.getElementById('subtotal-display')?.textContent || '£0').replace(/[^0-9.]/g,'')) || 0, csrf_token: csrfToken })
                 });
                 
                 const data = await response.json();
@@ -567,6 +568,7 @@ include 'includes/header.php';
 
                 // Build order payload
                 const orderPayload = {
+                    csrf_token: csrfToken,
                     email,
                     contact_name: contactName,
                     contact_phone: contactPhone,
@@ -747,6 +749,7 @@ include 'includes/header.php';
             if (saveBtn) {
                 saveBtn.addEventListener('click', async function(){
                     const payload = {
+                        csrf_token: csrfToken,
                         type: 'shipping',
                         first_name: (document.getElementById('full_name')?.value || '').split(' ')[0] || '',
                         last_name: (document.getElementById('full_name')?.value || '').split(' ').slice(1).join(' ') || '',

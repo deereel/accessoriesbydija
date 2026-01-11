@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 session_start();
 
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/security.php';
 
 /**
  * POST /api/promo/validate.php
@@ -22,7 +23,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 try {
     $data = json_decode(file_get_contents('php://input'), true);
-    
+
+    // Validate CSRF token
+    if (!isset($data['csrf_token']) || !validateCSRFToken($data['csrf_token'])) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
+        exit;
+    }
+
     if (empty($data['code'])) {
         http_response_code(400);
         echo json_encode(['success' => false, 'message' => 'Code is required']);

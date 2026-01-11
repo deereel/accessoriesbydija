@@ -3,6 +3,7 @@ header('Content-Type: application/json');
 session_start();
 
 require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../config/security.php';
 require_once __DIR__ . '/../../includes/shipping-calculator.php';
 require_once __DIR__ . '/../../includes/email.php';
 
@@ -45,7 +46,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 try {
     $data = json_decode(file_get_contents('php://input'), true);
-    
+
+    // Validate CSRF token
+    if (!isset($data['csrf_token']) || !validateCSRFToken($data['csrf_token'])) {
+        http_response_code(403);
+        echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
+        exit;
+    }
+
     // Validate required fields
     if (empty($data['email']) || empty($data['payment_method'])) {
         http_response_code(400);

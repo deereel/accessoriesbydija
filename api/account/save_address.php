@@ -2,6 +2,7 @@
 session_start();
 header('Content-Type: application/json');
 require_once '../../config/database.php';
+require_once '../../config/security.php';
 
 if (!isset($_SESSION['customer_id'])) {
     echo json_encode(['success' => false, 'message' => 'Not authenticated']);
@@ -10,7 +11,13 @@ if (!isset($_SESSION['customer_id'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
-    
+
+    // Validate CSRF token
+    if (!isset($data['csrf_token']) || !validateCSRFToken($data['csrf_token'])) {
+        echo json_encode(['success' => false, 'message' => 'Invalid CSRF token']);
+        exit;
+    }
+
     try {
         $pdo->beginTransaction();
         
