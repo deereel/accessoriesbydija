@@ -13,7 +13,7 @@ require_once 'config/cache.php';
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($page_title) ? $page_title . ' - ' : ''; ?>Accessories By Dija - Premium Jewelry</title>
     <meta name="description" content="<?php echo isset($page_description) ? $page_description : 'Discover premium jewelry collection at Accessories By Dija. Rings, necklaces, earrings, bracelets, and custom jewelry for men and women.'; ?>">
-    <link rel="canonical" href="<?php echo 'https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']; ?>">
+    <link rel="canonical" href="<?php echo $BASE_URL . $_SERVER['REQUEST_URI']; ?>">
     <link rel="stylesheet" href="assets/css/header.css">
     <link rel="stylesheet" href="assets/css/hero.css">
     <link rel="stylesheet" href="assets/css/category-section.css">
@@ -65,6 +65,108 @@ require_once 'config/cache.php';
     }
     .scroll-top.show { display: flex; }
     .scroll-top:focus { outline: 2px solid #fff; }
+    
+    /* Search Suggestions */
+    .search-suggestions {
+        background: white;
+        border: 1px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        z-index: 1000;
+    }
+    
+    .suggestions-header {
+        padding: 0.75rem 1rem;
+        background: #f8f8f8;
+        border-bottom: 1px solid #eee;
+        font-size: 0.9rem;
+        color: #666;
+        font-weight: 600;
+    }
+    
+    .suggestion-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #f0f0f0;
+        text-decoration: none;
+        color: inherit;
+        transition: background 0.2s;
+    }
+    
+    .suggestion-item:hover {
+        background: #f8f8f8;
+    }
+    
+    .suggestion-item:last-child {
+        border-bottom: none;
+    }
+    
+    .suggestion-image {
+        width: 50px;
+        height: 50px;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+    
+    .suggestion-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 4px;
+    }
+    
+    .no-image {
+        width: 100%;
+        height: 100%;
+        background: #f0f0f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        font-size: 1.5rem;
+    }
+    
+    .suggestion-info {
+        flex: 1;
+    }
+    
+    .suggestion-name {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 0.25rem;
+    }
+    
+    .suggestion-price {
+        color: #C27BA0;
+        font-weight: 600;
+    }
+    
+    .suggestions-footer {
+        padding: 0.75rem 1rem;
+        background: #f8f8f8;
+        border-top: 1px solid #eee;
+        text-align: center;
+    }
+    
+    .suggestions-footer a {
+        color: #C27BA0;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    
+    .suggestions-footer a:hover {
+        text-decoration: underline;
+    }
+    
+    .no-suggestions {
+        padding: 1rem;
+        text-align: center;
+        color: #666;
+        font-style: italic;
+    }
     </style>
 </head>
 <body class="<?php echo isset($body_class) ? $body_class : ''; ?>">

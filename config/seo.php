@@ -56,7 +56,7 @@ function generateMetaTags($page_data) {
         'description' => sanitizeOutput($page_data['description'] ?? 'Discover premium jewelry collection'),
         'keywords' => sanitizeOutput($page_data['keywords'] ?? 'jewelry, rings, necklaces, earrings'),
         'robots' => $page_data['robots'] ?? 'index, follow',
-        'canonical' => $page_data['canonical'] ?? 'https://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI']
+        'canonical' => $page_data['canonical'] ?? (isset($BASE_URL) ? $BASE_URL : 'https://' . $_SERVER['HTTP_HOST']) . $_SERVER['REQUEST_URI']
     ];
     
     return $meta;

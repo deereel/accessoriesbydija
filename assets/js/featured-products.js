@@ -98,7 +98,7 @@ function displayFeaturedProducts(products) {
         const shortDesc = desc ? (desc.length > 80 ? desc.substring(0, 80) + '…' : desc) : '';
 
         card.innerHTML = `
-            <button class="wishlist-btn" onclick="toggleWishlist(${product.id})" aria-label="Add to wishlist">
+            <button class="wishlist-btn" data-product-id="${product.id}" onclick="toggleWishlist(${product.id})" aria-label="Add to wishlist">
                 <i class="far fa-heart"></i>
             </button>
 
@@ -137,6 +137,9 @@ function displayFeaturedProducts(products) {
         `;
         container.appendChild(card);
     });
+
+    // Initialize wishlist button states
+    initializeWishlistButtons();
 }
 
 // Simple HTML escape for text we inject into templates
@@ -187,22 +190,81 @@ function addToCart(productId) {
     }
 }
 
-function toggleWishlist(productId) {
-    const button = event.target.closest('.wishlist-btn');
+function toggleWishlist(productId, btn = null) {
+    const button = btn || event.target.closest('.wishlist-btn');
     const icon = button.querySelector('i');
-    
-    icon.classList.toggle('far');
-    icon.classList.toggle('fas');
-    
-    if (icon.classList.contains('fas')) {
-        button.style.background = '#C27BA0';
-        button.style.color = 'white';
-    } else {
-        button.style.background = 'rgba(255,255,255,0.9)';
-        button.style.color = '#666';
-    }
-    
-    console.log('Toggled wishlist for product:', productId);
+
+    // Check if user is logged in
+    fetch('api/wishlist.php?product_id=' + productId)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                // Not logged in, redirect to login
+                window.location.href = 'login.php?redirect=' + encodeURIComponent(window.location.href);
+                return;
+            }
+
+            const isInWishlist = data.in_wishlist;
+            const method = isInWishlist ? 'DELETE' : 'POST';
+            const url = isInWishlist ? 'api/wishlist.php?product_id=' + productId : 'api/wishlist.php';
+
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: method === 'POST' ? JSON.stringify({ product_id: productId }) : null
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    if (isInWishlist) {
+                        // Remove from wishlist - update visual
+                        icon.classList.remove('fas');
+                        icon.classList.add('far');
+                        button.style.background = 'rgba(255,255,255,0.9)';
+                        button.style.color = '#666';
+                    } else {
+                        // Add to wishlist - update visual
+                        icon.classList.remove('far');
+                        icon.classList.add('fas');
+                        button.style.background = '#C27BA0';
+                        button.style.color = 'white';
+                    }
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            });
+        })
+        .catch(error => {
+            console.error('Error checking wishlist:', error);
+            alert('An error occurred. Please try again.');
+        });
+}
+
+function initializeWishlistButtons() {
+    const wishlistBtns = document.querySelectorAll('.wishlist-btn[data-product-id]');
+    wishlistBtns.forEach(btn => {
+        const productId = btn.getAttribute('data-product-id') || btn.getAttribute('onclick')?.match(/toggleWishlist\((\d+)/)?.[1];
+        if (productId) {
+            fetch('api/wishlist.php?product_id=' + productId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.in_wishlist) {
+                        const icon = btn.querySelector('i');
+                        icon.classList.remove('far');
+                        icon.classList.add('fas');
+                        btn.style.background = '#C27BA0';
+                        btn.style.color = 'white';
+                    }
+                })
+                .catch(error => console.error('Error checking wishlist:', error));
+        }
+    });
 }
 
 function quickView(productId) {

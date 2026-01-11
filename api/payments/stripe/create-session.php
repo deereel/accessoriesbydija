@@ -99,10 +99,7 @@ try {
     // 'unit_amount' => intval($order['shipping_amount'] * 100)
 
     // Create Stripe Checkout Session
-    // Determine the protocol (http or https)
-    $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'];
-    $base_url = $protocol . '://' . $host;
+    $base_url = $BASE_URL;
     
     // In create-session.php, around line 107, modify the session_params array:
     $session_params = [

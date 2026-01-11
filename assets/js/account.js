@@ -73,6 +73,9 @@ function loadTabContent(tabId) {
         case 'addresses':
             loadAddresses();
             break;
+        case 'wishlist':
+            loadWishlist();
+            break;
     }
 }
 
@@ -238,17 +241,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadAddresses() {
     const container = document.getElementById('addresses-list');
-    
+
     try {
         const response = await fetch('api/account/get_addresses.php');
         const data = await response.json();
-        
+
         if (data.success) {
             if (data.addresses.length === 0) {
                 container.innerHTML = '<p class="text-muted">No saved addresses</p>';
                 return;
             }
-            
+
             container.innerHTML = '<div class="addresses-grid">' + data.addresses.map(address => `
                 <div class="address-card ${address.is_default ? 'default' : ''}">
                     ${address.is_default ? '<span class="address-badge">Default</span>' : ''}
@@ -270,6 +273,80 @@ async function loadAddresses() {
         }
     } catch (error) {
         container.innerHTML = '<p class="text-muted">Error loading addresses</p>';
+    }
+}
+
+async function loadWishlist() {
+    const container = document.getElementById('wishlist-list');
+
+    try {
+        const response = await fetch('api/wishlist.php');
+        const data = await response.json();
+
+        if (data.success) {
+            if (data.items.length === 0) {
+                container.innerHTML = '<p class="text-muted">Your wishlist is empty</p>';
+                return;
+            }
+
+            container.innerHTML = '<div class="wishlist-grid">' + data.items.map(item => `
+                <div class="product-card wishlist-item" data-product-id="${item.product_id}">
+                    <button class="remove-wishlist-btn" onclick="removeFromWishlist(${item.product_id})">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <a href="product.php?slug=${item.slug}" class="product-image">
+                        ${item.image_url ? `<img src="${item.image_url}" alt="${item.product_name}">` : '<div class="placeholder">No Image</div>'}
+                    </a>
+                    <div class="product-info">
+                        <h3><a href="product.php?slug=${item.slug}">${item.product_name}</a></h3>
+                        <div class="product-footer">
+                            <span class="product-price">£${parseFloat(item.price).toFixed(2)}</span>
+                            <button class="cart-btn add-to-cart-btn" onclick="addToCartFromWishlist(${item.product_id}, '${item.product_name.replace(/'/g, "\\'")}', ${item.price}, '${item.image_url || ''}')">Add to Cart</button>
+                        </div>
+                    </div>
+                </div>
+            `).join('') + '</div>';
+        } else {
+            container.innerHTML = '<p class="text-muted">Error loading wishlist</p>';
+        }
+    } catch (error) {
+        container.innerHTML = '<p class="text-muted">Error loading wishlist</p>';
+    }
+}
+
+async function removeFromWishlist(productId) {
+    if (!confirm('Remove this item from your wishlist?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`api/wishlist.php?product_id=${productId}`, {
+            method: 'DELETE'
+        });
+        const data = await response.json();
+
+        if (data.success) {
+            loadWishlist(); // Reload the wishlist
+        } else {
+            alert('Error removing item from wishlist');
+        }
+    } catch (error) {
+        alert('Error removing item from wishlist');
+    }
+}
+
+async function addToCartFromWishlist(productId, productName, price, image) {
+    if (window.cartHandler) {
+        const productData = {
+            product_id: productId,
+            product_name: productName,
+            price: price,
+            image: image,
+            quantity: 1
+        };
+        await window.cartHandler.addToCart(productData);
+    } else {
+        alert('Cart handler not available');
     }
 }
 

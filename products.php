@@ -30,7 +30,14 @@ try {
     $all_materials = [];
 }
 
-$selected_genders = isset($_GET['gender']) && is_array($_GET['gender']) ? $_GET['gender'] : [];
+$selected_genders = [];
+if (isset($_GET['gender'])) {
+    if (is_array($_GET['gender'])) {
+        $selected_genders = $_GET['gender'];
+    } elseif (is_string($_GET['gender']) && !empty($_GET['gender'])) {
+        $selected_genders = [$_GET['gender']];
+    }
+}
 $selected_categories = isset($_GET['category']) && is_array($_GET['category']) ? $_GET['category'] : [];
 $selected_prices = isset($_GET['price']) && is_array($_GET['price']) ? $_GET['price'] : [];
 $selected_materials = isset($_GET['material']) && is_array($_GET['material']) ? $_GET['material'] : [];
@@ -161,6 +168,8 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
 }
 
 .wishlist-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: white; border: none; border-radius: 50%; padding: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; }
+.wishlist-btn.active { background: #C27BA0; color: white; }
+.wishlist-btn.active i { color: white; }
 .product-image { aspect-ratio: 1; background: #f5f5f5; display: block; position: relative; overflow: hidden; }
 .product-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .product-info { padding: 1rem; }
@@ -337,7 +346,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
                                        <?= $product['hover_image'] ? 'data-has-hover-image="true"' : '' ?>>
 
                                     <!-- Wishlist Button -->
-                                    <button class="wishlist-btn">
+                                    <button class="wishlist-btn" data-product-id="<?= $product['id'] ?>" onclick="toggleWishlist(<?= $product['id'] ?>, this)">
                                         <i class="far fa-heart"></i>
                                     </button>
 
@@ -461,6 +470,71 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Also after slide changes/transition ends
     swiper.on('slideChangeTransitionEnd', updateSwiperHeight);
+});
+
+// Wishlist functionality
+function toggleWishlist(productId, btn) {
+    // Check if user is logged in
+    fetch('api/wishlist.php?product_id=' + productId)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                // Not logged in, redirect to login
+                window.location.href = 'login.php?redirect=' + encodeURIComponent(window.location.href);
+                return;
+            }
+
+            const isInWishlist = data.in_wishlist;
+            const method = isInWishlist ? 'DELETE' : 'POST';
+            const url = isInWishlist ? 'api/wishlist.php?product_id=' + productId : 'api/wishlist.php';
+
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: method === 'POST' ? JSON.stringify({ product_id: productId }) : null
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    if (isInWishlist) {
+                        btn.classList.remove('active');
+                        btn.querySelector('i').className = 'far fa-heart';
+                    } else {
+                        btn.classList.add('active');
+                        btn.querySelector('i').className = 'fas fa-heart';
+                    }
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            });
+        })
+        .catch(error => {
+            console.error('Error checking wishlist:', error);
+            alert('An error occurred. Please try again.');
+        });
+}
+
+// Initialize wishlist button states
+document.addEventListener('DOMContentLoaded', function() {
+    const wishlistBtns = document.querySelectorAll('.wishlist-btn[data-product-id]');
+    wishlistBtns.forEach(btn => {
+        const productId = btn.getAttribute('data-product-id');
+        fetch('api/wishlist.php?product_id=' + productId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.in_wishlist) {
+                    btn.classList.add('active');
+                    btn.querySelector('i').className = 'fas fa-heart';
+                }
+            })
+            .catch(error => console.error('Error checking wishlist:', error));
+    });
 });
 </script>
 

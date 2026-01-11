@@ -453,6 +453,9 @@ INSERT IGNORE INTO categories (name, slug, description) VALUES
 ('Anklets', 'anklets', 'Delicate anklets collection'),
 ('Sets', 'sets', 'Complete jewelry sets');
 
+-- Add FULLTEXT index for search
+ALTER TABLE products ADD FULLTEXT(name, description, short_description);
+
 -- Insert sample products
 INSERT IGNORE INTO products (name, slug, description, short_description, sku, price, material, stone_type, gender, is_featured) VALUES
 ('Diamond Solitaire Ring', 'diamond-solitaire-ring', 'Elegant diamond solitaire ring crafted in 14k gold', 'Classic solitaire ring with brilliant cut diamond', 'DSR001', 299.00, 'Gold', 'Diamond', 'women', TRUE),

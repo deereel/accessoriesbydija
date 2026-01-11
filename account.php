@@ -52,6 +52,10 @@ include 'includes/header.php';
                         <i class="fas fa-map-marker-alt"></i>
                         <span>Addresses</span>
                     </a>
+                    <a href="#" class="account-nav-item" data-tab="wishlist">
+                        <i class="fas fa-heart"></i>
+                        <span>Wishlist</span>
+                    </a>
                     <a href="#" class="account-nav-item" data-tab="profile">
                         <i class="fas fa-user"></i>
                         <span>Profile</span>
@@ -138,7 +142,20 @@ include 'includes/header.php';
                         <p class="text-muted">Loading addresses...</p>
                     </div>
                 </div>
-                
+
+                <!-- Wishlist Tab -->
+                <div class="account-tab" id="wishlist-tab">
+                    <div class="tab-header">
+                        <h2>My Wishlist</h2>
+                        <a href="products.php" class="btn-primary">
+                            <i class="fas fa-shopping-bag"></i> Browse Products
+                        </a>
+                    </div>
+                    <div id="wishlist-list">
+                        <p class="text-muted">Loading wishlist...</p>
+                    </div>
+                </div>
+
                 <!-- Profile Tab -->
                 <div class="account-tab" id="profile-tab">
                     <h2>Profile Information</h2>

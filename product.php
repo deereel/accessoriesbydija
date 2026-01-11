@@ -88,10 +88,43 @@ $stmt = $pdo->prepare("SELECT * FROM testimonials WHERE product_id = ? AND is_ap
 $stmt->execute([$product['id']]);
 $reviews = $stmt->fetchAll();
 
+// Get similar products
+$stmt = $pdo->prepare("
+    SELECT DISTINCT p.*, pi.image_url
+    FROM products p
+    LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1
+    WHERE p.id != ? AND p.is_active = 1 AND (
+        p.category = ? OR
+        p.material = ? OR
+        p.gender = ?
+    )
+    ORDER BY RAND()
+    LIMIT 4
+");
+$stmt->execute([$product['id'], $product['category'], $product['material'], $product['gender']]);
+$similar_products = $stmt->fetchAll();
+
+// Get frequently bought together
+$stmt = $pdo->prepare("
+    SELECT p.*, pi.image_url, COUNT(oi2.product_id) as buy_count
+    FROM order_items oi1
+    JOIN orders o ON oi1.order_id = o.id
+    JOIN order_items oi2 ON oi1.order_id = oi2.order_id AND oi2.product_id != oi1.product_id
+    JOIN products p ON oi2.product_id = p.id
+    LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1
+    WHERE oi1.product_id = ? AND p.is_active = 1
+    GROUP BY oi2.product_id
+    ORDER BY buy_count DESC
+    LIMIT 4
+");
+$stmt->execute([$product['id']]);
+$frequently_bought = $stmt->fetchAll();
+
 $page_title = $product['name'];
 $page_description = substr($product['description'], 0, 160);
 ?>
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 <style>
 .breadcrumb { margin: 2rem auto 1rem; max-width: 1200px; padding: 0 1rem; }
 .breadcrumb a { color: #666; text-decoration: none; }
@@ -111,6 +144,11 @@ $page_description = substr($product['description'], 0, 160);
 .btn-primary { background: #222; color: white; }
 .btn-primary:hover { background: #C27BA0; }
 .btn-secondary { background: transparent; border: 1px solid #ddd; }
+.btn-secondary.active { background: #C27BA0; color: white; border-color: #C27BA0; }
+.wishlist-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border: 2px solid #C27BA0; background: white; color: #C27BA0; border-radius: 4px; cursor: pointer; transition: all 0.3s; font-weight: 600; }
+.wishlist-btn:hover { background: #C27BA0; color: white; }
+.wishlist-btn.active { background: #C27BA0; color: white; border-color: #C27BA0; }
+.wishlist-btn i { font-size: 1.1rem; }
 .price-display { font-size: 1.2rem; margin-bottom: 1rem; }
 .stock-info { color: #666; margin-bottom: 1rem; }
 
@@ -161,6 +199,18 @@ $page_description = substr($product['description'], 0, 160);
 .size-chart table { width: 100%; border-collapse: collapse; }
 .size-chart th, .size-chart td { padding: 0.5rem; text-align: center; border: 1px solid #ddd; }
 .size-chart th { background: #f5f5f5; font-weight: 600; }
+
+/* Product Suggestions Styles */
+.product-suggestions { background: #f9f9f9; padding: 3rem 0; }
+.product-suggestions h2 { text-align: center; margin-bottom: 2rem; color: #333; font-size: 2rem; }
+.product-suggestions .container { max-width: 1200px; margin: 0 auto; padding: 0 1rem; }
+.products-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; }
+.product-card { background: white; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; transition: transform 0.3s, box-shadow 0.3s; }
+.product-card:hover { transform: translateY(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+.product-card a { text-decoration: none; color: inherit; display: block; }
+.product-card img { width: 100%; height: 200px; object-fit: cover; }
+.product-card h3 { font-size: 1.1rem; margin: 1rem; color: #333; }
+.product-card .price { font-size: 1.2rem; color: #C27BA0; font-weight: bold; margin: 0 1rem 1rem; }
 </style>
 
 <main>
@@ -243,7 +293,9 @@ $page_description = substr($product['description'], 0, 160);
             
             <div class="product-actions">
                 <button class="btn btn-primary" id="addToCartBtn" onclick="addToCartFromProduct()" data-product-id="<?= $product['id'] ?>" disabled>Select Your Preferred Material to Proceed</button>
-                <button class="btn btn-secondary" onclick="toggleWishlist()">♡ Wishlist</button>
+                <button onclick="toggleWishlist(<?= $product['id'] ?? 0 ?>, this)" style="padding: 0.75rem 1.5rem; border: 2px solid #C27BA0; background: white; color: #C27BA0; border-radius: 4px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; margin-left: 1rem;">
+                    <i class="far fa-heart"></i> Add to Wishlist
+                </button>
             </div>
         </div>
     </div>
@@ -421,6 +473,46 @@ $page_description = substr($product['description'], 0, 160);
             </div>
         </div>
     </section>
+
+    <!-- Similar Products Section -->
+    <?php if (!empty($similar_products)): ?>
+    <section class="product-suggestions">
+        <div class="container">
+            <h2>Similar Products</h2>
+            <div class="products-grid">
+                <?php foreach ($similar_products as $prod): ?>
+                <div class="product-card">
+                    <a href="product.php?slug=<?= htmlspecialchars($prod['slug']) ?>">
+                        <img src="/<?= htmlspecialchars($prod['image_url'] ?? 'assets/images/placeholder.jpg') ?>" alt="<?= htmlspecialchars($prod['name']) ?>">
+                        <h3><?= htmlspecialchars($prod['name']) ?></h3>
+                        <p class="price">£<?= number_format($prod['price'], 2) ?></p>
+                    </a>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+    <?php endif; ?>
+
+    <!-- Frequently Bought Together Section -->
+    <?php if (!empty($frequently_bought)): ?>
+    <section class="product-suggestions">
+        <div class="container">
+            <h2>Frequently Bought Together</h2>
+            <div class="products-grid">
+                <?php foreach ($frequently_bought as $prod): ?>
+                <div class="product-card">
+                    <a href="product.php?slug=<?= htmlspecialchars($prod['slug']) ?>">
+                        <img src="/<?= htmlspecialchars($prod['image_url'] ?? 'assets/images/placeholder.jpg') ?>" alt="<?= htmlspecialchars($prod['name']) ?>">
+                        <h3><?= htmlspecialchars($prod['name']) ?></h3>
+                        <p class="price">£<?= number_format($prod['price'], 2) ?></p>
+                    </a>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+    <?php endif; ?>
 </main>
 
 <script>
@@ -789,9 +881,51 @@ function addToCartFromProduct() {
     console.log('Sending productData to cart:', productData);
     window.cartHandler.addToCart(productData);}
 
-function toggleWishlist() {
-    const btn = event.target;
-    btn.textContent = btn.textContent === '♡ Wishlist' ? '♥ Added' : '♡ Wishlist';
+function toggleWishlist(productId, btn) {
+    // Check if user is logged in
+    fetch('api/wishlist.php?product_id=' + productId)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                // Not logged in, redirect to login
+                window.location.href = 'login.php?redirect=' + encodeURIComponent(window.location.href);
+                return;
+            }
+
+            const isInWishlist = data.in_wishlist;
+            const method = isInWishlist ? 'DELETE' : 'POST';
+            const url = isInWishlist ? 'api/wishlist.php?product_id=' + productId : 'api/wishlist.php';
+
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: method === 'POST' ? JSON.stringify({ product_id: productId }) : null
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    if (isInWishlist) {
+                        btn.querySelector('i').className = 'far fa-heart';
+                        btn.classList.remove('active');
+                    } else {
+                        btn.querySelector('i').className = 'fas fa-heart';
+                        btn.classList.add('active');
+                    }
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            });
+        })
+        .catch(error => {
+            console.error('Error checking wishlist:', error);
+            alert('An error occurred. Please try again.');
+        });
 }
 
 function toggleReviewForm() {
@@ -870,6 +1004,23 @@ function submitReview(event) {
 
     return false;
 }
+
+// Initialize wishlist button state
+document.addEventListener('DOMContentLoaded', function() {
+    const wishlistBtn = document.getElementById('wishlist-btn');
+    if (wishlistBtn) {
+        const productId = wishlistBtn.getAttribute('onclick').match(/toggleWishlist\((\d+)/)[1];
+        fetch('api/wishlist.php?product_id=' + productId)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.in_wishlist) {
+                    wishlistBtn.querySelector('i').className = 'fas fa-heart';
+                    wishlistBtn.classList.add('active');
+                }
+            })
+            .catch(error => console.error('Error checking wishlist:', error));
+    }
+});
 </script>
 
 <?php include 'includes/footer.php'; ?>
