@@ -99,7 +99,7 @@ try {
     // 'unit_amount' => intval($order['shipping_amount'] * 100)
 
     // Create Stripe Checkout Session
-    $base_url = $BASE_URL;
+    $base_url = getenv('APP_URL') ?: 'http://localhost';
     
     // In create-session.php, around line 107, modify the session_params array:
     $session_params = [

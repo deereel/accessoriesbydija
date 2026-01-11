@@ -84,7 +84,7 @@ try {
         'payerPhone' => '', // TODO: Get from order if available
         'description' => 'Payment for Order ' . $order['order_number'],
         'currency' => 'GBP',
-        'redirectUrl' => $BASE_URL . '/api/payments/remita/verify.php?rrr=' . $rrr
+        'redirectUrl' => (getenv('APP_URL') ?: 'http://localhost') . '/api/payments/remita/verify.php?rrr=' . $rrr
     ];
 
     // Generate API HASH for request authentication

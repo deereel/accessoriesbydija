@@ -2,6 +2,7 @@
 session_start();
 header('Content-Type: application/json');
 require_once '../config/database.php';
+require_once '../includes/email.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
@@ -68,6 +69,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['customer_id'] = $customer_id;
         $_SESSION['customer_name'] = $first_name . ' ' . $last_name;
         $_SESSION['customer_email'] = $email;
+
+        // Send welcome email (best-effort)
+        $customer_name = $first_name . ' ' . $last_name;
+        error_log("Attempting to send welcome email to $email for customer $customer_name");
+        try {
+            send_welcome_email($email, $customer_name);
+        } catch (Exception $e) {
+            // Log but don't fail signup if email fails
+            error_log('Failed to send welcome email to ' . $email . ': ' . $e->getMessage());
+        }
 
         $redirect = 'account.php';
         if (!empty($data['redirect'])) {

@@ -179,13 +179,17 @@ function handleCheckoutSessionCompleted($event, $pdo) {
 
         // Clear customer's cart now that payment is confirmed (if customer exists)
         if (!empty($order['customer_id'])) {
+            error_log('Stripe: Attempting to clear cart for customer ' . $order['customer_id'] . ' for order ' . $order_id);
             try {
                 $deleteStmt = $pdo->prepare("DELETE FROM cart WHERE customer_id = ?");
-                $deleteStmt->execute([$order['customer_id']]);
-                error_log('Stripe: Cart cleared for customer ' . $order['customer_id'] . ' after payment confirmed for order ' . $order_id);
+                $result = $deleteStmt->execute([$order['customer_id']]);
+                $affected = $deleteStmt->rowCount();
+                error_log('Stripe: Cart delete result: ' . ($result ? 'success' : 'failed') . ', rows affected: ' . $affected . ' for customer ' . $order['customer_id']);
             } catch (Exception $e) {
                 error_log('Stripe: failed to clear cart for customer ' . $order['customer_id'] . ': ' . $e->getMessage());
             }
+        } else {
+            error_log('Stripe: No customer_id found for order ' . $order_id . ', skipping cart clear');
         }
 
         // Log inventory transactions directly

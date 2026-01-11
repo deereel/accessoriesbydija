@@ -28,6 +28,18 @@ try {
         exit;
     }
 
+    // Clear customer cart if order is paid and customer is logged in
+    if ($order['status'] !== 'pending' && !empty($order['customer_id'])) {
+        try {
+            $deleteStmt = $pdo->prepare("DELETE FROM cart WHERE customer_id = ?");
+            $result = $deleteStmt->execute([$order['customer_id']]);
+            $affected = $deleteStmt->rowCount();
+            error_log('Order confirmation: Cart cleared for customer ' . $order['customer_id'] . ' for paid order ' . $order_id . ' - affected rows: ' . $affected);
+        } catch (Exception $e) {
+            error_log('Order confirmation: Failed to clear cart for customer ' . $order['customer_id'] . ': ' . $e->getMessage());
+        }
+    }
+
     // Fetch order items
     $stmt = $pdo->prepare("SELECT oi.*, p.name, p.sku
                            FROM order_items oi
@@ -292,6 +304,17 @@ $is_paid = $order['status'] !== 'pending';
                     window.trackEvent('order_created', { order_id: orderId, order_number: orderNumber, total_amount: total, is_paid: isPaid, items: items });
                 }
                 try { localStorage.setItem(key, '1'); } catch(e) {}
+            }
+
+            // Clear guest cart from localStorage if order is paid
+            if (isPaid) {
+                try {
+                    localStorage.removeItem('DIJACart');
+                    localStorage.removeItem('cart');
+                    console.log('Guest cart cleared after successful payment');
+                } catch (e) {
+                    console.warn('Failed to clear guest cart:', e);
+                }
             }
 
             // Log inventory errors to console
