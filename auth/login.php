@@ -6,12 +6,44 @@ header('Content-Type: application/json');
 require_once '../config/database.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Rate limiting: 10 requests per minute per IP
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $rate_key = 'rate_limit_login_' . md5($ip);
+    if (!isset($_SESSION[$rate_key])) {
+        $_SESSION[$rate_key] = ['count' => 0, 'reset_time' => time() + 60];
+    }
+    $rate = &$_SESSION[$rate_key];
+    if (time() > $rate['reset_time']) {
+        $rate['count'] = 0;
+        $rate['reset_time'] = time() + 60;
+    }
+    if ($rate['count'] >= 10) {
+        echo json_encode(['success' => false, 'message' => 'Too many requests. Please try again later.']);
+        exit;
+    }
+    $rate['count']++;
+
     $data = json_decode(file_get_contents('php://input'), true);
-    
+
     $email = trim($data['email'] ?? '');
     $password = $data['password'] ?? '';
     $remember_me = $data['remember_me'] ?? false;
-    
+
+    // Brute force protection
+    $attempt_key = 'login_attempts_' . md5($email);
+    if (!isset($_SESSION[$attempt_key])) {
+        $_SESSION[$attempt_key] = ['count' => 0, 'last_attempt' => 0];
+    }
+    $attempts = &$_SESSION[$attempt_key];
+    $current_time = time();
+    if ($attempts['count'] >= 5 && $current_time - $attempts['last_attempt'] < 900) { // 15 minutes
+        echo json_encode(['success' => false, 'message' => 'Too many failed attempts. Please try again later.']);
+        exit;
+    }
+    if ($current_time - $attempts['last_attempt'] > 900) {
+        $attempts['count'] = 0; // Reset after 15 min
+    }
+
     // Validation
     if (empty($email) || empty($password)) {
         echo json_encode(['success' => false, 'message' => 'Email and password are required']);
@@ -37,6 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         // Verify password
         if (!password_verify($password, $customer['password_hash'])) {
+            $attempts['count']++;
+            $attempts['last_attempt'] = $current_time;
             echo json_encode(['success' => false, 'message' => 'Invalid email or password']);
             exit;
         }
@@ -53,6 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (PDOException $e) {
             // Column doesn't exist or other error — ignore to preserve backward compatibility
         }
+
+        // Reset failed attempts on successful login
+        unset($_SESSION[$attempt_key]);
 
         // Set session
         $_SESSION['customer_id'] = $customer['id'];

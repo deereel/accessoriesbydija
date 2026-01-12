@@ -24,6 +24,24 @@
 session_start();
 header('Content-Type: application/json');
 
+// Rate limiting: 5 requests per minute per IP
+$ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+$rate_key = 'rate_limit_payment_' . md5($ip);
+if (!isset($_SESSION[$rate_key])) {
+    $_SESSION[$rate_key] = ['count' => 0, 'reset_time' => time() + 60];
+}
+$rate = &$_SESSION[$rate_key];
+if (time() > $rate['reset_time']) {
+    $rate['count'] = 0;
+    $rate['reset_time'] = time() + 60;
+}
+if ($rate['count'] >= 5) {
+    http_response_code(429);
+    echo json_encode(['success' => false, 'message' => 'Too many requests. Please try again later.']);
+    exit;
+}
+$rate['count']++;
+
 // Load environment variables from .env file
 require_once __DIR__ . '/../../../config/env.php';
 require_once __DIR__ . '/../../../config/database.php';

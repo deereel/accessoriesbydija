@@ -1,7 +1,24 @@
 <?php
+require_once 'config/database.php';
+
 $page_title = "Custom Jewelry Design";
 $page_description = "Create your perfect custom jewelry piece with Dija Accessories. Work with our expert designers to bring your vision to life.";
 include 'includes/header.php';
+
+// Fetch materials from database
+$stmt = $pdo->prepare("SELECT id, name FROM materials ORDER BY name");
+$stmt->execute();
+$materials = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch categories for jewelry types
+$stmt = $pdo->prepare("SELECT id, name FROM categories ORDER BY name");
+$stmt->execute();
+$categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch adornments from database
+$stmt = $pdo->prepare("SELECT id, name FROM adornments ORDER BY name");
+$stmt->execute();
+$adornments = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
 <main>
@@ -49,17 +66,15 @@ include 'includes/header.php';
                     <h2>Start Your Custom Design</h2>
                     <form class="custom-form" id="custom-form">
                         <div class="form-group">
-                            <label for="jewelry-type">Jewelry Type *</label>
-                            <select id="jewelry-type" name="jewelry_type" required>
-                                <option value="">Select Type</option>
-                                <option value="ring">Ring</option>
-                                <option value="necklace">Necklace</option>
-                                <option value="earrings">Earrings</option>
-                                <option value="bracelet">Bracelet</option>
-                                <option value="pendant">Pendant</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
+                             <label for="jewelry-type">Jewelry Type *</label>
+                             <select id="jewelry-type" name="jewelry_type" required>
+                                 <option value="">Select Type</option>
+                                 <?php foreach ($categories as $category): ?>
+                                 <option value="<?php echo htmlspecialchars($category['name']); ?>"><?php echo htmlspecialchars($category['name']); ?></option>
+                                 <?php endforeach; ?>
+                                 <option value="other">Other</option>
+                             </select>
+                         </div>
 
                         <div class="form-group">
                             <label for="occasion">Occasion</label>
@@ -90,25 +105,20 @@ include 'includes/header.php';
                         <div class="form-group">
                             <label for="metal-preference">Metal Preference</label>
                             <div class="checkbox-group">
-                                <label><input type="checkbox" name="metals[]" value="gold"> Gold</label>
-                                <label><input type="checkbox" name="metals[]" value="white-gold"> White Gold</label>
-                                <label><input type="checkbox" name="metals[]" value="rose-gold"> Rose Gold</label>
-                                <label><input type="checkbox" name="metals[]" value="platinum"> Platinum</label>
-                                <label><input type="checkbox" name="metals[]" value="silver"> Silver</label>
+                                <?php foreach ($materials as $material): ?>
+                                <label><input type="checkbox" name="metals[]" value="<?php echo htmlspecialchars($material['name']); ?>"> <?php echo htmlspecialchars($material['name']); ?></label>
+                                <?php endforeach; ?>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label for="stones">Stone Preferences</label>
-                            <div class="checkbox-group">
-                                <label><input type="checkbox" name="stones[]" value="diamond"> Diamond</label>
-                                <label><input type="checkbox" name="stones[]" value="ruby"> Ruby</label>
-                                <label><input type="checkbox" name="stones[]" value="emerald"> Emerald</label>
-                                <label><input type="checkbox" name="stones[]" value="sapphire"> Sapphire</label>
-                                <label><input type="checkbox" name="stones[]" value="pearl"> Pearl</label>
-                                <label><input type="checkbox" name="stones[]" value="birthstone"> Birthstone</label>
-                            </div>
-                        </div>
+                             <label for="adornments">Adornment Preferences</label>
+                             <div class="checkbox-group">
+                                 <?php foreach ($adornments as $adornment): ?>
+                                 <label><input type="checkbox" name="adornments[]" value="<?php echo htmlspecialchars($adornment['name']); ?>"> <?php echo htmlspecialchars($adornment['name']); ?></label>
+                                 <?php endforeach; ?>
+                             </div>
+                         </div>
 
                         <div class="form-group">
                             <label for="description">Describe Your Vision *</label>
@@ -355,17 +365,44 @@ include 'includes/header.php';
 </style>
 
 <script>
-document.getElementById('custom-form').addEventListener('submit', function(e) {
+document.getElementById('custom-form').addEventListener('submit', async function(e) {
     e.preventDefault();
-    
-    // Collect form data
-    const formData = new FormData(this);
-    
-    // Show success message
-    alert('Thank you for your custom design request! We will contact you within 24 hours to discuss your project.');
-    
-    // Reset form
-    this.reset();
+
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+
+    try {
+        // Collect form data
+        const formData = new FormData(this);
+        const data = Object.fromEntries(formData.entries());
+
+        // Handle checkboxes
+        data.metals = formData.getAll('metals[]');
+        data.adornments = formData.getAll('adornments[]');
+
+        const response = await fetch('/api/custom-request.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(result.message);
+            this.reset();
+        } else {
+            alert('Error: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred. Please try again.');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    }
 });
 </script>
 

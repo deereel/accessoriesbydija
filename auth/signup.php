@@ -5,6 +5,23 @@ require_once '../config/database.php';
 require_once '../includes/email.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Rate limiting: 5 requests per minute per IP
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $rate_key = 'rate_limit_signup_' . md5($ip);
+    if (!isset($_SESSION[$rate_key])) {
+        $_SESSION[$rate_key] = ['count' => 0, 'reset_time' => time() + 60];
+    }
+    $rate = &$_SESSION[$rate_key];
+    if (time() > $rate['reset_time']) {
+        $rate['count'] = 0;
+        $rate['reset_time'] = time() + 60;
+    }
+    if ($rate['count'] >= 5) {
+        echo json_encode(['success' => false, 'message' => 'Too many requests. Please try again later.']);
+        exit;
+    }
+    $rate['count']++;
+
     $data = json_decode(file_get_contents('php://input'), true);
     
     $first_name = trim($data['first_name'] ?? '');
@@ -27,8 +44,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     
-    if (strlen($password) < 6) {
-        echo json_encode(['success' => false, 'message' => 'Password must be at least 6 characters']);
+    if (strlen($password) < 8) {
+        echo json_encode(['success' => false, 'message' => 'Password must be at least 8 characters long']);
+        exit;
+    }
+    if (!preg_match('/[A-Z]/', $password)) {
+        echo json_encode(['success' => false, 'message' => 'Password must contain at least one uppercase letter']);
+        exit;
+    }
+    if (!preg_match('/[a-z]/', $password)) {
+        echo json_encode(['success' => false, 'message' => 'Password must contain at least one lowercase letter']);
+        exit;
+    }
+    if (!preg_match('/[0-9]/', $password)) {
+        echo json_encode(['success' => false, 'message' => 'Password must contain at least one number']);
         exit;
     }
     

@@ -1,5 +1,61 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<?php
+header('Content-Type: application/xml; charset=utf-8');
+require_once 'config/database.php';
+
+echo '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+echo '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+
+// Static URLs
+$static_urls = [
+    ['loc' => 'https://accessoriesbydija.com/', 'lastmod' => '2024-01-01', 'changefreq' => 'daily', 'priority' => '1.0'],
+    ['loc' => 'https://accessoriesbydija.com/category/women', 'lastmod' => '2024-01-01', 'changefreq' => 'weekly', 'priority' => '0.9'],
+    ['loc' => 'https://accessoriesbydija.com/category/men', 'lastmod' => '2024-01-01', 'changefreq' => 'weekly', 'priority' => '0.9'],
+    ['loc' => 'https://accessoriesbydija.com/category/women/rings', 'lastmod' => '2024-01-01', 'changefreq' => 'weekly', 'priority' => '0.8'],
+    ['loc' => 'https://accessoriesbydija.com/category/women/necklaces', 'lastmod' => '2024-01-01', 'changefreq' => 'weekly', 'priority' => '0.8'],
+    ['loc' => 'https://accessoriesbydija.com/category/women/earrings', 'lastmod' => '2024-01-01', 'changefreq' => 'weekly', 'priority' => '0.8'],
+    ['loc' => 'https://accessoriesbydija.com/category/women/bracelets', 'lastmod' => '2024-01-01', 'changefreq' => 'weekly', 'priority' => '0.8'],
+    ['loc' => 'https://accessoriesbydija.com/category/women/bangles', 'lastmod' => '2024-01-01', 'changefreq' => 'weekly', 'priority' => '0.8'],
+    ['loc' => 'https://accessoriesbydija.com/category/women/anklets', 'lastmod' => '2024-01-01', 'changefreq' => 'weekly', 'priority' => '0.8'],
+    ['loc' => 'https://accessoriesbydija.com/category/women/sets', 'lastmod' => '2024-01-01', 'changefreq' => 'weekly', 'priority' => '0.8'],
+    ['loc' => 'https://accessoriesbydija.com/category/men/rings', 'lastmod' => '2024-01-01', 'changefreq' => 'weekly', 'priority' => '0.8'],
+    ['loc' => 'https://accessoriesbydija.com/category/men/necklaces', 'lastmod' => '2024-01-01', 'changefreq' => 'weekly', 'priority' => '0.8'],
+    ['loc' => 'https://accessoriesbydija.com/category/men/bracelets', 'lastmod' => '2024-01-01', 'changefreq' => 'weekly', 'priority' => '0.8'],
+    ['loc' => 'https://accessoriesbydija.com/category/men/chains', 'lastmod' => '2024-01-01', 'changefreq' => 'weekly', 'priority' => '0.8'],
+    ['loc' => 'https://accessoriesbydija.com/custom-jewelry', 'lastmod' => '2024-01-01', 'changefreq' => 'monthly', 'priority' => '0.7'],
+    ['loc' => 'https://accessoriesbydija.com/about', 'lastmod' => '2024-01-01', 'changefreq' => 'monthly', 'priority' => '0.6'],
+    ['loc' => 'https://accessoriesbydija.com/contact', 'lastmod' => '2024-01-01', 'changefreq' => 'monthly', 'priority' => '0.6'],
+];
+
+foreach ($static_urls as $url) {
+    echo "    <url>\n";
+    echo "        <loc>{$url['loc']}</loc>\n";
+    echo "        <lastmod>{$url['lastmod']}</lastmod>\n";
+    echo "        <changefreq>{$url['changefreq']}</changefreq>\n";
+    echo "        <priority>{$url['priority']}</priority>\n";
+    echo "    </url>\n";
+}
+
+// Dynamic product URLs
+try {
+    $stmt = $pdo->prepare("SELECT slug, updated_at FROM products WHERE is_active = 1");
+    $stmt->execute();
+    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    foreach ($products as $product) {
+        $loc = 'https://accessoriesbydija.com/product/' . htmlspecialchars($product['slug']);
+        $lastmod = date('Y-m-d', strtotime($product['updated_at']));
+        echo "    <url>\n";
+        echo "        <loc>{$loc}</loc>\n";
+        echo "        <lastmod>{$lastmod}</lastmod>\n";
+        echo "        <changefreq>weekly</changefreq>\n";
+        echo "        <priority>0.8</priority>\n";
+        echo "    </url>\n";
+    }
+} catch (PDOException $e) {
+    // Ignore errors in sitemap
+}
+
+echo '</urlset>';
     <url>
         <loc>https://accessoriesbydija.com/</loc>
         <lastmod>2024-01-01</lastmod>

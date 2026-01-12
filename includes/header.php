@@ -174,7 +174,7 @@ require_once 'config/cache.php';
         <div class="header-top">
             <div class="search-container">
                 <input type="text" placeholder="Type to start searching…" id="search-input">
-                <i class="fas fa-search"></i>
+                <span class="search-icon">&#128269;</span>
             </div>
             <div class="logo">
                 <a href="index.php">
@@ -183,10 +183,10 @@ require_once 'config/cache.php';
             </div>
             <div class="header-icons">
                 <a href="account.php" class="icon-link">
-                    <i class="fas fa-user"></i>
+                    &#128100;
                 </a>
                 <a href="cart.php" class="icon-link cart-icon">
-                    <i class="fas fa-shopping-bag"></i>
+                    &#128722;
                     <span class="cart-count">0</span>
                 </a>
                 <div class="hamburger" id="hamburger">
@@ -198,22 +198,22 @@ require_once 'config/cache.php';
         </div>
         <nav class="main-nav">
             <div class="mobile-close" id="mobile-close">
-                <i class="fas fa-times"></i>
+                &#10005;
             </div>
             <div class="nav-item" data-menu="new">
-                <a href="new-arrivals.php">NEW <i class="fas fa-chevron-down"></i></a>
+                <a href="new-arrivals.php">NEW &#9660;</a>
             </div>
             <div class="nav-item" data-menu="shop">
-                <a href="products.php">SHOP <i class="fas fa-chevron-down"></i></a>
+                <a href="products.php">SHOP &#9660;</a>
             </div>
             <div class="nav-item" data-menu="women">
-                <a href="products.php?gender=women">WOMEN <i class="fas fa-chevron-down"></i></a>
+                <a href="products.php?gender=women">WOMEN &#9660;</a>
             </div>
             <div class="nav-item" data-menu="men">
-                <a href="products.php?gender=men">MEN <i class="fas fa-chevron-down"></i></a>
+                <a href="products.php?gender=men">MEN &#9660;</a>
             </div>
             <div class="nav-item" data-menu="gift">
-                <a href="gift-box.php">GIFT BOX <i class="fas fa-chevron-down"></i></a>
+                <a href="gift-box.php">GIFT BOX &#9660;</a>
             </div>
         </nav>
         
@@ -314,9 +314,9 @@ require_once 'config/cache.php';
         }
         
         // Search icon click handler
-        const searchIcon = document.querySelector('.search-container i');
+        const searchIcon = document.querySelector('.search-container .search-icon');
         const searchInput = document.querySelector('.search-container input');
-        
+
         if (searchIcon && searchInput) {
             searchIcon.addEventListener('click', function() {
                 if (window.innerWidth <= 768) {

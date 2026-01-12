@@ -51,12 +51,13 @@ body {
     border-color: #C27BA0;
 }
 
-.search-container i {
+.search-container .search-icon {
     position: absolute;
     right: 15px;
     top: 50%;
     transform: translateY(-50%);
     color: #666;
+    pointer-events: none;
 }
 
 .logo {
@@ -138,6 +139,7 @@ body {
 }
 
 .main-nav {
+    position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -188,7 +190,7 @@ body {
     box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-10px);
+    transform: translateY(10px);
     transition: all 0.3s ease;
     z-index: 999;
 }
@@ -382,12 +384,15 @@ body {
         display: none;
     }
     
-    .search-container i {
+    .search-container .search-icon {
         position: static;
         font-size: 18px;
         color: #222;
         cursor: pointer;
         padding: 5px;
+        transform: none;
+        top: auto;
+        right: auto;
     }
     
     .logo a {
@@ -402,10 +407,10 @@ body {
     
     .main-nav {
         position: fixed;
-        top: 0;
+        top: 80px;
         right: -100%;
         width: 300px;
-        height: 100vh;
+        height: calc(100vh - 80px);
         background: rgba(255, 255, 255, 0.95);
         backdrop-filter: blur(10px);
         display: flex;

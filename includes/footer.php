@@ -103,5 +103,68 @@
         });
     })();
     </script>
+
+    <!-- Cookie Consent Banner -->
+    <div id="cookieConsent" class="cookie-consent" style="display: none;">
+        <div class="cookie-content">
+            <p>We use cookies to improve your experience. By continuing to use our site, you agree to our <a href="cookies.php">Cookie Policy</a> and <a href="privacy.php">Privacy Policy</a>.</p>
+            <button id="acceptCookies" class="btn btn-primary">Accept</button>
+            <button id="declineCookies" class="btn btn-secondary">Decline</button>
+        </div>
+    </div>
+
+    <style>
+    .cookie-consent {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #333;
+        color: white;
+        padding: 1rem;
+        z-index: 1000;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    }
+    .cookie-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+    }
+    .cookie-content p {
+        margin: 0;
+        flex: 1;
+    }
+    .cookie-content a {
+        color: #C27BA0;
+    }
+    @media (max-width: 768px) {
+        .cookie-content {
+            flex-direction: column;
+            text-align: center;
+        }
+    }
+    </style>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const consent = localStorage.getItem('cookieConsent');
+        if (!consent) {
+            document.getElementById('cookieConsent').style.display = 'block';
+        }
+
+        document.getElementById('acceptCookies').addEventListener('click', function() {
+            localStorage.setItem('cookieConsent', 'accepted');
+            document.getElementById('cookieConsent').style.display = 'none';
+        });
+
+        document.getElementById('declineCookies').addEventListener('click', function() {
+            localStorage.setItem('cookieConsent', 'declined');
+            document.getElementById('cookieConsent').style.display = 'none';
+        });
+    });
+    </script>
 </body>
 </html>

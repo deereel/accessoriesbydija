@@ -122,4 +122,38 @@ function send_welcome_email($customer_email, $customer_name) {
 
     return send_email_smtp($customer_email, $subject, $body);
 }
+
+function send_admin_order_notification($pdo, $order_id) {
+    // Fetch order details
+    $stmt = $pdo->prepare("SELECT o.*, c.first_name, c.last_name, c.email AS customer_email
+        FROM orders o LEFT JOIN customers c ON c.id = o.customer_id WHERE o.id = ? LIMIT 1");
+    $stmt->execute([$order_id]);
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$order) return false;
+
+    // Fetch order items
+    $it = $pdo->prepare("SELECT oi.quantity, oi.unit_price, p.name FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ?");
+    $it->execute([$order_id]);
+    $items = $it->fetchAll(PDO::FETCH_ASSOC);
+
+    $admin_email = $_ENV['ADMIN_EMAIL'] ?? 'admin@accessoriesbydija.uk';
+    $subject = "New Order Received - Order #" . $order_id;
+
+    $body = "A new order has been placed.\n\n";
+    $body .= "Order Details:\n";
+    $body .= "Order ID: " . $order_id . "\n";
+    $body .= "Order Number: " . $order['order_number'] . "\n";
+    $body .= "Customer: " . ($order['first_name'] ? htmlspecialchars($order['first_name'] . ' ' . $order['last_name']) : 'Guest') . "\n";
+    $body .= "Email: " . $order['email'] . "\n";
+    $body .= "Total: £" . number_format($order['total_amount'], 2) . "\n\n";
+
+    $body .= "Items:\n";
+    foreach ($items as $item) {
+        $body .= "- " . $item['name'] . " x" . $item['quantity'] . " @ £" . number_format($item['unit_price'], 2) . "\n";
+    }
+
+    $body .= "\nPlease process this order promptly.\n";
+
+    return send_email_smtp($admin_email, $subject, $body);
+}
 ?>

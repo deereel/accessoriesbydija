@@ -568,6 +568,13 @@ try {
             error_log('Failed to send order confirmation email for order ' . $order_id . ': ' . $e->getMessage());
         }
 
+        // Send admin notification email
+        try {
+            send_admin_order_notification($pdo, $order_id);
+        } catch (Exception $e) {
+            error_log('Failed to send admin notification for order ' . $order_id . ': ' . $e->getMessage());
+        }
+
         // NOTE: server-side analytics for order creation is recorded when payment
         // is confirmed (payment provider webhook/verify handlers). Client-side
         // order_created events are still emitted from the confirmation page.

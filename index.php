@@ -34,8 +34,8 @@ include 'includes/header.php';
             </div>
         </div>
         <div class="slider-nav">
-            <button class="prev" onclick="changeSlide(-1)"><i class="fas fa-chevron-left"></i></button>
-            <button class="next" onclick="changeSlide(1)"><i class="fas fa-chevron-right"></i></button>
+            <button class="prev" onclick="changeSlide(-1)">&larr;</button>
+            <button class="next" onclick="changeSlide(1)">&rarr;</button>
         </div>
         <div class="slider-dots">
             <span class="dot active" onclick="currentSlide(1)"></span>
@@ -160,8 +160,8 @@ include 'includes/header.php';
             </div>
         </div>
         <div class="banner-nav">
-            <button class="banner-prev" onclick="changeBannerSlide(-1)"><i class="fas fa-chevron-left"></i></button>
-            <button class="banner-next" onclick="changeBannerSlide(1)"><i class="fas fa-chevron-right"></i></button>
+            <button class="banner-prev" onclick="changeBannerSlide(-1)">&larr;</button>
+            <button class="banner-next" onclick="changeBannerSlide(1)">&rarr;</button>
         </div>
         <div class="banner-dots">
             <span class="banner-dot active" onclick="currentBannerSlide(1)"></span>
@@ -323,10 +323,10 @@ include 'includes/header.php';
                 <!-- Navigation (MUST be inside slider for Swiper) -->
                 <div class="testimonials-nav">
                     <button class="testimonials-prev">
-                        <i class="fas fa-chevron-left"></i>
+                        &larr;
                     </button>
                     <button class="testimonials-next">
-                        <i class="fas fa-chevron-right"></i>
+                        &rarr;
                     </button>
                 </div>
             </div>

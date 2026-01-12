@@ -1,6 +1,7 @@
 <?php
 $page_title = "Product Details";
 include 'config/database.php';
+include 'config/cache.php';
 
 $slug = $_GET['slug'] ?? '';
 if (!$slug) {
@@ -10,10 +11,19 @@ if (!$slug) {
 
 include 'includes/header.php';
 
-// Get product
-$stmt = $pdo->prepare("SELECT * FROM products WHERE slug = ?");
-$stmt->execute([$slug]);
-$product = $stmt->fetch();
+// Get product with caching
+$cache_key = 'product_' . $slug;
+$product = cache_get($cache_key);
+
+if (!$product) {
+    $stmt = $pdo->prepare("SELECT * FROM products WHERE slug = ?");
+    $stmt->execute([$slug]);
+    $product = $stmt->fetch();
+
+    if ($product) {
+        cache_set($cache_key, $product, 3600); // Cache for 1 hour
+    }
+}
 
 if (!$product) {
     header('Location: products.php');
@@ -122,6 +132,103 @@ $frequently_bought = $stmt->fetchAll();
 
 $page_title = $product['name'];
 $page_description = substr($product['description'], 0, 160);
+
+// Structured Data for Product
+$structured_data = [
+    "@context" => "https://schema.org",
+    "@type" => "Product",
+    "name" => $product['name'],
+    "description" => $product['description'],
+    "sku" => $product['sku'] ?? '',
+    "brand" => [
+        "@type" => "Brand",
+        "name" => "Dija Accessories"
+    ],
+    "offers" => [
+        "@type" => "Offer",
+        "price" => $product['price'],
+        "priceCurrency" => "GBP",
+        "availability" => $product['stock_quantity'] > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+        "seller" => [
+            "@type" => "Organization",
+            "name" => "Dija Accessories"
+        ]
+    ]
+];
+
+if (!empty($images)) {
+    $structured_data["image"] = array_map(function($img) {
+        return "https://accessoriesbydija.com/" . $img['image_url'];
+    }, $images);
+}
+
+if (!empty($reviews)) {
+    $structured_data["aggregateRating"] = [
+        "@type" => "AggregateRating",
+        "ratingValue" => array_sum(array_column($reviews, 'rating')) / count($reviews),
+        "reviewCount" => count($reviews)
+    ];
+}
+
+// Add structured data script
+echo '<script type="application/ld+json">' . json_encode($structured_data) . '</script>';
+
+// Social Media Meta Tags
+$og_image = !empty($images) ? 'https://accessoriesbydija.com/' . $images[0]['image_url'] : 'https://accessoriesbydija.com/assets/images/placeholder.jpg';
+$og_url = 'https://accessoriesbydija.com/product/' . $product['slug'];
+
+echo '<meta property="og:title" content="' . htmlspecialchars($product['name']) . '">' . "\n";
+echo '<meta property="og:description" content="' . htmlspecialchars($page_description) . '">' . "\n";
+echo '<meta property="og:image" content="' . $og_image . '">' . "\n";
+echo '<meta property="og:url" content="' . $og_url . '">' . "\n";
+echo '<meta property="og:type" content="product">' . "\n";
+echo '<meta property="og:site_name" content="Dija Accessories">' . "\n";
+
+echo '<meta name="twitter:card" content="summary_large_image">' . "\n";
+echo '<meta name="twitter:title" content="' . htmlspecialchars($product['name']) . '">' . "\n";
+echo '<meta name="twitter:description" content="' . htmlspecialchars($page_description) . '">' . "\n";
+echo '<meta name="twitter:image" content="' . $og_image . '">' . "\n";
+
+// Additional meta tags
+echo '<link rel="canonical" href="' . $og_url . '">' . "\n";
+echo '<meta name="keywords" content="' . htmlspecialchars($product['category'] . ', ' . $product['material'] . ', jewelry, accessories') . '">' . "\n";
+
+// Structured Data for Product
+$structured_data = [
+    "@context" => "https://schema.org",
+    "@type" => "Product",
+    "name" => $product['name'],
+    "description" => $product['description'],
+    "sku" => $product['sku'] ?? '',
+    "brand" => [
+        "@type" => "Brand",
+        "name" => "Dija Accessories"
+    ],
+    "offers" => [
+        "@type" => "Offer",
+        "price" => $product['price'],
+        "priceCurrency" => "GBP",
+        "availability" => $product['stock_quantity'] > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+        "seller" => [
+            "@type" => "Organization",
+            "name" => "Dija Accessories"
+        ]
+    ]
+];
+
+if (!empty($images)) {
+    $structured_data["image"] = array_map(function($img) {
+        return "https://accessoriesbydija.com/" . $img['image_url'];
+    }, $images);
+}
+
+if (!empty($reviews)) {
+    $structured_data["aggregateRating"] = [
+        "@type" => "AggregateRating",
+        "ratingValue" => array_sum(array_column($reviews, 'rating')) / count($reviews),
+        "reviewCount" => count($reviews)
+    ];
+}
 ?>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -223,7 +330,7 @@ $page_description = substr($product['description'], 0, 160);
             <div class="main-image-container">
                 <div class="main-image" id="mainImage">
                     <?php if ($images && isset($images[0])): ?>
-                        <img src="/<?= htmlspecialchars($images[0]['image_url']) ?>" alt="<?= htmlspecialchars($images[0]['alt_text'] ?? 'Product image') ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                        <img src="/<?= htmlspecialchars($images[0]['image_url']) ?>" alt="<?= htmlspecialchars($images[0]['alt_text'] ?? 'Product image') ?>" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy">
                     <?php else: ?>
                         💎
                     <?php endif; ?>
@@ -233,7 +340,7 @@ $page_description = substr($product['description'], 0, 160);
                 <?php if ($images): ?>
                     <?php foreach ($images as $index => $image): ?>
                     <div class="thumbnail <?= $index === 0 ? 'active' : '' ?>" onclick="changeImage(this)" data-image-id="<?= $image['id'] ?>">
-                        <img src="/<?= htmlspecialchars($image['image_url']) ?>" alt="Product image">
+                        <img src="/<?= htmlspecialchars($image['image_url']) ?>" alt="Product image" loading="lazy">
                     </div>                    <?php endforeach; ?>
                 <?php else: ?>
                     <div class="thumbnail active" onclick="changeImage(this)">
