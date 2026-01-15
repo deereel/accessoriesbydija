@@ -44,7 +44,11 @@ try {
     
     $product['variations'] = $variations;
     $product['images'] = $images;
-    
+
+    // Map gender to short form
+    $gender_map = ['Unisex' => 'U', 'Male' => 'M', 'Female' => 'F'];
+    $product['gender'] = $gender_map[$product['gender']] ?? $product['gender'];
+
     header('Content-Type: application/json');
     echo json_encode($product);
     

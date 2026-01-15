@@ -4,8 +4,28 @@ require_once 'config/database.php';
 // Set page variables
 $body_class = 'products-page';
 $page_title = 'All Products | Accessories by Dija';
+$page_description = 'Browse our complete collection of premium jewelry including rings, necklaces, earrings, bracelets, and custom pieces. Shop by category, material, and price range with free shipping on orders over £100.';
 
 include 'includes/header.php';
+
+// Structured Data for Product Collection
+$collection_structured_data = [
+    "@context" => "https://schema.org",
+    "@type" => "CollectionPage",
+    "name" => "Jewelry Collection - Accessories By Dija",
+    "description" => "Complete collection of premium handcrafted jewelry including rings, necklaces, earrings, bracelets, and custom pieces.",
+    "url" => "https://accessoriesbydija.uk/products.php",
+    "mainEntity" => [
+        "@type" => "ItemList"
+    ],
+    "publisher" => [
+        "@type" => "Organization",
+        "name" => "Accessories By Dija",
+        "url" => "https://accessoriesbydija.uk"
+    ]
+];
+
+echo '<script type="application/ld+json">' . json_encode($collection_structured_data) . '</script>';
 
 // --- FILTER DATA FETCHING ---
 
@@ -55,10 +75,16 @@ $params = [];
 
 // Handle gender filter using the products.gender column
 if (!empty($selected_genders)) {
-    $gender_placeholders = implode(',', array_fill(0, count($selected_genders), '?'));
-    $where[] = "LOWER(p.gender) IN (" . $gender_placeholders . ")";
+    $gender_conditions = [];
     foreach ($selected_genders as $gender) {
-        $params[] = strtolower($gender);
+        if (strtolower($gender) == 'men') {
+            $gender_conditions[] = "(p.gender = 'M' OR p.gender = 'U')";
+        } elseif (strtolower($gender) == 'women') {
+            $gender_conditions[] = "(p.gender = 'F' OR p.gender = 'U')";
+        }
+    }
+    if (!empty($gender_conditions)) {
+        $where[] = '(' . implode(' OR ', $gender_conditions) . ')';
     }
 }
 

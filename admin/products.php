@@ -14,21 +14,23 @@ if ($_POST) {
         try {
             $slug = strtolower(str_replace(' ', '-', $_POST['product_name']));
             $stmt = $pdo->prepare("INSERT INTO products (name, slug, description, sku, price, stock_quantity, gender, category_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-            $stmt->execute([$_POST['product_name'], $slug, $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], $_POST['gender'], $_POST['category_id']]);
+            $stmt->execute([$_POST['product_name'], $slug, $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], trim($_POST['gender']), $_POST['category_id']]);
             $product_id = $pdo->lastInsertId();
             
             // Add variations
             if (isset($_POST['variations'])) {
                 foreach ($_POST['variations'] as $variation) {
+                    $price_adjustment = !empty($variation['price_adjustment']) ? $variation['price_adjustment'] : null;
                     $stmt = $pdo->prepare("INSERT INTO product_variations (product_id, material_id, tag, color, adornment, price_adjustment, stock_quantity) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([$product_id, $variation['material_id'], $variation['tag'], $variation['color'], $variation['adornment'], $variation['price_adjustment'], $variation['stock']]);
+                    $stmt->execute([$product_id, $variation['material_id'], $variation['tag'], $variation['color'], $variation['adornment'], $price_adjustment, $variation['stock']]);
                     $variation_id = $pdo->lastInsertId();
-                    
+
                     // Add sizes for this variation
                     if (isset($variation['sizes'])) {
                         foreach ($variation['sizes'] as $size) {
+                            $size_price_adjustment = !empty($size['price_adjustment']) ? $size['price_adjustment'] : null;
                             $stmt = $pdo->prepare("INSERT INTO variation_sizes (variation_id, size, stock_quantity, price_adjustment) VALUES (?, ?, ?, ?)");
-                            $stmt->execute([$variation_id, $size['size'], $size['stock'], $size['price_adjustment']]);
+                            $stmt->execute([$variation_id, $size['size'], $size['stock'], $size_price_adjustment]);
                         }
                     }
                 }
@@ -82,7 +84,7 @@ if ($_POST) {
             
             // Update product
             $stmt = $pdo->prepare("UPDATE products SET name = ?, slug = ?, description = ?, sku = ?, price = ?, stock_quantity = ?, gender = ?, category_id = ? WHERE id = ?");
-            $stmt->execute([$_POST['product_name'], $slug, $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], $_POST['gender'], $_POST['category_id'], $product_id]);
+            $stmt->execute([$_POST['product_name'], $slug, $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], trim($_POST['gender']), $_POST['category_id'], $product_id]);
             
             // Delete existing variations and sizes
             $stmt = $pdo->prepare("DELETE FROM variation_sizes WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id = ?)");
@@ -93,16 +95,18 @@ if ($_POST) {
             // Add new variations
             if (isset($_POST['variations'])) {
                 foreach ($_POST['variations'] as $variation) {
+                    $price_adjustment = !empty($variation['price_adjustment']) ? $variation['price_adjustment'] : null;
                     $stmt = $pdo->prepare("INSERT INTO product_variations (product_id, material_id, tag, color, adornment, price_adjustment, stock_quantity) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([$product_id, $variation['material_id'], $variation['tag'], $variation['color'], $variation['adornment'], $variation['price_adjustment'], $variation['stock']]);
+                    $stmt->execute([$product_id, $variation['material_id'], $variation['tag'], $variation['color'], $variation['adornment'], $price_adjustment, $variation['stock']]);
                     $variation_id = $pdo->lastInsertId();
-                    
+
                     // Add sizes for this variation
                     if (isset($variation['sizes'])) {
                         foreach ($variation['sizes'] as $size) {
                             if (!empty($size['size'])) {
+                                $size_price_adjustment = !empty($size['price_adjustment']) ? $size['price_adjustment'] : null;
                                 $stmt = $pdo->prepare("INSERT INTO variation_sizes (variation_id, size, stock_quantity, price_adjustment) VALUES (?, ?, ?, ?)");
-                                $stmt->execute([$variation_id, $size['size'], $size['stock'], $size['price_adjustment']]);
+                                $stmt->execute([$variation_id, $size['size'], $size['stock'], $size_price_adjustment]);
                             }
                         }
                     }
@@ -320,9 +324,9 @@ $categories = $stmt->fetchAll();
                         <div class="form-group">
                             <label>Gender</label>
                             <select name="gender" required>
-                                <option value="Unisex">Unisex</option>
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
+                                <option value="U">Unisex</option>
+                                <option value="M">Male</option>
+                                <option value="F">Female</option>
                             </select>
                         </div>
                         <div class="form-group">

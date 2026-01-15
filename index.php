@@ -2,6 +2,91 @@
 $page_title = "Premium Jewelry Collection";
 $page_description = "Discover handcrafted jewelry at Dija Accessories. Expert artisans create rings, necklaces, earrings, bracelets, and custom pieces. Free shipping, lifetime warranty, ethically sourced materials.";
 include 'includes/header.php';
+
+// AI-Optimized Structured Data for Homepage
+$org_structured_data = generateBusinessStructuredData();
+echo '<script type="application/ld+json">' . json_encode($org_structured_data) . '</script>';
+
+// Add WebSite schema for AI understanding
+$base_url = isset($BASE_URL) ? $BASE_URL : 'https://' . $_SERVER['HTTP_HOST'];
+$website_schema = [
+    "@context" => "https://schema.org",
+    "@type" => "WebSite",
+    "name" => "Accessories By Dija",
+    "url" => $base_url,
+    "description" => "Premium handcrafted jewelry collection featuring rings, necklaces, earrings, bracelets, and custom pieces. Expert artisans create timeless jewelry with ethically sourced materials.",
+    "publisher" => [
+        "@type" => "Organization",
+        "@id" => $base_url . "#organization"
+    ],
+    "potentialAction" => [
+        [
+            "@type" => "SearchAction",
+            "target" => [
+                "@type" => "EntryPoint",
+                "urlTemplate" => $base_url . "/search?q={search_term_string}"
+            ],
+            "query-input" => "required name=search_term_string"
+        ]
+    ],
+    "mainEntity" => [
+        "@type" => "ItemList",
+        "name" => "Featured Jewelry Collection",
+        "description" => "Our most popular and trending jewelry pieces"
+    ]
+];
+
+echo '<script type="application/ld+json">' . json_encode($website_schema) . '</script>';
+
+// FAQ Schema for AI understanding
+$faq_schema = [
+    "@context" => "https://schema.org",
+    "@type" => "FAQPage",
+    "mainEntity" => [
+        [
+            "@type" => "Question",
+            "name" => "What materials do you use for your jewelry?",
+            "acceptedAnswer" => [
+                "@type" => "Answer",
+                "text" => "We use premium materials including 14K and 18K gold, sterling silver, and ethically sourced gemstones. All our pieces are crafted with attention to quality and durability."
+            ]
+        ],
+        [
+            "@type" => "Question",
+            "name" => "Do you offer custom jewelry design?",
+            "acceptedAnswer" => [
+                "@type" => "Answer",
+                "text" => "Yes, we offer custom jewelry design services. Our expert artisans work with you to create one-of-a-kind pieces that match your vision and style."
+            ]
+        ],
+        [
+            "@type" => "Question",
+            "name" => "What is your return policy?",
+            "acceptedAnswer" => [
+                "@type" => "Answer",
+                "text" => "We offer a 30-day return policy on all jewelry purchases. Items must be in original condition with tags attached. Custom pieces are not eligible for return."
+            ]
+        ],
+        [
+            "@type" => "Question",
+            "name" => "Do you provide international shipping?",
+            "acceptedAnswer" => [
+                "@type" => "Answer",
+                "text" => "Yes, we ship worldwide. Shipping costs and delivery times vary by location. Free shipping is available on orders over £100 within the UK."
+            ]
+        ],
+        [
+            "@type" => "Question",
+            "name" => "How do I care for my jewelry?",
+            "acceptedAnswer" => [
+                "@type" => "Answer",
+                "text" => "Store jewelry in a cool, dry place away from direct sunlight. Clean with a soft cloth and mild soap when needed. Remove before swimming or strenuous activities. Regular professional cleaning is recommended for gold pieces."
+            ]
+        ]
+    ]
+];
+
+echo '<script type="application/ld+json">' . json_encode($faq_schema) . '</script>';
 ?>
 
 <main>

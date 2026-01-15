@@ -59,7 +59,7 @@ include 'includes/header.php';
                         <i class="fas fa-envelope"></i>
                         <div>
                             <h3>Email</h3>
-                            <p>hello@accessoriesbydija.com</p>
+                            <p>hello@accessoriesbydija.uk</p>
                             <p>We respond within 24 hours</p>
                         </div>
                     </div>

@@ -46,7 +46,7 @@ include 'includes/header.php';
                         <div class="step-number">1</div>
                         <div class="step-content">
                             <h3>Contact Us</h3>
-                            <p>Email us at returns@accessoriesbydija.com or call +44 20 7946 0958 with your order number.</p>
+                            <p>Email us at returns@accessoriesbydija.uk or call +44 20 7946 0958 with your order number.</p>
                         </div>
                     </div>
 

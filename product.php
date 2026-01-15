@@ -116,14 +116,15 @@ $similar_products = $stmt->fetchAll();
 
 // Get frequently bought together
 $stmt = $pdo->prepare("
-    SELECT p.*, pi.image_url, COUNT(oi2.product_id) as buy_count
+    SELECT p.id, p.name, p.slug, p.price, p.description, p.stock_quantity, p.is_active, p.created_at, p.updated_at,
+           pi.image_url, COUNT(oi2.product_id) as buy_count
     FROM order_items oi1
     JOIN orders o ON oi1.order_id = o.id
     JOIN order_items oi2 ON oi1.order_id = oi2.order_id AND oi2.product_id != oi1.product_id
     JOIN products p ON oi2.product_id = p.id
     LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1
     WHERE oi1.product_id = ? AND p.is_active = 1
-    GROUP BY oi2.product_id
+    GROUP BY p.id, p.name, p.slug, p.price, p.description, p.stock_quantity, p.is_active, p.created_at, p.updated_at, pi.image_url
     ORDER BY buy_count DESC
     LIMIT 4
 ");
@@ -131,7 +132,8 @@ $stmt->execute([$product['id']]);
 $frequently_bought = $stmt->fetchAll();
 
 $page_title = $product['name'];
-$page_description = substr($product['description'], 0, 160);
+$gender_display = ['U' => 'Unisex', 'M' => 'Male', 'F' => 'Female'][$product['gender']] ?? $product['gender'];
+$page_description = $product['name'] . ' - Premium ' . ($product['material'] ?? 'jewelry') . ' ' . ($product['category'] ?? '') . ' for ' . ($gender_display ?? 'men and women') . '. Handcrafted with ethically sourced materials. Free shipping over £100. ' . substr($product['description'], 0, 100);
 
 // Structured Data for Product
 $structured_data = [
@@ -158,7 +160,7 @@ $structured_data = [
 
 if (!empty($images)) {
     $structured_data["image"] = array_map(function($img) {
-        return "https://accessoriesbydija.com/" . $img['image_url'];
+        return "https://accessoriesbydija.uk/" . $img['image_url'];
     }, $images);
 }
 
@@ -173,9 +175,79 @@ if (!empty($reviews)) {
 // Add structured data script
 echo '<script type="application/ld+json">' . json_encode($structured_data) . '</script>';
 
+// HowTo Schema for Care Instructions
+$howto_schema = [
+    "@context" => "https://schema.org",
+    "@type" => "HowTo",
+    "name" => "How to Care for Your " . $product['name'],
+    "description" => "Proper care instructions to maintain the beauty and longevity of your jewelry piece",
+    "step" => [
+        [
+            "@type" => "HowToStep",
+            "name" => "Storage",
+            "text" => "Store your jewelry in a cool, dry place away from direct sunlight to prevent discoloration and damage."
+        ],
+        [
+            "@type" => "HowToStep",
+            "name" => "Cleaning",
+            "text" => "Clean your jewelry regularly with a soft cloth and mild soap. Avoid harsh chemicals and abrasive materials."
+        ],
+        [
+            "@type" => "HowToStep",
+            "name" => "Wear and Tear",
+            "text" => "Remove jewelry before swimming, exercising, or engaging in activities that may cause impact or exposure to lotions and perfumes."
+        ],
+        [
+            "@type" => "HowToStep",
+            "name" => "Professional Care",
+            "text" => "For gold and precious metal jewelry, consider professional cleaning and inspection every 6-12 months."
+        ]
+    ],
+    "supply" => [
+        [
+            "@type" => "HowToSupply",
+            "name" => "Soft cloth"
+        ],
+        [
+            "@type" => "HowToSupply",
+            "name" => "Mild soap"
+        ]
+    ]
+];
+
+echo '<script type="application/ld+json">' . json_encode($howto_schema) . '</script>';
+
+// Breadcrumb Schema
+$breadcrumb_schema = [
+    "@context" => "https://schema.org",
+    "@type" => "BreadcrumbList",
+    "itemListElement" => [
+        [
+            "@type" => "ListItem",
+            "position" => 1,
+            "name" => "Home",
+            "item" => $base_url . "/"
+        ],
+        [
+            "@type" => "ListItem",
+            "position" => 2,
+            "name" => "Products",
+            "item" => $base_url . "/products.php"
+        ],
+        [
+            "@type" => "ListItem",
+            "position" => 3,
+            "name" => $product['name'],
+            "item" => $base_url . "/product/" . $product['slug']
+        ]
+    ]
+];
+
+echo '<script type="application/ld+json">' . json_encode($breadcrumb_schema) . '</script>';
+
 // Social Media Meta Tags
-$og_image = !empty($images) ? 'https://accessoriesbydija.com/' . $images[0]['image_url'] : 'https://accessoriesbydija.com/assets/images/placeholder.jpg';
-$og_url = 'https://accessoriesbydija.com/product/' . $product['slug'];
+$og_image = !empty($images) ? 'https://accessoriesbydija.uk/' . $images[0]['image_url'] : 'https://accessoriesbydija.uk/assets/images/placeholder.jpg';
+$og_url = 'https://accessoriesbydija.uk/product/' . $product['slug'];
 
 echo '<meta property="og:title" content="' . htmlspecialchars($product['name']) . '">' . "\n";
 echo '<meta property="og:description" content="' . htmlspecialchars($page_description) . '">' . "\n";
@@ -191,7 +263,9 @@ echo '<meta name="twitter:image" content="' . $og_image . '">' . "\n";
 
 // Additional meta tags
 echo '<link rel="canonical" href="' . $og_url . '">' . "\n";
-echo '<meta name="keywords" content="' . htmlspecialchars($product['category'] . ', ' . $product['material'] . ', jewelry, accessories') . '">' . "\n";
+$keywords = $product['name'] . ', ' . $product['category'] . ', ' . $product['material'] . ', ' . ($gender_display ?? '') . ', jewelry, accessories, rings, necklaces, earrings, bracelets, custom jewelry, handcrafted, premium, ethical, Dija Accessories';
+echo '<meta name="keywords" content="' . htmlspecialchars($keywords) . '">' . "\n";
+echo '<meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">' . "\n";
 
 // Structured Data for Product
 $structured_data = [
@@ -200,8 +274,14 @@ $structured_data = [
     "name" => $product['name'],
     "description" => $product['description'],
     "sku" => $product['sku'] ?? '',
+    "category" => $product['category'] ?? '',
+    "material" => $product['material'] ?? '',
     "brand" => [
         "@type" => "Brand",
+        "name" => "Dija Accessories"
+    ],
+    "manufacturer" => [
+        "@type" => "Organization",
         "name" => "Dija Accessories"
     ],
     "offers" => [
@@ -212,13 +292,26 @@ $structured_data = [
         "seller" => [
             "@type" => "Organization",
             "name" => "Dija Accessories"
+        ],
+        "priceValidUntil" => date('Y-m-d', strtotime('+1 year'))
+    ],
+    "additionalProperty" => [
+        [
+            "@type" => "PropertyValue",
+            "name" => "Gender",
+            "value" => $gender_display ?? ''
+        ],
+        [
+            "@type" => "PropertyValue",
+            "name" => "Care Instructions",
+            "value" => "Store in cool dry place, clean with soft cloth and mild soap"
         ]
     ]
 ];
 
 if (!empty($images)) {
     $structured_data["image"] = array_map(function($img) {
-        return "https://accessoriesbydija.com/" . $img['image_url'];
+        return "https://accessoriesbydija.uk/" . $img['image_url'];
     }, $images);
 }
 
@@ -329,7 +422,7 @@ if (!empty($reviews)) {
             <div class="main-image-container">
                 <div class="main-image" id="mainImage">
                     <?php if ($images && isset($images[0])): ?>
-                        <img src="/<?= htmlspecialchars($images[0]['image_url']) ?>" alt="<?= htmlspecialchars($images[0]['alt_text'] ?? 'Product image') ?>" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy">
+                        <img src="/<?= htmlspecialchars($images[0]['image_url']) ?>" alt="<?= htmlspecialchars($images[0]['alt_text'] ?? $product['name'] . ' - Premium Jewelry by Accessories By Dija') ?>" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy">
                     <?php else: ?>
                         💎
                     <?php endif; ?>
@@ -339,7 +432,7 @@ if (!empty($reviews)) {
                 <?php if ($images): ?>
                     <?php foreach ($images as $index => $image): ?>
                     <div class="thumbnail <?= $index === 0 ? 'active' : '' ?>" onclick="changeImage(this)" data-image-id="<?= $image['id'] ?>">
-                        <img src="/<?= htmlspecialchars($image['image_url']) ?>" alt="Product image" loading="lazy">
+                        <img src="/<?= htmlspecialchars($image['image_url']) ?>" alt="<?= htmlspecialchars($product['name']) ?> - View <?= $index + 1 ?>" loading="lazy">
                     </div>                    <?php endforeach; ?>
                 <?php else: ?>
                     <div class="thumbnail active" onclick="changeImage(this)">
@@ -673,7 +766,7 @@ function changeImage(thumbnail) {
     const mainImage = document.getElementById('mainImage');
     const img = thumbnail.querySelector('img');
     if (img) {
-        mainImage.innerHTML = `<img src="${img.src}" alt="Product image" style="width:100%;height:100%;object-fit:cover;">`;
+        mainImage.innerHTML = `<img src="${img.src}" alt="<?= htmlspecialchars($product['name']) ?> - Premium Jewelry by Accessories By Dija" style="width:100%;height:100%;object-fit:cover;">`;
     } else {
         mainImage.innerHTML = thumbnail.innerHTML;
     }
@@ -738,7 +831,7 @@ function selectVariation(variationId, priceAdjustment, variationData) {
         const image = productImages.find(img => img.tag === variationTag);
         if (image) {
             const mainImage = document.getElementById('mainImage');
-            mainImage.innerHTML = `<img src="/${image.image_url}" alt="${image.alt_text || 'Product image'}" style="width:100%;height:100%;object-fit:cover;">`;
+            mainImage.innerHTML = `<img src="/${image.image_url}" alt="<?= htmlspecialchars($product['name']) ?> - ${image.alt_text || 'Premium Jewelry by Accessories By Dija'}" style="width:100%;height:100%;object-fit:cover;">`;
 
             // Update active thumbnail
             document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));

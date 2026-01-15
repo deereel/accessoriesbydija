@@ -5,15 +5,46 @@ if (session_status() == PHP_SESSION_NONE) {
 require_once 'config/security.php';
 require_once 'config/seo.php';
 require_once 'config/cache.php';
+require_once 'config/database.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo isset($page_title) ? $page_title . ' - ' : ''; ?>Accessories By Dija - Premium Jewelry</title>
-    <meta name="description" content="<?php echo isset($page_description) ? $page_description : 'Discover premium jewelry collection at Accessories By Dija. Rings, necklaces, earrings, bracelets, and custom jewelry for men and women.'; ?>">
-    <link rel="canonical" href="<?php echo $BASE_URL . $_SERVER['REQUEST_URI']; ?>">
+    <?php
+    // Prepare page data for SEO functions
+    $base_url = isset($BASE_URL) ? $BASE_URL : 'https://' . $_SERVER['HTTP_HOST'];
+    $page_data = [
+        'title' => (isset($page_title) ? $page_title . ' - ' : '') . 'Accessories By Dija - Premium Jewelry',
+        'description' => isset($page_description) ? $page_description : 'Discover premium jewelry collection at Accessories By Dija. Rings, necklaces, earrings, bracelets, and custom jewelry for men and women.',
+        'keywords' => isset($page_keywords) ? $page_keywords : 'jewelry, rings, necklaces, earrings, bracelets, accessories',
+        'canonical' => isset($canonical_url) ? $canonical_url : $base_url . $_SERVER['REQUEST_URI'],
+        'og:type' => isset($og_type) ? $og_type : 'website',
+        'og:image' => isset($og_image) ? $og_image : $base_url . '/assets/images/logo.webp',
+        'twitter:card' => isset($twitter_card) ? $twitter_card : 'summary_large_image'
+    ];
+
+    $meta_tags = generateMetaTags($page_data);
+    $og_tags = generateOpenGraphTags($page_data);
+    $twitter_tags = generateTwitterTags($page_data);
+    ?>
+
+    <title><?php echo $meta_tags['title']; ?></title>
+    <meta name="description" content="<?php echo $meta_tags['description']; ?>">
+    <meta name="keywords" content="<?php echo $meta_tags['keywords']; ?>">
+    <meta name="robots" content="<?php echo $meta_tags['robots']; ?>">
+    <link rel="canonical" href="<?php echo $meta_tags['canonical']; ?>">
+
+    <!-- Open Graph / Facebook -->
+    <?php foreach ($og_tags as $property => $content): ?>
+    <meta property="<?php echo $property; ?>" content="<?php echo $content; ?>">
+    <?php endforeach; ?>
+
+    <!-- Twitter -->
+    <?php foreach ($twitter_tags as $name => $content): ?>
+    <meta name="twitter:<?php echo $name; ?>" content="<?php echo $content; ?>">
+    <?php endforeach; ?>
     <link rel="stylesheet" href="assets/css/header.css">
     <link rel="stylesheet" href="assets/css/hero.css">
     <link rel="stylesheet" href="assets/css/category-section.css">

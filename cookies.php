@@ -82,7 +82,7 @@ include 'includes/header.php';
 
             <div class="policy-section">
                 <h2>Contact Us</h2>
-                <p>If you have any questions about our use of cookies, please contact us at privacy@accessoriesbydija.com</p>
+                <p>If you have any questions about our use of cookies, please contact us at privacy@accessoriesbydija.uk</p>
             </div>
         </div>
     </section>
