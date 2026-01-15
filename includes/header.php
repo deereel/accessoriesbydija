@@ -27,7 +27,7 @@ require_once 'config/cache.php';
     <link rel="stylesheet" href="assets/css/product-cards.css">
     <link rel="stylesheet" href="assets/css/megamenu.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="assets/css/all.min.css" rel="stylesheet">
     <script src="assets/js/header.js" defer></script>
     <script src="assets/js/new-nav.js" defer></script>
     <script src="assets/js/cart-handler.js"></script>
@@ -338,3 +338,91 @@ require_once 'config/cache.php';
         
     });
     </script>
+    
+    <?php if (isset($_SESSION['show_newsletter_popup'])): ?>
+    <div id="newsletterPopupModal" class="modal" style="display: block;">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h4>Stay Connected</h4>
+            <p>Subscribe for exclusive offers and new arrivals</p>
+            <form class="newsletter-form" id="popupNewsletterForm">
+                <div class="newsletter-input-group">
+                    <input type="email" name="email" placeholder="Your email address" required>
+                    <button type="submit" class="btn btn-primary">Subscribe</button>
+                </div>
+                <div id="popupNewsletterMessage" class="newsletter-message" style="display: none;"></div>
+            </form>
+        </div>
+    </div>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const modal = document.getElementById('newsletterPopupModal');
+        const closeButton = modal.querySelector('.close-button');
+        const newsletterForm = document.getElementById('popupNewsletterForm');
+        const newsletterMessage = document.getElementById('popupNewsletterMessage');
+
+        closeButton.onclick = function() {
+            modal.style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        newsletterForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const emailInput = this.querySelector('input[name="email"]');
+            const submitButton = this.querySelector('button[type="submit"]');
+            const email = emailInput.value.trim();
+
+            if (!email) {
+                newsletterMessage.textContent = 'Please enter your email address.';
+                newsletterMessage.className = 'newsletter-message error';
+                newsletterMessage.style.display = 'block';
+                return;
+            }
+
+            submitButton.disabled = true;
+            submitButton.textContent = 'Subscribing...';
+
+            const formData = new FormData();
+            formData.append('email', email);
+
+            fetch('/api/newsletter.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    newsletterMessage.textContent = 'Thank you for subscribing!';
+                    newsletterMessage.className = 'newsletter-message success';
+                    newsletterMessage.style.display = 'block';
+                    setTimeout(() => {
+                        modal.style.display = 'none';
+                    }, 2000);
+                } else {
+                    newsletterMessage.textContent = data.message || 'Subscription failed. Please try again.';
+                    newsletterMessage.className = 'newsletter-message error';
+                    newsletterMessage.style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Newsletter subscription error:', error);
+                newsletterMessage.textContent = 'Subscription failed. Please try again.';
+                newsletterMessage.className = 'newsletter-message error';
+                newsletterMessage.style.display = 'block';
+            })
+            .finally(() => {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Subscribe';
+            });
+        });
+    });
+    </script>
+    <?php unset($_SESSION['show_newsletter_popup']); ?>
+    <?php endif; ?>
+</body>
+</html>

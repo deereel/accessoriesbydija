@@ -123,14 +123,14 @@
 
 .trust-badges {
     display: flex;
-    gap: 2rem;
+    gap: 1rem;
 }
 
 .trust-badges .badge {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     color: #ccc;
 }
 
@@ -161,7 +161,9 @@
     justify-content: space-between;
     align-items: center;
     color: #ccc;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
 
 .footer-legal {
@@ -205,6 +207,7 @@
         flex-direction: column;
         gap: 1rem;
         text-align: center;
+        font-size: 0.75rem;
     }
     
     .footer-legal {

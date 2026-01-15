@@ -231,7 +231,6 @@ if (!empty($reviews)) {
 }
 ?>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 <style>
 .breadcrumb { margin: 2rem auto 1rem; max-width: 1200px; padding: 0 1rem; }
 .breadcrumb a { color: #666; text-decoration: none; }

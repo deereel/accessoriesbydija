@@ -32,18 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadCategoryProducts();
     }
 
-    // Newsletter form
-    const newsletterForm = document.querySelector('.newsletter-form');
-    if (newsletterForm) {
-        newsletterForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const email = this.querySelector('input[type="email"]').value;
-            if (email) {
-                alert('Thank you for subscribing to our newsletter!');
-                this.reset();
-            }
-        });
-    }
+    
 });
 
 // Featured Products

@@ -1,5 +1,4 @@
 <?php
-header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' cdn.jsdelivr.net cdnjs.cloudflare.com fonts.googleapis.com; connect-src 'self' api.exchangerate-api.com; img-src 'self' data:; font-src 'self' fonts.gstatic.com;");
 require_once 'config/database.php';
 
 // Set page variables
@@ -123,7 +122,6 @@ try {
 }
 ?>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
 <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 <style>
@@ -326,7 +324,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
             </div>
 
             <!-- Products Grid -->
-            <div class="swiper products-swiper">
+            <div class="swiper">
                 <div class="swiper-wrapper">
                     <?php
                     $chunks = array_chunk($products, 16);
@@ -338,67 +336,66 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
                         <div class="swiper-slide" data-slide-index="<?= $index ?>">
                             <div class="product-grid">
                                 <?php foreach ($chunk as $product): ?>
-                                   <div class="product-card"
-                                       data-product-id="<?= $product['id'] ?>"
-                                       data-price="<?= $product['price'] ?>"
-                                       data-type="jewelry"
-                                       data-name="<?= htmlspecialchars($product['name']) ?>"
-                                       <?= $product['hover_image'] ? 'data-has-hover-image="true"' : '' ?>>
+                                    <div class="product-card"
+                                        data-product-id="<?= $product['id'] ?>"
+                                        data-price="<?= $product['price'] ?>"
+                                        data-type="jewelry"
+                                        data-name="<?= htmlspecialchars($product['name']) ?>"
+                                        <?= $product['hover_image'] ? 'data-has-hover-image="true"' : '' ?>>
 
-                                    <!-- Wishlist Button -->
-                                    <button class="wishlist-btn" data-product-id="<?= $product['id'] ?>" onclick="toggleWishlist(<?= $product['id'] ?>, this)">
-                                        <i class="far fa-heart"></i>
-                                    </button>
+                                     <!-- Wishlist Button -->
+                                     <button class="wishlist-btn" data-product-id="<?= $product['id'] ?>" onclick="toggleWishlist(<?= $product['id'] ?>, this)">
+                                         <i class="far fa-heart"></i>
+                                     </button>
 
-                                    <!-- Product Image -->
-                                    <a href="product.php?slug=<?= $product['slug'] ?>" class="product-image">
-                                        <?php if ($product['main_image']): ?>
-                                            <img class="main-img" src="<?= htmlspecialchars($product['main_image']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
-                                            <?php if ($product['hover_image']): ?>
-                                                <img class="hover-img" src="<?= htmlspecialchars($product['hover_image']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
-                                            <?php endif; ?>
-                                        <?php else: ?>
-                                            <div class="main-img placeholder"><?= htmlspecialchars(substr($product['name'], 0, 3)) ?></div>
-                                        <?php endif; ?>
-                                    </a>
+                                     <!-- Product Image -->
+                                     <a href="product.php?slug=<?= $product['slug'] ?>" class="product-image">
+                                         <?php if ($product['main_image']): ?>
+                                             <img class="main-img" src="<?= htmlspecialchars($product['main_image']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
+                                             <?php if ($product['hover_image']): ?>
+                                                 <img class="hover-img" src="<?= htmlspecialchars($product['hover_image']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
+                                             <?php endif; ?>
+                                         <?php else: ?>
+                                             <div class="main-img placeholder"><?= htmlspecialchars(substr($product['name'], 0, 3)) ?></div>
+                                         <?php endif; ?>
+                                     </a>
 
-                                    <!-- Product Info -->
-                                    <div class="product-info">
-                                        <h3><a href="product.php?slug=<?= $product['slug'] ?>" style="text-decoration:none;color:inherit;"><?= htmlspecialchars($product['name']) ?></a></h3>
-                                        <p><?= htmlspecialchars(substr($product['description'] ?? '', 0, 50)) ?>...</p>
-                                        <?php if ($product['weight']): ?>
-                                        <p style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem;">⚖️ <?= htmlspecialchars($product['weight']) ?>g</p>
-                                        <?php endif; ?>
-                                        <div class="product-footer">
-                                            <span class="product-price" data-price="<?= $product['price'] ?>">£<?= number_format($product['price'], 2) ?></span>
-                                            <button class="cart-btn add-to-cart" data-product-id="<?= $product['id'] ?>" <?php if ($product['stock_quantity'] <= 0): ?>disabled<?php endif; ?>>Add to Cart</button>
-                                        </div>
-                                        <!-- Stock Status Badge -->
-                                        <div class="stock-badge" style="margin-top: 8px; text-align: center; font-size: 0.85rem; font-weight: 500;">
-                                            <?php if ($product['stock_quantity'] <= 0): ?>
-                                                <span style="color: #d32f2f; background-color: #ffebee; padding: 4px 8px; border-radius: 4px; display: inline-block;">Out of Stock</span>
-                                            <?php elseif ($product['stock_quantity'] < 10): ?>
-                                                <span style="color: #f57c00; background-color: #fff3e0; padding: 4px 8px; border-radius: 4px; display: inline-block;">Only <?= $product['stock_quantity'] ?> left</span>
-                                            <?php else: ?>
-                                                <span style="color: #388e3c; background-color: #e8f5e9; padding: 4px 8px; border-radius: 4px; display: inline-block;">In Stock</span>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                        <?php endforeach;
-                    }
-                    ?>
-                </div>
-                <!-- Navigation Controls -->
-                <div class="swiper-navigation">
-                    <div class="swiper-button-prev"></div>
-                    <div class="swiper-pagination"></div>
-                    <div class="swiper-button-next"></div>
-                </div>
-            </div>
+                                     <!-- Product Info -->
+                                     <div class="product-info">
+                                         <h3><a href="product.php?slug=<?= $product['slug'] ?>" style="text-decoration:none;color:inherit;"><?= htmlspecialchars($product['name']) ?></a></h3>
+                                         <p><?= htmlspecialchars(substr($product['description'] ?? '', 0, 50)) ?>...</p>
+                                         <?php if ($product['weight']): ?>
+                                         <p style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem;">⚖️ <?= htmlspecialchars($product['weight']) ?>g</p>
+                                         <?php endif; ?>
+                                         <div class="product-footer">
+                                             <span class="product-price" data-price="<?= $product['price'] ?>">£<?= number_format($product['price'], 2) ?></span>
+                                             <button class="cart-btn add-to-cart" data-product-id="<?= $product['id'] ?>" <?php if ($product['stock_quantity'] <= 0): ?>disabled<?php endif; ?>>Add to Cart</button>
+                                         </div>
+                                         <!-- Stock Status Badge -->
+                                         <div class="stock-badge" style="margin-top: 8px; text-align: center; font-size: 0.85rem; font-weight: 500;">
+                                             <?php if ($product['stock_quantity'] <= 0): ?>
+                                                 <span style="color: #d32f2f; background-color: #ffebee; padding: 4px 8px; border-radius: 4px; display: inline-block;">Out of Stock</span>
+                                             <?php elseif ($product['stock_quantity'] < 10): ?>
+                                                 <span style="color: #f57c00; background-color: #fff3e0; padding: 4px 8px; border-radius: 4px; display: inline-block;">Only <?= $product['stock_quantity'] ?> left</span>
+                                             <?php else: ?>
+                                                 <span style="color: #388e3c; background-color: #e8f5e9; padding: 4px 8px; border-radius: 4px; display: inline-block;">In Stock</span>
+                                             <?php endif; ?>
+                                         </div>
+                                     </div>
+                                 </div>
+                                 <?php endforeach; ?>
+                             </div>
+                         </div>
+                         <?php endforeach;
+                     }
+                     ?>
+                 </div>
+             </div>
+             <div class="swiper-navigation">
+                 <button class="swiper-button-prev" type="button"></button>
+                 <div class="swiper-pagination"></div>
+                 <button class="swiper-button-next" type="button"></button>
+             </div>
         </div>
     </div>
 </main>
@@ -438,38 +435,18 @@ document.addEventListener('DOMContentLoaded', function () {
         window.location.href = url.toString();
     }
 
-    const swiper = new Swiper('.products-swiper', {
+    const swiper = new Swiper('.swiper', {
         slidesPerView: 1,
         spaceBetween: 0,
-        // We'll manage height updates manually so 4x4 grid never gets clipped.
-        autoHeight: true,
         navigation: {
-            nextEl: '.products-swiper .swiper-button-next',
-            prevEl: '.products-swiper .swiper-button-prev',
+            nextEl: '.swiper-button-next',
+            prevEl: '.swiper-button-prev',
         },
         pagination: {
-            el: '.products-swiper .swiper-pagination',
+            el: '.swiper-pagination',
             clickable: true,
         },
-        on: {
-            init() {
-                // Wait a tick for layout, then size to content
-                setTimeout(() => this.updateAutoHeight(0), 0);
-            }
-        }
     });
-
-    // Recompute height when images finish loading (prevents footer creeping up / clipped rows)
-    function updateSwiperHeight() {
-        if (!swiper || typeof swiper.updateAutoHeight !== 'function') return;
-        swiper.updateAutoHeight(0);
-    }
-
-    // When the whole page is loaded (images included)
-    window.addEventListener('load', updateSwiperHeight);
-
-    // Also after slide changes/transition ends
-    swiper.on('slideChangeTransitionEnd', updateSwiperHeight);
 });
 
 // Wishlist functionality
@@ -540,23 +517,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <style>
 /* Custom swiper container and slides */
-.products-swiper {
+.swiper {
     width: 100%;
     height: auto;
     position: relative;
     overflow: hidden; /* required so only the active slide is visible */
 }
 
-/* IMPORTANT: allow slides to grow to fit 16-product grid */
-.products-swiper .swiper-wrapper { display: flex !important; flex-wrap: nowrap !important; align-items: flex-start; }
-.products-swiper .swiper-slide { flex: 0 0 100% !important; width: 100% !important; height: auto !important; }
-
-/* Keep navigation in normal flow (Swiper's defaults are absolute positioned) */
-.products-swiper .swiper-button-next,
-.products-swiper .swiper-button-prev {
-    position: static !important;
-    margin: 0 !important;
+.swiper .swiper-wrapper {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-start;
 }
+
+.swiper .swiper-slide {
+    width: 100%;
+    height: auto;
+    flex-shrink: 0;
+}
+
+
 
 /* Navigation controls container */
 .swiper-navigation {
@@ -581,7 +561,7 @@ document.addEventListener('DOMContentLoaded', function() {
     text-align: center;
     line-height: 30px;
     font-size: 12px;
-    color:#000;
+    color: #000;
     opacity: 1;
     background: rgba(0,0,0,0.2);
     border-radius: 50%;
@@ -589,6 +569,7 @@ document.addEventListener('DOMContentLoaded', function() {
     transition: background-color 0.3s ease, color 0.3s ease;
     border: none;
     display: inline-block;
+    font-weight: bold;
 }
 
 .swiper-pagination-bullet-active {
@@ -610,14 +591,16 @@ document.addEventListener('DOMContentLoaded', function() {
     font-size: 16px;
     align-items: center;
     justify-content: center;
+    font-family: 'Font Awesome 7 Free';
+    font-weight: 900;
 }
 
 .swiper-button-next::before {
-    content: '→';
+    content: '\f061'; /* fa-arrow-right */
 }
 
 .swiper-button-prev::before {
-    content: '←';
+    content: '\f060'; /* fa-arrow-left */
 }
 
 .swiper-button-next:hover, .swiper-button-prev:hover {

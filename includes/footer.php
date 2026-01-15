@@ -2,11 +2,11 @@
     <footer class="footer">
         <div class="footer-container">
             <div class="footer-section">
-                <h3>Dija Accessories</h3>
+                <h3>Accessories By Dija</h3>
                 <p>Premium jewelry collection for the modern individual. Crafted with precision and designed for elegance.</p>
                 <div class="contact-info">
                     <p><i class="fas fa-phone"></i> +44 20 7946 0958</p>
-                    <p><i class="fas fa-envelope"></i> hello@dijaccessories.com</p>
+                    <p><i class="fas fa-envelope"></i> hello@accessoriesbydija.com</p>
                     <p><i class="fas fa-map-marker-alt"></i> London, United Kingdom</p>
                 </div>
             </div>
@@ -34,9 +34,12 @@
             <div class="footer-section">
                 <h4>Stay Connected</h4>
                 <p>Subscribe for exclusive offers and new arrivals</p>
-                <form class="newsletter-form">
-                    <input type="email" placeholder="Your email address" required>
-                    <button type="submit">Subscribe</button>
+                <form class="newsletter-form" id="newsletterForm">
+                    <div class="newsletter-input-group">
+                        <input type="email" name="email" placeholder="Your email address" required>
+                        <button type="submit" class="btn btn-primary">Subscribe</button>
+                    </div>
+                    <div id="newsletterMessage" class="newsletter-message" style="display: none;"></div>
                 </form>
                 <div class="social-links">
                     <a href="#" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
@@ -44,26 +47,26 @@
                     <a href="#" aria-label="TikTok"><i class="fab fa-tiktok"></i></a>
                     <a href="#" aria-label="WhatsApp"><i class="fab fa-whatsapp"></i></a>
                 </div>
+                <div class="payment-icons">
+                    <i class="fab fa-cc-visa"></i>
+                    <i class="fab fa-cc-mastercard"></i>
+                    <i class="fab fa-cc-paypal"></i>
+                    <i class="fab fa-cc-apple-pay"></i>
+                </div>
             </div>
         </div>
-        <div class="footer-middle">
+        
+        
+        <div class="footer-bottom">
             <div class="trust-badges">
                 <div class="badge"><i class="fas fa-shield-alt"></i> Secure Payment</div>
                 <div class="badge"><i class="fas fa-undo"></i> Easy Returns</div>
                 <div class="badge"><i class="fas fa-certificate"></i> Lifetime Warranty</div>
                 <div class="badge"><i class="fas fa-gem"></i> Premium Quality</div>
             </div>
-            <div class="payment-icons">
-                <i class="fab fa-cc-visa"></i>
-                <i class="fab fa-cc-mastercard"></i>
-                <i class="fab fa-cc-paypal"></i>
-                <i class="fab fa-cc-apple-pay"></i>
-            </div>
-        </div>
-        <div class="footer-bottom">
             <div class="footer-legal">
-                <a href="privacy-policy.php">Privacy Policy</a>
-                <a href="terms-conditions.php">Terms & Conditions</a>
+                <a href="privacy.php">Privacy Policy</a>
+                <a href="terms.php">Terms & Conditions</a>
                 <a href="returns.php">Returns Policy</a>
             </div>
             <p>&copy; 2024 Dija Accessories. All rights reserved.</p>
@@ -104,6 +107,14 @@
     })();
     </script>
 
+    <!-- Newsletter Success Modal -->
+    <div id="newsletterSuccessModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <p id="newsletterSuccessMessage"></p>
+        </div>
+    </div>
+
     <!-- Cookie Consent Banner -->
     <div id="cookieConsent" class="cookie-consent" style="display: none;">
         <div class="cookie-content">
@@ -113,6 +124,52 @@
         </div>
     </div>
 
+    <style>
+    /* The Modal (background) */
+    .modal {
+        display: none; /* Hidden by default */
+        position: fixed; /* Stay in place */
+        z-index: 1001; /* Sit on top */
+        left: 0;
+        top: 0;
+        width: 100%; /* Full width */
+        height: 100%; /* Full height */
+        overflow: auto; /* Enable scroll if needed */
+        background-color: rgb(0,0,0); /* Fallback color */
+        background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    }
+
+    /* Modal Content/Box */
+    .modal-content {
+        background-color: #fefefe;
+        margin: 15% auto; /* 15% from the top and centered */
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%; /* Could be more or less, depending on screen size */
+        max-width: 500px;
+        position: relative;
+        border-radius: 8px;
+    }
+
+    /* The Close Button */
+    .close-button {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+        position: absolute;
+        top: 10px;
+        right: 20px;
+    }
+
+    .close-button:hover,
+    .close-button:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+    }
+    </style>
+    
     <style>
     .cookie-consent {
         position: fixed;
@@ -146,6 +203,61 @@
             text-align: center;
         }
     }
+
+    /* Newsletter styles */
+    .newsletter-form {
+        margin-bottom: 1rem;
+    }
+    .newsletter-input-group {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    .newsletter-input-group input {
+        flex: 1;
+        padding: 0.5rem;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    .newsletter-input-group button {
+        padding: 0.5rem 1rem;
+        background: #C27BA0;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .newsletter-input-group button:hover {
+        background: #a85d8a;
+    }
+    .newsletter-input-group button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+    }
+    .newsletter-message {
+        padding: 0.5rem;
+        border-radius: 4px;
+        margin-top: 0.5rem;
+        font-size: 0.9rem;
+    }
+    .newsletter-message.success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+    .newsletter-message.error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+    @media (max-width: 768px) {
+        .newsletter-input-group {
+            flex-direction: column;
+        }
+        .newsletter-input-group button {
+            width: 100%;
+        }
+    }
     </style>
 
     <script>
@@ -164,6 +276,87 @@
             localStorage.setItem('cookieConsent', 'declined');
             document.getElementById('cookieConsent').style.display = 'none';
         });
+
+        // Newsletter subscription
+        const newsletterForm = document.getElementById('newsletterForm');
+        const newsletterMessage = document.getElementById('newsletterMessage');
+
+        if (newsletterForm) {
+            newsletterForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const emailInput = this.querySelector('input[name="email"]');
+                const submitButton = this.querySelector('button[type="submit"]');
+                const email = emailInput.value.trim();
+
+                if (!email) {
+                    showNewsletterMessage('Please enter your email address.', 'error');
+                    return;
+                }
+
+                // Disable form during submission
+                submitButton.disabled = true;
+                submitButton.textContent = 'Subscribing...';
+
+                const formData = new FormData();
+                formData.append('email', email);
+
+                fetch('/api/newsletter.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showNewsletterMessage('Thank you for subscribing! You will receive our latest updates.', 'success');
+                        newsletterForm.reset();
+                    } else {
+                        showNewsletterMessage(data.message || 'Subscription failed. Please try again.', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Newsletter subscription error:', error);
+                    showNewsletterMessage('Subscription failed. Please try again.', 'error');
+                })
+                .finally(() => {
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Subscribe';
+                });
+            });
+        }
+
+        function showNewsletterMessage(message, type) {
+            const modal = document.getElementById('newsletterSuccessModal');
+            const modalMessage = document.getElementById('newsletterSuccessMessage');
+            const closeButton = modal.querySelector('.close-button');
+
+            if (type === 'success') {
+                if (modal && modalMessage && closeButton) {
+                    modalMessage.textContent = message;
+                    modal.style.display = 'block';
+
+                    closeButton.onclick = function() {
+                        modal.style.display = 'none';
+                    }
+
+                    window.onclick = function(event) {
+                        if (event.target == modal) {
+                            modal.style.display = 'none';
+                        }
+                    }
+                }
+            } else {
+                if (newsletterMessage) {
+                    newsletterMessage.textContent = message;
+                    newsletterMessage.className = `newsletter-message ${type}`;
+                    newsletterMessage.style.display = 'block';
+
+                    // Hide message after 5 seconds
+                    setTimeout(() => {
+                        newsletterMessage.style.display = 'none';
+                    }, 5000);
+                }
+            }
+        }
     });
     </script>
 </body>

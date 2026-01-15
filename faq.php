@@ -1,14 +1,31 @@
 <?php
 $page_title = "Frequently Asked Questions";
-$page_description = "Find answers to common questions about Dija Accessories jewelry, shipping, returns, custom designs, and more.";
+$page_description = "Find answers to common questions about Accessories By Dija jewelry, shipping, returns, custom designs, and more.";
 include 'includes/header.php';
+
+// Get materials from database
+require_once 'config/database.php';
+$materials = [];
+$adornments = [];
+
+try {
+    $stmt = $pdo->query("SELECT name FROM materials ORDER BY name");
+    $materials = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+    $stmt = $pdo->query("SELECT DISTINCT adornment FROM product_variations WHERE adornment IS NOT NULL AND adornment != '' ORDER BY adornment");
+    $adornments = $stmt->fetchAll(PDO::FETCH_COLUMN);
+} catch (Exception $e) {
+    // Fallback if database query fails
+    $materials = ['Gold', 'Silver', 'Platinum'];
+    $adornments = ['Diamond', 'Ruby', 'Sapphire', 'Emerald'];
+}
 ?>
 
 <main>
     <section class="faq-hero">
         <div class="container">
             <h1>Frequently Asked Questions</h1>
-            <p>Find answers to the most common questions about our jewelry, services, and policies.</p>
+            <p>Find answers to the most common questions about Accessories By Dija jewelry, services, and policies.</p>
         </div>
     </section>
 
@@ -18,7 +35,7 @@ include 'includes/header.php';
                 <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
                     <h3 itemprop="name">What materials do you use in your jewelry?</h3>
                     <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
-                        <p itemprop="text">We use only premium materials including 14k and 18k gold, sterling silver, platinum, and ethically sourced gemstones. All our pieces are hypoallergenic and nickel-free.</p>
+                        <p itemprop="text">We use premium materials including: <?php echo htmlspecialchars(implode(', ', $materials)); ?>. We also offer various gemstone options such as: <?php echo htmlspecialchars(implode(', ', $adornments)); ?>. All our pieces are hypoallergenic and nickel-free.</p>
                     </div>
                 </div>
 
@@ -37,13 +54,6 @@ include 'includes/header.php';
                 </div>
 
                 <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
-                    <h3 itemprop="name">Do you provide certificates for diamonds?</h3>
-                    <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
-                        <p itemprop="text">Yes, all diamonds over 0.5 carats come with GIA or equivalent certification. We provide detailed information about cut, clarity, color, and carat weight for complete transparency.</p>
-                    </div>
-                </div>
-
-                <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
                     <h3 itemprop="name">How long does shipping take?</h3>
                     <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
                         <p itemprop="text">Standard shipping takes 3-5 business days. Express shipping (1-2 days) is available. Custom pieces typically take 2-4 weeks depending on complexity. All orders include tracking and insurance.</p>
@@ -53,7 +63,7 @@ include 'includes/header.php';
                 <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
                     <h3 itemprop="name">Do you offer warranty on your jewelry?</h3>
                     <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
-                        <p itemprop="text">Yes, we provide a lifetime warranty against manufacturing defects. This includes free repairs for normal wear and tear, stone tightening, and rhodium plating for white gold pieces.</p>
+                        <p itemprop="text">Yes, we provide up to 6 months warranty against manufacturing defects.</p>
                     </div>
                 </div>
             </div>

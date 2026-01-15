@@ -52,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     
     try {
         // Get customer by email
-        $stmt = $pdo->prepare("SELECT id, first_name, last_name, email, password_hash, is_active FROM customers WHERE email = ?");
+        $stmt = $pdo->prepare("SELECT id, first_name, last_name, email, password_hash, is_active, created_at FROM customers WHERE email = ?");
         $stmt->execute([$email]);
         $customer = $stmt->fetch(PDO::FETCH_ASSOC);
         
@@ -73,6 +73,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $attempts['last_attempt'] = $current_time;
             echo json_encode(['success' => false, 'message' => 'Invalid email or password']);
             exit;
+        }
+
+        // Check if user is new (created in the last 5 minutes)
+        if (isset($customer['created_at']) && strtotime($customer['created_at']) > (time() - 300)) {
+            $_SESSION['show_newsletter_popup'] = true;
         }
         
         // Check if admin-forced password reset is required (column may not exist)

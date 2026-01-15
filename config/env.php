@@ -1,10 +1,12 @@
 <?php
 /**
  * Environment Configuration Loader
- * Loads variables from .env file into PHP environment
+ * Loads variables from .env.{environment} file into PHP environment
  */
 
-$env_file = __DIR__ . '/../.env';
+require_once __DIR__ . '/environment.php';
+
+$env_file = __DIR__ . '/../.env.' . $environment;
 
 if (file_exists($env_file)) {
     $lines = file($env_file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);

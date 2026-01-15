@@ -1,6 +1,8 @@
 # Environment variables - Do not commit sensitive keys
 .env
 .env.local
+.env.dev
+.env.live
 .env.*.local
 
 # Composer dependencies
