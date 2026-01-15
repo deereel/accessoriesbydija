@@ -4,11 +4,13 @@ class CartHandler {
         this.userId = null;
         this.isLoggedIn = false;
         this.cartCount = 0;
+        this.sessionId = null;
         this.init();
     }
 
     async init() {
         await this.checkLoginStatus();
+        this.initSessionId();
         this.updateCartCount();
         this.bindEvents();
         if (window.location.pathname.includes('/cart.php')) {
@@ -26,6 +28,16 @@ class CartHandler {
             console.error('Error checking login status:', error);
             this.isLoggedIn = false;
             this.userId = null;
+        }
+    }
+
+    initSessionId() {
+        if (!this.isLoggedIn) {
+            this.sessionId = localStorage.getItem('cartSessionId');
+            if (!this.sessionId) {
+                this.sessionId = 'guest_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('cartSessionId', this.sessionId);
+            }
         }
     }
 
@@ -124,12 +136,16 @@ class CartHandler {
     async addToCart(productData) {
         console.log('CartHandler received productData:', productData);
         try {
+            const data = { ...productData };
+            if (this.sessionId) {
+                data.session_id = this.sessionId;
+            }
             const response = await fetch('/api/cart.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(productData)
+                body: JSON.stringify(data)
             });
 
             const result = await response.json();
@@ -188,15 +204,19 @@ class CartHandler {
         }
 
         try {
+            const data = {
+                cart_item_id: cartItemId,
+                quantity: quantity
+            };
+            if (this.sessionId) {
+                data.session_id = this.sessionId;
+            }
             const response = await fetch('/api/cart.php', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    cart_item_id: cartItemId,
-                    quantity: quantity
-                })
+                body: JSON.stringify(data)
             });
 
             const result = await response.json();
@@ -226,7 +246,10 @@ class CartHandler {
         }
 
         try {
-            const response = await fetch(`/api/cart.php?cart_item_id=${cartItemId}`, {
+            const url = this.sessionId ?
+                `/api/cart.php?cart_item_id=${cartItemId}&session_id=${encodeURIComponent(this.sessionId)}` :
+                `/api/cart.php?cart_item_id=${cartItemId}`;
+            const response = await fetch(url, {
                 method: 'DELETE'
             });
 
@@ -264,7 +287,8 @@ class CartHandler {
 
     async getCart() {
         try {
-            const response = await fetch('/api/cart.php');
+            const url = this.sessionId ? `/api/cart.php?session_id=${encodeURIComponent(this.sessionId)}` : '/api/cart.php';
+            const response = await fetch(url);
             return await response.json();
         } catch (error) {
             console.error('Error getting cart:', error);

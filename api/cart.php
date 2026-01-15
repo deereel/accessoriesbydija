@@ -23,22 +23,33 @@ function current_customer_id() {
 	return isset($_SESSION['customer_id']) ? (int)$_SESSION['customer_id'] : null;
 }
 
+// Helper: check if guest has email (for DB storage)
+function guest_has_email() {
+	return isset($_SESSION['guest_email']) && !empty($_SESSION['guest_email']);
+}
+
 try {
 	// GET: list cart
 	if ($method === 'GET') {
 		$customer_id = current_customer_id();
-		if ($customer_id) {
-			$stmt = $pdo->prepare("SELECT c.id as cart_item_id, c.product_id, c.quantity, c.material_id, c.variation_id, c.size_id, c.selected_price,
-			p.name as product_name, COALESCE(c.selected_price, pv.price_adjustment, p.price) as price, p.slug,
-			m.name as material_name, pv.tag as variation_tag, pv.color, pv.adornment, vs.size
-			FROM cart c
-			JOIN products p ON p.id = c.product_id
-			LEFT JOIN materials m ON m.id = c.material_id
-			LEFT JOIN product_variations pv ON pv.id = c.variation_id
-			LEFT JOIN variation_sizes vs ON vs.id = c.size_id
-			WHERE c.customer_id = ?");
-			$stmt->execute([$customer_id]);
+
+		if ($customer_id || guest_has_email()) {
+			// Use DB for logged-in users or guests with email
+			$session_id = isset($_GET['session_id']) ? $_GET['session_id'] : null;
+			$query = "SELECT c.id as cart_item_id, c.product_id, c.quantity, c.material_id, c.variation_id, c.size_id, c.selected_price,
+				p.name as product_name, COALESCE(c.selected_price, pv.price_adjustment, p.price) as price, p.slug, p.sku,
+				m.name as material_name, pv.tag as variation_tag, pv.color, pv.adornment, vs.size
+				FROM cart c
+				JOIN products p ON p.id = c.product_id
+				LEFT JOIN materials m ON m.id = c.material_id
+				LEFT JOIN product_variations pv ON pv.id = c.variation_id
+				LEFT JOIN variation_sizes vs ON vs.id = c.size_id
+				WHERE " . ($customer_id ? "c.customer_id = ?" : "c.session_id = ?");
+
+			$stmt = $pdo->prepare($query);
+			$stmt->execute([$customer_id ?: $session_id]);
 			$items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
 			// For each item, get the appropriate image: variation image if tag matches, else primary
 			$modifiedItems = [];
 			foreach ($items as $item) {
@@ -56,26 +67,26 @@ try {
 			}
 			$items = $modifiedItems;
 			json(['success' => true, 'items' => $items]);
+		} else {
+			// Guest without email: return session cart, ensure image is present
+			$items = isset($_SESSION['cart']) ? array_values($_SESSION['cart']) : [];
+			if (!empty($items)) {
+				$modifiedItems = [];
+				foreach ($items as $it) {
+					if (empty($it['image'])) {
+						$imgStmt = $pdo->prepare('SELECT image_url FROM product_images WHERE product_id = ? ORDER BY is_primary DESC, sort_order ASC LIMIT 1');
+						$imgStmt->execute([(int)($it['product_id'] ?? 0)]);
+						$row = $imgStmt->fetch(PDO::FETCH_ASSOC);
+						if ($row && isset($row['image_url'])) {
+							$it['image'] = $row['image_url'];
+						}
+					}
+					$modifiedItems[] = $it;
+				}
+				$items = $modifiedItems;
+			}
+			json(['success' => true, 'items' => $items]);
 		}
-
-		// guest: return session cart, ensure image is present
-		$items = isset($_SESSION['cart']) ? array_values($_SESSION['cart']) : [];
-		if (!empty($items)) {
-		$modifiedItems = [];
-		foreach ($items as $it) {
-		if (empty($it['image'])) {
-		$imgStmt = $pdo->prepare('SELECT image_url FROM product_images WHERE product_id = ? ORDER BY is_primary DESC, sort_order ASC LIMIT 1');
-		$imgStmt->execute([ (int)($it['product_id'] ?? 0) ]);
-		$row = $imgStmt->fetch(PDO::FETCH_ASSOC);
-		if ($row && isset($row['image_url'])) {
-		$it['image'] = $row['image_url'];
-		}
-		}
-		$modifiedItems[] = $it;
-		}
-		$items = $modifiedItems;
-		}
-		json(['success' => true, 'items' => $items]);
 	}
 
 	// POST: add item
@@ -135,89 +146,98 @@ try {
 		// In production, re-enable stock validation
 
 		$customer_id = current_customer_id();
-		if ($customer_id) {
+
+		if ($customer_id || guest_has_email()) {
+			// Use DB for logged-in users or guests with email
+			$session_id = isset($input['session_id']) ? $input['session_id'] : null;
+
 			// Insert or update DB cart with specifications
-			$stmt = $pdo->prepare('SELECT id, quantity FROM cart WHERE customer_id = ? AND product_id = ? AND material_id <=> ? AND variation_id <=> ? AND size_id <=> ?');
-			$stmt->execute([$customer_id, $product_id, $material_id, $variation_id, $size_id]);
+			$whereClause = $customer_id ? 'customer_id = ?' : 'session_id = ?';
+			$params = [$customer_id ?: $session_id, $product_id, $material_id, $variation_id, $size_id];
+			$stmt = $pdo->prepare("SELECT id, quantity FROM cart WHERE $whereClause AND product_id = ? AND material_id <=> ? AND variation_id <=> ? AND size_id <=> ?");
+			$stmt->execute($params);
 			$row = $stmt->fetch(PDO::FETCH_ASSOC);
 			if ($row) {
 				$newQty = $row['quantity'] + $quantity;
 				$upd = $pdo->prepare('UPDATE cart SET quantity = ?, selected_price = ?, updated_at = NOW() WHERE id = ?');
 				$upd->execute([$newQty, $selected_price, $row['id']]);
 			} else {
-				$ins = $pdo->prepare('INSERT INTO cart (customer_id, product_id, quantity, material_id, variation_id, size_id, selected_price) VALUES (?, ?, ?, ?, ?, ?, ?)');
-				$ins->execute([$customer_id, $product_id, $quantity, $material_id, $variation_id, $size_id, $selected_price]);
+				$ins = $pdo->prepare('INSERT INTO cart (' . ($customer_id ? 'customer_id' : 'session_id') . ', product_id, quantity, material_id, variation_id, size_id, selected_price' . ($customer_id ? '' : ', guest_email') . ') VALUES (?, ?, ?, ?, ?, ?, ?' . ($customer_id ? '' : ', ?') . ')');
+				$params = [$customer_id ?: $session_id, $product_id, $quantity, $material_id, $variation_id, $size_id, $selected_price];
+				if (!$customer_id) $params[] = $_SESSION['guest_email'];
+				$ins->execute($params);
 			}
 
-			json(['success' => true, 'message' => 'Item added to cart (DB)']);
-		}
-
-		// Guest: save to session
-		if (!isset($_SESSION['cart']) || !is_array($_SESSION['cart'])) $_SESSION['cart'] = [];
-		$key = $product_id . '_' . ($material_id ?: 'null') . '_' . ($variation_id ?: 'null') . '_' . ($size_id ?: 'null');
-
-		// Fetch names
-		$material_name = null;
-		$variation_tag = null;
-		$color = null;
-		$finish = null;
-		$size = null;
-		if ($material_id) {
-			$mStmt = $pdo->prepare('SELECT name FROM materials WHERE id = ?');
-			$mStmt->execute([$material_id]);
-			$mRow = $mStmt->fetch(PDO::FETCH_ASSOC);
-			$material_name = $mRow['name'] ?? null;
-		}
-		if ($variation_id) {
-			$vStmt = $pdo->prepare('SELECT tag, color, adornment FROM product_variations WHERE id = ?');
-			$vStmt->execute([$variation_id]);
-			$vRow = $vStmt->fetch(PDO::FETCH_ASSOC);
-			$variation_tag = $vRow['tag'] ?? null;
-			$color = $vRow['color'] ?? null;
-			$adornment = $vRow['adornment'] ?? null;
-		}
-		if ($size_id) {
-			$sStmt = $pdo->prepare('SELECT size FROM variation_sizes WHERE id = ?');
-			$sStmt->execute([$size_id]);
-			$sRow = $sStmt->fetch(PDO::FETCH_ASSOC);
-			$size = $sRow['size'] ?? null;
-		}
-
-		// Determine image URL from input or DB
-		$image_url = isset($input['image']) && $input['image'] ? (string)$input['image'] : null;
-		if (!$image_url) {
-		$imgStmt = $pdo->prepare('SELECT image_url FROM product_images WHERE product_id = ? ORDER BY is_primary DESC, sort_order ASC LIMIT 1');
-		$imgStmt->execute([$product_id]);
-		$row = $imgStmt->fetch(PDO::FETCH_ASSOC);
-		if ($row && isset($row['image_url'])) {
-		$image_url = $row['image_url'];
-		}
-		}
-
-		if (isset($_SESSION['cart'][$key])) {
-		$_SESSION['cart'][$key]['quantity'] += $quantity;
+			json(['success' => true, 'message' => 'Item added to cart']);
 		} else {
-		$_SESSION['cart'][$key] = [
-		'cart_item_id' => $key,
-		'product_id' => $product_id,
-		'product_name' => $product['name'],
-		'price' => $selected_price ?: (float)$product['price'],
-		'slug' => $product['slug'] ?? '',
-		'quantity' => $quantity,
-		'image' => $image_url,
-		'material_id' => $material_id,
-		'variation_id' => $variation_id,
-		'size_id' => $size_id,
-		'selected_price' => $selected_price,
-		'material_name' => $material_name,
-		'variation_tag' => $variation_tag,
-		'color' => $color,
-		'adornment' => $adornment,
-		'size' => $size
-		];
+			// Guest without email: save to session
+			if (!isset($_SESSION['cart']) || !is_array($_SESSION['cart'])) $_SESSION['cart'] = [];
+			$key = $product_id . '_' . ($material_id ?: 'null') . '_' . ($variation_id ?: 'null') . '_' . ($size_id ?: 'null');
+
+			// Fetch names
+			$material_name = null;
+			$variation_tag = null;
+			$color = null;
+			$adornment = null;
+			$size = null;
+			if ($material_id) {
+				$mStmt = $pdo->prepare('SELECT name FROM materials WHERE id = ?');
+				$mStmt->execute([$material_id]);
+				$mRow = $mStmt->fetch(PDO::FETCH_ASSOC);
+				$material_name = $mRow['name'] ?? null;
+			}
+			if ($variation_id) {
+				$vStmt = $pdo->prepare('SELECT tag, color, adornment FROM product_variations WHERE id = ?');
+				$vStmt->execute([$variation_id]);
+				$vRow = $vStmt->fetch(PDO::FETCH_ASSOC);
+				$variation_tag = $vRow['tag'] ?? null;
+				$color = $vRow['color'] ?? null;
+				$adornment = $vRow['adornment'] ?? null;
+			}
+			if ($size_id) {
+				$sStmt = $pdo->prepare('SELECT size FROM variation_sizes WHERE id = ?');
+				$sStmt->execute([$size_id]);
+				$sRow = $sStmt->fetch(PDO::FETCH_ASSOC);
+				$size = $sRow['size'] ?? null;
+			}
+
+			// Determine image URL from input or DB
+			$image_url = isset($input['image']) && $input['image'] ? (string)$input['image'] : null;
+			if (!$image_url) {
+				$imgStmt = $pdo->prepare('SELECT image_url FROM product_images WHERE product_id = ? ORDER BY is_primary DESC, sort_order ASC LIMIT 1');
+				$imgStmt->execute([$product_id]);
+				$row = $imgStmt->fetch(PDO::FETCH_ASSOC);
+				if ($row && isset($row['image_url'])) {
+					$image_url = $row['image_url'];
+				}
+			}
+
+			if (isset($_SESSION['cart'][$key])) {
+				$_SESSION['cart'][$key]['quantity'] += $quantity;
+			} else {
+				$_SESSION['cart'][$key] = [
+					'cart_item_id' => $key,
+					'product_id' => $product_id,
+					'product_name' => $product['name'],
+					'price' => $selected_price ?: (float)$product['price'],
+					'slug' => $product['slug'] ?? '',
+					'sku' => $product['sku'] ?? 'N/A',
+					'quantity' => $quantity,
+					'image' => $image_url,
+					'material_id' => $material_id,
+					'variation_id' => $variation_id,
+					'size_id' => $size_id,
+					'selected_price' => $selected_price,
+					'material_name' => $material_name,
+					'variation_tag' => $variation_tag,
+					'color' => $color,
+					'adornment' => $adornment,
+					'size' => $size
+				];
+			}
+
+			json(['success' => true, 'message' => 'Item added to cart']);
 		}
-		
-		json(['success' => true, 'message' => 'Item added to cart (session)', 'cart' => array_values($_SESSION['cart'])]);
 	}
 
 	// PUT: update quantity
@@ -228,44 +248,67 @@ try {
 		if ($quantity === null) json(['success' => false, 'message' => 'Missing quantity']);
 
 		$customer_id = current_customer_id();
-		if ($customer_id) {
+
+		if ($customer_id || guest_has_email()) {
+			// Use DB
+			$session_id = isset($input['session_id']) ? $input['session_id'] : null;
+
 			// Expect cart_item_id or product_id
 			$cart_item_id = isset($input['cart_item_id']) ? (int)$input['cart_item_id'] : null;
 			$product_id = isset($input['product_id']) ? (int)$input['product_id'] : null;
 
+			$whereClause = $customer_id ? 'customer_id = ?' : 'session_id = ?';
+			$params = [$customer_id ?: $session_id];
+
 			if ($cart_item_id) {
 				if ($quantity < 1) {
-					$del = $pdo->prepare('DELETE FROM cart WHERE id = ? AND customer_id = ?');
-					$del->execute([$cart_item_id, $customer_id]);
+					$del = $pdo->prepare("DELETE FROM cart WHERE id = ? AND $whereClause");
+					$del->execute(array_merge([$cart_item_id], $params));
 					json(['success' => true, 'message' => 'Item removed']);
 				}
-				$upd = $pdo->prepare('UPDATE cart SET quantity = ?, updated_at = NOW() WHERE id = ? AND customer_id = ?');
-				$upd->execute([$quantity, $cart_item_id, $customer_id]);
+				$upd = $pdo->prepare("UPDATE cart SET quantity = ?, updated_at = NOW() WHERE id = ? AND $whereClause");
+				$upd->execute(array_merge([$quantity, $cart_item_id], $params));
 				json(['success' => true, 'message' => 'Quantity updated']);
 			} elseif ($product_id) {
 				if ($quantity < 1) {
-					$del = $pdo->prepare('DELETE FROM cart WHERE customer_id = ? AND product_id = ?');
-					$del->execute([$customer_id, $product_id]);
+					$del = $pdo->prepare("DELETE FROM cart WHERE $whereClause AND product_id = ?");
+					$del->execute(array_merge($params, [$product_id]));
 					json(['success' => true, 'message' => 'Item removed']);
 				}
-				$upd = $pdo->prepare('UPDATE cart SET quantity = ?, updated_at = NOW() WHERE customer_id = ? AND product_id = ?');
-				$upd->execute([$quantity, $customer_id, $product_id]);
+				$upd = $pdo->prepare("UPDATE cart SET quantity = ?, updated_at = NOW() WHERE $whereClause AND product_id = ?");
+				$upd->execute(array_merge([$quantity], $params, [$product_id]));
 				json(['success' => true, 'message' => 'Quantity updated']);
 			} else {
 				json(['success' => false, 'message' => 'Missing identifiers']);
 			}
+		} else {
+			// Guest without email: update session
+			$cart_item_id = isset($input['cart_item_id']) ? (string)$input['cart_item_id'] : (isset($input['product_id']) ? (string)$input['product_id'] : null);
+			if (!$cart_item_id) json(['success' => false, 'message' => 'Missing identifiers']);
+			if (!isset($_SESSION['cart'][$cart_item_id])) json(['success' => false, 'message' => 'Cart item not found']);
+			if ($quantity < 1) {
+				unset($_SESSION['cart'][$cart_item_id]);
+				json(['success' => true, 'message' => 'Item removed']);
+			}
+			$_SESSION['cart'][$cart_item_id]['quantity'] = $quantity;
+			json(['success' => true, 'message' => 'Quantity updated']);
 		}
+	}
 
-		// Guest: update session
-		$cart_item_id = isset($input['cart_item_id']) ? (string)$input['cart_item_id'] : (isset($input['product_id']) ? (string)$input['product_id'] : null);
-		if (!$cart_item_id) json(['success' => false, 'message' => 'Missing identifiers']);
-		if (!isset($_SESSION['cart'][$cart_item_id])) json(['success' => false, 'message' => 'Cart item not found']);
-		if ($quantity < 1) {
-			unset($_SESSION['cart'][$cart_item_id]);
-			json(['success' => true, 'message' => 'Item removed', 'cart' => array_values($_SESSION['cart'])]);
+	// PATCH: update cart metadata (e.g., guest email)
+	if ($method === 'PATCH') {
+		if (!$input) json(['success' => false, 'message' => 'Invalid input']);
+
+		$session_id = current_session_id();
+		$guest_email = isset($input['guest_email']) ? trim($input['guest_email']) : null;
+
+		if ($guest_email && filter_var($guest_email, FILTER_VALIDATE_EMAIL)) {
+			$upd = $pdo->prepare('UPDATE cart SET guest_email = ? WHERE session_id = ? AND guest_email IS NULL');
+			$upd->execute([$guest_email, $session_id]);
+			json(['success' => true, 'message' => 'Cart email updated']);
+		} else {
+			json(['success' => false, 'message' => 'Invalid email']);
 		}
-		$_SESSION['cart'][$cart_item_id]['quantity'] = $quantity;
-		json(['success' => true, 'message' => 'Quantity updated', 'cart' => array_values($_SESSION['cart'])]);
 	}
 
 	// DELETE: remove
@@ -273,20 +316,28 @@ try {
 		$customer_id = current_customer_id();
 		$cart_item_id = isset($_GET['cart_item_id']) ? (int)$_GET['cart_item_id'] : 0;
 
-		if ($customer_id) {
-			if (!$cart_item_id) json(['success' => false, 'message' => 'Missing cart_item_id']);
-			$del = $pdo->prepare('DELETE FROM cart WHERE id = ? AND customer_id = ?');
-			$del->execute([$cart_item_id, $customer_id]);
-			json(['success' => true, 'message' => 'Item removed']);
-		}
+		if ($customer_id || guest_has_email()) {
+			// Use DB
+			$session_id = isset($_GET['session_id']) ? $_GET['session_id'] : null;
 
-		$cart_item_id = isset($_GET['cart_item_id']) ? (string)$_GET['cart_item_id'] : '';
-		if (!$cart_item_id) json(['success' => false, 'message' => 'Missing cart_item_id']);
-		if (isset($_SESSION['cart'][$cart_item_id])) {
-			unset($_SESSION['cart'][$cart_item_id]);
-			json(['success' => true, 'message' => 'Item removed', 'cart' => array_values($_SESSION['cart'])]);
+			if (!$cart_item_id) json(['success' => false, 'message' => 'Missing cart_item_id']);
+
+			$whereClause = $customer_id ? 'customer_id = ?' : 'session_id = ?';
+			$params = [$customer_id ?: $session_id];
+
+			$del = $pdo->prepare("DELETE FROM cart WHERE id = ? AND $whereClause");
+			$del->execute(array_merge([$cart_item_id], $params));
+			json(['success' => true, 'message' => 'Item removed']);
+		} else {
+			// Guest without email: remove from session
+			$cart_item_id = isset($_GET['cart_item_id']) ? (string)$_GET['cart_item_id'] : '';
+			if (!$cart_item_id) json(['success' => false, 'message' => 'Missing cart_item_id']);
+			if (isset($_SESSION['cart'][$cart_item_id])) {
+				unset($_SESSION['cart'][$cart_item_id]);
+				json(['success' => true, 'message' => 'Item removed']);
+			}
+			json(['success' => false, 'message' => 'Cart item not found']);
 		}
-		json(['success' => false, 'message' => 'Cart item not found']);
 	}
 
 	json(['success' => false, 'message' => 'Method not supported']);

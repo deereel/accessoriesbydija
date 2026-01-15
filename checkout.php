@@ -52,8 +52,7 @@ if ($customer_id) {
         // Cart fetch error
     }
 } else {
-    // Get cart from session/localStorage (will be passed via AJAX)
-    // For now, we'll fetch via JavaScript
+    // For guests, cart is fetched via AJAX from DB using session_id
 }
 
 // Calculate subtotal from cart items
@@ -330,7 +329,9 @@ include 'includes/header.php';
         // Load cart items from database or localStorage
         async function loadCartItems() {
             try {
-                const response = await fetch('/api/cart.php');
+                const sessionId = localStorage.getItem('cartSessionId');
+                const url = sessionId ? `/api/cart.php?session_id=${encodeURIComponent(sessionId)}` : '/api/cart.php';
+                const response = await fetch(url);
                 const data = await response.json();
                 
                 if (data.success && data.items) {

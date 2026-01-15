@@ -35,6 +35,8 @@ require_once 'config/database.php';
     <meta name="keywords" content="<?php echo $meta_tags['keywords']; ?>">
     <meta name="robots" content="<?php echo $meta_tags['robots']; ?>">
     <link rel="canonical" href="<?php echo $meta_tags['canonical']; ?>">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#C27BA0">
 
     <!-- Open Graph / Facebook -->
     <?php foreach ($og_tags as $property => $content): ?>
@@ -455,5 +457,20 @@ require_once 'config/database.php';
     </script>
     <?php unset($_SESSION['show_newsletter_popup']); ?>
     <?php endif; ?>
+
+    <!-- Service Worker Registration for PWA -->
+    <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then(registration => {
+            console.log('Service Worker registered successfully:', registration);
+          })
+          .catch(error => {
+            console.log('Service Worker registration failed:', error);
+          });
+      });
+    }
+    </script>
 </body>
 </html>

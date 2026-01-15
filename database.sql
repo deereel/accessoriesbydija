@@ -537,6 +537,49 @@ INSERT IGNORE INTO currency_settings (code, name, symbol, exchange_rate, is_defa
 ('CNY', 'Chinese Yuan', '¥', 9.100000, FALSE, TRUE),
 ('NGN', 'Nigerian Naira', '₦', 1050.000000, FALSE, TRUE);
 
+-- Cart table for persistent cart storage
+CREATE TABLE IF NOT EXISTS cart (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NULL,
+    session_id VARCHAR(255) NULL,
+    guest_email VARCHAR(255) NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    material_id INT NULL,
+    variation_id INT NULL,
+    size_id INT NULL,
+    selected_price DECIMAL(10,2) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE SET NULL,
+    FOREIGN KEY (variation_id) REFERENCES product_variations(id) ON DELETE SET NULL,
+    FOREIGN KEY (size_id) REFERENCES variation_sizes(id) ON DELETE SET NULL,
+    INDEX (customer_id, updated_at),
+    INDEX (session_id, updated_at),
+    INDEX (guest_email, updated_at)
+);
+
+-- Abandoned cart tracking table
+CREATE TABLE IF NOT EXISTS abandoned_carts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    cart_id INT NOT NULL,
+    customer_id INT NULL,
+    session_id VARCHAR(255) NULL,
+    guest_email VARCHAR(255) NULL,
+    email_sent BOOLEAN DEFAULT FALSE,
+    email_sent_at TIMESTAMP NULL,
+    recovered BOOLEAN DEFAULT FALSE,
+    recovered_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (cart_id) REFERENCES cart(id) ON DELETE CASCADE,
+    INDEX (email_sent, created_at),
+    INDEX (customer_id),
+    INDEX (session_id),
+    INDEX (guest_email)
+);
+
 -- Insert site settings
 INSERT IGNORE INTO site_settings (setting_key, setting_value, setting_type, description) VALUES
 ('site_name', 'Dija Accessories', 'text', 'Website name'),
