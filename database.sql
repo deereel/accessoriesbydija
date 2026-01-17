@@ -441,6 +441,21 @@ CREATE TABLE IF NOT EXISTS inventory_logs (
     INDEX (product_id, created_at)
 );
 
+-- Refund logs
+CREATE TABLE IF NOT EXISTS refund_logs (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    reason TEXT,
+    payment_method VARCHAR(50) NOT NULL,
+    reference VARCHAR(255),
+    processed_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY (processed_by) REFERENCES admin_users(id) ON DELETE SET NULL,
+    INDEX (order_id, created_at)
+);
+
 -- Insert sample categories
 INSERT IGNORE INTO categories (name, slug, description) VALUES
 ('Women', 'women', 'Jewelry collection for women'),

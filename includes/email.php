@@ -21,8 +21,9 @@ function send_email_smtp($to, $subject, $body, $is_html = false, &$error_message
         $mail->SMTPAuth = true;
         $mail->Username = $_ENV['MAIL_USERNAME'] ?? '';
         $mail->Password = $_ENV['MAIL_PASSWORD'] ?? '';
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
-        $mail->Port = $_ENV['MAIL_PORT'] ?? 465;
+        $port = $_ENV['MAIL_PORT'] ?? 587;
+        $mail->Port = $port;
+        $mail->SMTPSecure = $port == 465 ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
 
         // Log configuration for debugging
         error_log("Email config - Host: " . $mail->Host . ", Port: " . $mail->Port . ", Username set: " . (!empty($mail->Username) ? 'yes' : 'no') . ", Password set: " . (!empty($mail->Password) ? 'yes' : 'no'));
@@ -155,5 +156,156 @@ function send_admin_order_notification($pdo, $order_id) {
     $body .= "\nPlease process this order promptly.\n";
 
     return send_email_smtp($admin_email, $subject, $body);
+}
+
+function send_shipping_notification_email($pdo, $order_id, $tracking_number = null, $carrier = null) {
+    // Fetch order and customer details
+    $stmt = $pdo->prepare("SELECT o.*, c.email AS customer_email, c.first_name, c.last_name
+        FROM orders o LEFT JOIN customers c ON c.id = o.customer_id WHERE o.id = ? LIMIT 1");
+    $stmt->execute([$order_id]);
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$order) return false;
+
+    $to = $order['customer_email'] ?? null;
+    if (!$to) return false; // no email to send to
+
+    $subject = "Your Order Has Shipped - Order #" . $order_id;
+
+    $body = "Hello " . ($order['first_name'] ? htmlspecialchars($order['first_name']) : 'Customer') . ",\n\n";
+    $body .= "Great news! Your order #" . $order_id . " has been shipped and is on its way to you.\n\n";
+
+    if ($tracking_number && $carrier) {
+        $body .= "Tracking Information:\n";
+        $body .= "Carrier: " . htmlspecialchars($carrier) . "\n";
+        $body .= "Tracking Number: " . htmlspecialchars($tracking_number) . "\n\n";
+        $body .= "You can track your package at the carrier's website using the tracking number above.\n\n";
+    }
+
+    $body .= "Expected Delivery: 3-5 business days from shipping date\n\n";
+    $body .= "If you have any questions about your order, please don't hesitate to contact us.\n\n";
+    $body .= "Thank you for shopping with Dija Accessories!\n\n";
+    $body .= "Regards,\nThe Dija Accessories Team\n";
+    $body .= "support@accessoriesbydija.uk";
+
+    // Use PHPMailer SMTP
+    $sent = send_email_smtp($to, $subject, $body);
+
+    // Log to DB
+    try {
+        $logStmt = $pdo->prepare('INSERT INTO email_logs (order_id, to_email, subject, sent, created_at) VALUES (?, ?, ?, ?, NOW())');
+        $logStmt->execute([$order_id, $to, $subject, $sent ? 1 : 0]);
+    } catch (Exception $e) {
+        // ignore logging errors
+    }
+
+    return $sent;
+}
+
+function send_delivery_confirmation_email($pdo, $order_id) {
+    // Fetch order and customer details
+    $stmt = $pdo->prepare("SELECT o.*, c.email AS customer_email, c.first_name, c.last_name
+        FROM orders o LEFT JOIN customers c ON c.id = o.customer_id WHERE o.id = ? LIMIT 1");
+    $stmt->execute([$order_id]);
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$order) return false;
+
+    $to = $order['customer_email'] ?? null;
+    if (!$to) return false; // no email to send to
+
+    $subject = "Your Order Has Been Delivered - Order #" . $order_id;
+
+    $body = "Hello " . ($order['first_name'] ? htmlspecialchars($order['first_name']) : 'Customer') . ",\n\n";
+    $body .= "Your order #" . $order_id . " has been successfully delivered!\n\n";
+    $body .= "We hope you love your new jewelry pieces. If you have any questions or need assistance, please don't hesitate to contact us.\n\n";
+    $body .= "Thank you for choosing Dija Accessories for your jewelry needs.\n\n";
+    $body .= "We'd love to hear from you! Please consider leaving a review of your purchase.\n\n";
+    $body .= "Regards,\nThe Dija Accessories Team\n";
+    $body .= "support@accessoriesbydija.uk";
+
+    // Use PHPMailer SMTP
+    $sent = send_email_smtp($to, $subject, $body);
+
+    // Log to DB
+    try {
+        $logStmt = $pdo->prepare('INSERT INTO email_logs (order_id, to_email, subject, sent, created_at) VALUES (?, ?, ?, ?, NOW())');
+        $logStmt->execute([$order_id, $to, $subject, $sent ? 1 : 0]);
+    } catch (Exception $e) {
+        // ignore logging errors
+    }
+
+    return $sent;
+}
+
+function send_cancelled_order_email($pdo, $order_id) {
+    // Fetch order and customer details
+    $stmt = $pdo->prepare("SELECT o.*, c.email AS customer_email, c.first_name, c.last_name
+        FROM orders o LEFT JOIN customers c ON c.id = o.customer_id WHERE o.id = ? LIMIT 1");
+    $stmt->execute([$order_id]);
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$order) return false;
+
+    $to = $order['customer_email'] ?? null;
+    if (!$to) return false; // no email to send to
+
+    $subject = "Order Cancelled - Order #" . $order_id;
+
+    $body = "Hello " . ($order['first_name'] ? htmlspecialchars($order['first_name']) : 'Customer') . ",\n\n";
+    $body .= "We're writing to inform you that your order #" . $order_id . " has been cancelled.\n\n";
+    $body .= "If this cancellation was unexpected or if you have any questions, please don't hesitate to contact our support team.\n\n";
+    $body .= "If you would like to place a new order, you can do so at any time on our website.\n\n";
+    $body .= "We apologize for any inconvenience this may have caused.\n\n";
+    $body .= "Regards,\nThe Dija Accessories Team\n";
+    $body .= "support@accessoriesbydija.uk";
+
+    // Use PHPMailer SMTP
+    $sent = send_email_smtp($to, $subject, $body);
+
+    // Log to DB
+    try {
+        $logStmt = $pdo->prepare('INSERT INTO email_logs (order_id, to_email, subject, sent, created_at) VALUES (?, ?, ?, ?, NOW())');
+        $logStmt->execute([$order_id, $to, $subject, $sent ? 1 : 0]);
+    } catch (Exception $e) {
+        // ignore logging errors
+    }
+
+    return $sent;
+}
+
+function send_failed_payment_email($pdo, $order_id) {
+    // Fetch order and customer details
+    $stmt = $pdo->prepare("SELECT o.*, c.email AS customer_email, c.first_name, c.last_name
+        FROM orders o LEFT JOIN customers c ON c.id = o.customer_id WHERE o.id = ? LIMIT 1");
+    $stmt->execute([$order_id]);
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$order) return false;
+
+    $to = $order['customer_email'] ?? null;
+    if (!$to) return false; // no email to send to
+
+    $subject = "Payment Failed - Order #" . $order_id;
+
+    $body = "Hello " . ($order['first_name'] ? htmlspecialchars($order['first_name']) : 'Customer') . ",\n\n";
+    $body .= "We were unable to process the payment for your order #" . $order_id . ".\n\n";
+    $body .= "This could be due to:\n";
+    $body .= "- Insufficient funds in your account\n";
+    $body .= "- Card expiry or incorrect card details\n";
+    $body .= "- Bank security blocks\n\n";
+    $body .= "Please try placing your order again or contact your bank to resolve any issues.\n\n";
+    $body .= "If you need assistance, our support team is here to help.\n\n";
+    $body .= "Regards,\nThe Dija Accessories Team\n";
+    $body .= "support@accessoriesbydija.uk";
+
+    // Use PHPMailer SMTP
+    $sent = send_email_smtp($to, $subject, $body);
+
+    // Log to DB
+    try {
+        $logStmt = $pdo->prepare('INSERT INTO email_logs (order_id, to_email, subject, sent, created_at) VALUES (?, ?, ?, ?, NOW())');
+        $logStmt->execute([$order_id, $to, $subject, $sent ? 1 : 0]);
+    } catch (Exception $e) {
+        // ignore logging errors
+    }
+
+    return $sent;
 }
 ?>

@@ -1,5 +1,6 @@
 <?php
 // Security Configuration
+require_once 'environment.php';
 
 // CSRF Token Generation and Validation
 function generateCSRFToken() {
@@ -54,11 +55,46 @@ function checkRateLimit($identifier, $max_attempts = 5, $time_window = 300) {
 
 // Security Headers
 function setSecurityHeaders() {
+    global $environment;
+
+    // Basic security headers
     header('X-Content-Type-Options: nosniff');
     header('X-Frame-Options: DENY');
     header('X-XSS-Protection: 1; mode=block');
     header('Referrer-Policy: strict-origin-when-cross-origin');
-    header('Content-Security-Policy: default-src \'self\'; script-src \'self\' \'unsafe-inline\' cdnjs.cloudflare.com fonts.googleapis.com cdn.tailwindcss.com cdn.jsdelivr.net; style-src \'self\' \'unsafe-inline\' cdnjs.cloudflare.com fonts.googleapis.com; font-src \'self\' fonts.gstatic.com cdnjs.cloudflare.com data:; img-src \'self\' data:; connect-src \'self\' api.exchangerate-api.com cdnjs.cloudflare.com;');
+
+    // Permissions Policy (formerly Feature Policy)
+    header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()');
+
+    // Environment-specific headers
+    if ($environment === 'live') {
+        // Production-only strict headers
+        header('Cross-Origin-Embedder-Policy: require-corp');
+        header('Cross-Origin-Opener-Policy: same-origin');
+        header('Cross-Origin-Resource-Policy: same-origin');
+
+        // Certificate Transparency enforcement
+        header('Expect-CT: max-age=86400, enforce');
+    }
+
+    // Content Security Policy - Environment-aware
+    $csp = "default-src 'self'; ";
+    $csp .= "script-src 'self' 'unsafe-inline' cdnjs.cloudflare.com fonts.googleapis.com cdn.tailwindcss.com cdn.jsdelivr.net js.stripe.com; ";
+    $csp .= "style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com fonts.googleapis.com; ";
+    $csp .= "font-src 'self' fonts.gstatic.com cdnjs.cloudflare.com data:; ";
+    $csp .= "img-src 'self' data: https:; ";
+    $csp .= "connect-src 'self' api.exchangerate-api.com cdnjs.cloudflare.com js.stripe.com api.stripe.com; ";
+    $csp .= "frame-src 'self' js.stripe.com; ";
+    $csp .= "object-src 'none'; ";
+    $csp .= "base-uri 'self'; ";
+    $csp .= "form-action 'self'; ";
+
+    // Only add upgrade-insecure-requests in production
+    if ($environment === 'live') {
+        $csp .= "upgrade-insecure-requests;";
+    }
+
+    header('Content-Security-Policy: ' . $csp);
 }
 
 // Call security headers on every page load

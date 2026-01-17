@@ -10,6 +10,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
 
 header('Content-Type: application/json');
 require_once '../config/database.php';
+require_once '../includes/email.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
@@ -257,6 +258,32 @@ try {
         } catch (Exception $e) {
             error_log('Order Update: ERROR during inventory restock for cancelled order ' . $order_id . ': ' . $e->getMessage() . ' Trace: ' . $e->getTraceAsString());
             // Don't fail the order update if inventory restock fails
+        }
+    }
+
+    // Send appropriate emails based on status changes
+    if ($status && $status !== $existing['status']) {
+        try {
+            if ($status === 'cancelled') {
+                send_cancelled_order_email($pdo, $order_id);
+            } elseif ($status === 'shipped') {
+                send_shipping_notification_email($pdo, $order_id);
+            } elseif ($status === 'delivered') {
+                send_delivery_confirmation_email($pdo, $order_id);
+            }
+        } catch (Exception $e) {
+            error_log('Failed to send status change email for order ' . $order_id . ': ' . $e->getMessage());
+            // Don't fail the order update if email fails
+        }
+    }
+
+    // Send failed payment email if payment status changed to failed
+    if ($payment_status && $payment_status === 'failed' && $existing['payment_status'] !== 'failed') {
+        try {
+            send_failed_payment_email($pdo, $order_id);
+        } catch (Exception $e) {
+            error_log('Failed to send failed payment email for order ' . $order_id . ': ' . $e->getMessage());
+            // Don't fail the order update if email fails
         }
     }
 

@@ -1,11 +1,9 @@
 <?php
-if (session_status() == PHP_SESSION_NONE) {
-    session_start();
-}
+// Include application initialization (includes session, logger, database, etc.)
+require_once 'init.php';
 require_once 'config/security.php';
 require_once 'config/seo.php';
 require_once 'config/cache.php';
-require_once 'config/database.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -39,6 +37,7 @@ require_once 'config/database.php';
     <link rel="apple-touch-icon" href="assets/images/logo.webp">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#C27BA0">
+    <meta name="author" content="Accessories By Dija">
 
     <!-- Open Graph / Facebook -->
     <?php foreach ($og_tags as $property => $content): ?>

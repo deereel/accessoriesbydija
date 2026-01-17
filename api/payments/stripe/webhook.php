@@ -81,15 +81,68 @@ if (empty($event->type)) {
 // Verify webhook signature
 $sig_header = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
 
-// TODO: Implement signature verification
-// $expected_sig = hash_hmac('sha256', $raw_body, $STRIPE_WEBHOOK_SECRET);
-// Note: Stripe uses a more complex signature verification - see:
-// https://stripe.com/docs/webhooks/signatures
-
-// For now, basic validation
 if (empty($sig_header)) {
-    // In production, reject unsigned webhooks
-    // For testing, you may skip this
+    http_response_code(400);
+    error_log("Stripe webhook: Missing signature header");
+    echo json_encode(['error' => 'Missing signature']);
+    exit;
+}
+
+// Implement Stripe webhook signature verification
+// https://stripe.com/docs/webhooks/signatures
+try {
+    $timestamp = null;
+    $signatures = [];
+
+    // Parse the signature header
+    $elements = explode(',', $sig_header);
+    foreach ($elements as $element) {
+        $parts = explode('=', $element, 2);
+        if (count($parts) === 2) {
+            $key = trim($parts[0]);
+            $value = trim($parts[1]);
+            if ($key === 't') {
+                $timestamp = $value;
+            } elseif ($key === 'v1') {
+                $signatures[] = $value;
+            }
+        }
+    }
+
+    if (empty($timestamp) || empty($signatures)) {
+        throw new Exception('Invalid signature format');
+    }
+
+    // Check timestamp tolerance (5 minutes)
+    $current_time = time();
+    if (abs($current_time - $timestamp) > 300) {
+        throw new Exception('Timestamp outside tolerance');
+    }
+
+    // Verify signature
+    $signed_payload = $timestamp . '.' . $raw_body;
+    $expected_signature = hash_hmac('sha256', $signed_payload, $STRIPE_WEBHOOK_SECRET);
+    $signature_valid = false;
+
+    foreach ($signatures as $signature) {
+        if (hash_equals($expected_signature, $signature)) {
+            $signature_valid = true;
+            break;
+        }
+    }
+
+    if (!$signature_valid) {
+        throw new Exception('Invalid signature');
+    }
+
+    debug_log("Stripe webhook: Signature verification successful");
+    error_log("Stripe webhook: Signature verification successful");
+
+} catch (Exception $e) {
+    http_response_code(400);
+    error_log("Stripe webhook: Signature verification failed: " . $e->getMessage());
+    echo json_encode(['error' => 'Invalid signature']);
+    exit;
 }
 
 // Handle different event types
@@ -615,14 +668,22 @@ function handleChargeFailed($event, $pdo) {
     try {
         // Find and update order to failed
         $order_id = $charge->metadata->order_id ?? null;
-        
+
         if ($order_id) {
-            $stmt = $pdo->prepare("UPDATE orders SET status = ?, notes = ? WHERE id = ?");
+            $stmt = $pdo->prepare("UPDATE orders SET status = ?, payment_status = ?, notes = ? WHERE id = ?");
             $stmt->execute([
+                'cancelled',
                 'failed',
                 'Payment failed via Stripe. Charge: ' . $charge->id,
                 $order_id
             ]);
+
+            // Send failed payment notification email
+            try {
+                send_failed_payment_email($pdo, $order_id);
+            } catch (Exception $e) {
+                error_log('Failed to send failed payment email for order ' . $order_id . ': ' . $e->getMessage());
+            }
         }
     } catch (PDOException $e) {
         error_log('Stripe webhook error: ' . $e->getMessage());

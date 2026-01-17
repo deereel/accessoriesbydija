@@ -102,6 +102,14 @@ require_once '../config/database.php';
                     <p>Manage API keys, webhooks, and external integrations.</p>
                     <a href="api_webhooks.php" class="btn">Manage APIs & Webhooks</a>
                 </div>
+   
+                <!-- Log Viewer -->
+                <div class="setting-card">
+                    <div class="icon"><i class="fas fa-file-alt"></i></div>
+                    <h3>Log Viewer</h3>
+                    <p>View application logs for debugging and monitoring.</p>
+                    <a href="logs.php" class="btn">View Logs</a>
+                </div>
             <?php endif; ?>
 
         </div>

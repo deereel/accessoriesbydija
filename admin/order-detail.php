@@ -397,6 +397,40 @@ include '_layout_header.php';
                     <button type="submit" class="btn btn-success">Save Changes</button>
                 </div>
             </form>
+
+            <?php if (in_array($order['status'], ['paid', 'processing', 'shipped', 'delivered']) && $order['payment_status'] === 'paid'): ?>
+            <hr style="margin: 20px 0;">
+            <div class="refund-section">
+                <h4 style="margin-bottom: 15px;">Process Refund</h4>
+                <form id="refundForm" onsubmit="return submitRefund(event)">
+                    <input type="hidden" name="order_id" value="<?php echo (int)$order['id']; ?>">
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="refund_amount">Refund Amount (£)</label>
+                            <input type="number" id="refund_amount" name="amount" step="0.01" min="0.01" max="<?php echo number_format($order['total_amount'], 2, '.', ''); ?>" required>
+                            <small style="color: #666;">Maximum: £<?php echo number_format($order['total_amount'], 2); ?></small>
+                        </div>
+                        <div class="form-group">
+                            <label for="refund_reason">Reason</label>
+                            <select id="refund_reason" name="reason" required>
+                                <option value="Customer request">Customer request</option>
+                                <option value="Failed Payment">Failed Payment</option>
+                                <option value="Product damaged">Product damaged</option>
+                                <option value="Wrong item sent">Wrong item sent</option>
+                                <option value="Late delivery">Late delivery</option>
+                                <option value="Duplicate order">Duplicate order</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; justify-content:flex-end; align-items:center;">
+                        <button type="submit" class="btn" style="background: #dc3545; color: white;">Process Refund</button>
+                    </div>
+                </form>
+            </div>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -478,6 +512,38 @@ include '_layout_header.php';
 
     function closeProductModal() {
         document.getElementById('productModal').style.display = 'none';
+    }
+
+    function submitRefund(event) {
+        event.preventDefault();
+        const form = event.target;
+        const btn = form.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.textContent = 'Processing...';
+
+        const formData = new FormData(form);
+
+        fetch('../api/refunds/create.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showAlert('success', 'Refund processed successfully! Order status updated.');
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showAlert('error', data.message || 'Failed to process refund.');
+            }
+        }).catch(err => {
+            showAlert('error', 'An unexpected error occurred.');
+            console.error(err);
+        }).finally(() => {
+            btn.disabled = false;
+            btn.textContent = 'Process Refund';
+        });
+
+        return false;
     }
 
     // Close modal when clicking outside

@@ -187,18 +187,36 @@ if (isset($_GET['sort']) && is_string($_GET['sort'])) {
 $sql .= " GROUP BY p.id ORDER BY " . $sort_order;
 
 // Debug logging
-error_log("Products Filter Debug - SQL: " . $sql);
-error_log("Products Filter Debug - Params: " . json_encode($params));
-error_log("Products Filter Debug - GET: " . json_encode($_GET));
+AppLogger::debug("Products Filter Debug - SQL: " . $sql, [
+    'params' => $params,
+    'get' => $_GET
+]);
 
 try {
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
+    start_performance_timer('products_query');
+    list($stmt, ) = monitored_db_query($pdo, $sql, $params);
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    error_log("Products Filter Debug - Products count: " . count($products));
+    end_performance_timer('products_query', [
+        'product_count' => count($products),
+        'filters_applied' => count(array_filter([
+            'gender' => !empty($selected_genders),
+            'category' => !empty($selected_categories),
+            'price' => !empty($selected_prices),
+            'material' => !empty($selected_materials),
+            'color' => !empty($selected_colors),
+            'adornment' => !empty($selected_adornments)
+        ]))
+    ]);
+    AppLogger::debug("Products query completed", [
+        'product_count' => count($products),
+        'sql_length' => strlen($sql)
+    ]);
 } catch (Exception $e) {
     $products = [];
-    error_log("Products Filter Debug - Query failed: " . $e->getMessage());
+    AppLogger::error("Products query failed: " . $e->getMessage(), [
+        'sql' => $sql,
+        'params' => $params
+    ]);
 }
 ?>
 

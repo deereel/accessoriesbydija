@@ -1,7 +1,8 @@
 {
     "require": {
         "phpmailer/phpmailer": "^7.0",
-        "stripe/stripe-php": "^19.1"
-"components/font-awesome": "*"
+        "stripe/stripe-php": "^19.1",
+        "monolog/monolog": "^3.0",
+        "components/font-awesome": "*"
     }
 }
