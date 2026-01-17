@@ -43,7 +43,7 @@ try {
 
 // Fetch all materials
 try {
-    $stmt_mat = $pdo->query("SELECT DISTINCT m.name FROM materials m JOIN product_materials pm ON m.id = pm.material_id ORDER BY m.name ASC");
+    $stmt_mat = $pdo->query("SELECT name FROM materials ORDER BY name ASC");
     $all_materials = $stmt_mat->fetchAll(PDO::FETCH_COLUMN);
 } catch (Exception $e) {
     $all_materials = [];
@@ -59,7 +59,38 @@ if (isset($_GET['gender'])) {
 }
 $selected_categories = isset($_GET['category']) && is_array($_GET['category']) ? $_GET['category'] : [];
 $selected_prices = isset($_GET['price']) && is_array($_GET['price']) ? $_GET['price'] : [];
-$selected_materials = isset($_GET['material']) && is_array($_GET['material']) ? $_GET['material'] : [];
+
+if (isset($_GET['price_min']) && isset($_GET['price_max'])) {
+    $min = (float)$_GET['price_min'];
+    $max = (float)$_GET['price_max'];
+    $selected_prices[] = $min . '-' . $max;
+}
+$selected_materials = [];
+if (isset($_GET['material'])) {
+    if (is_array($_GET['material'])) {
+        $selected_materials = $_GET['material'];
+    } elseif (is_string($_GET['material']) && !empty($_GET['material'])) {
+        $selected_materials = [$_GET['material']];
+    }
+}
+
+$selected_colors = [];
+if (isset($_GET['color'])) {
+    if (is_array($_GET['color'])) {
+        $selected_colors = $_GET['color'];
+    } elseif (is_string($_GET['color']) && !empty($_GET['color'])) {
+        $selected_colors = [$_GET['color']];
+    }
+}
+
+$selected_adornments = [];
+if (isset($_GET['adornment'])) {
+    if (is_array($_GET['adornment'])) {
+        $selected_adornments = $_GET['adornment'];
+    } elseif (is_string($_GET['adornment']) && !empty($_GET['adornment'])) {
+        $selected_adornments = [$_GET['adornment']];
+    }
+}
 
 // Base query with all necessary joins
 $sql = "SELECT p.*, 
@@ -78,9 +109,9 @@ if (!empty($selected_genders)) {
     $gender_conditions = [];
     foreach ($selected_genders as $gender) {
         if (strtolower($gender) == 'men') {
-            $gender_conditions[] = "(p.gender = 'M' OR p.gender = 'U')";
+            $gender_conditions[] = "(p.gender = 'men' OR p.gender = 'unisex')";
         } elseif (strtolower($gender) == 'women') {
-            $gender_conditions[] = "(p.gender = 'F' OR p.gender = 'U')";
+            $gender_conditions[] = "(p.gender = 'women' OR p.gender = 'unisex')";
         }
     }
     if (!empty($gender_conditions)) {
@@ -118,6 +149,24 @@ if (!empty($selected_materials)) {
     }
 }
 
+// Handle color filter
+if (!empty($selected_colors)) {
+    $color_placeholders = implode(',', array_fill(0, count($selected_colors), '?'));
+    $where[] = "p.id IN (SELECT pv.product_id FROM product_variations pv WHERE LOWER(pv.color) IN (" . $color_placeholders . "))";
+    foreach ($selected_colors as $color) {
+        $params[] = strtolower($color);
+    }
+}
+
+// Handle adornment filter
+if (!empty($selected_adornments)) {
+    $adornment_placeholders = implode(',', array_fill(0, count($selected_adornments), '?'));
+    $where[] = "p.id IN (SELECT pv.product_id FROM product_variations pv WHERE LOWER(pv.adornment) IN (" . $adornment_placeholders . "))";
+    foreach ($selected_adornments as $adornment) {
+        $params[] = strtolower($adornment);
+    }
+}
+
 
 
 if (!empty($where)) {
@@ -137,14 +186,19 @@ if (isset($_GET['sort']) && is_string($_GET['sort'])) {
 }
 $sql .= " GROUP BY p.id ORDER BY " . $sort_order;
 
+// Debug logging
+error_log("Products Filter Debug - SQL: " . $sql);
+error_log("Products Filter Debug - Params: " . json_encode($params));
+error_log("Products Filter Debug - GET: " . json_encode($_GET));
+
 try {
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    error_log("Products Filter Debug - Products count: " . count($products));
 } catch (Exception $e) {
     $products = [];
-    // It's a good idea to log the error for debugging
-    // error_log($e->getMessage());
+    error_log("Products Filter Debug - Query failed: " . $e->getMessage());
 }
 ?>
 

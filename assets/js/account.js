@@ -262,7 +262,8 @@ async function loadAddresses() {
                         ${address.address_line_1}<br>
                         ${address.address_line_2 ? address.address_line_2 + '<br>' : ''}
                         ${address.city}, ${address.state} ${address.postal_code}<br>
-                        ${address.country}
+                        ${address.country}<br>
+                        ${address.phone ? 'Phone: ' + address.phone : ''}
                     </div>
                     <div class="address-actions">
                         <button class="btn-small btn-edit" onclick="editAddress(${address.id})">Edit</button>
@@ -463,6 +464,7 @@ async function loadAddressData(addressId) {
             document.getElementById('address_id').value = address.id;
             document.getElementById('address_first_name').value = address.first_name;
             document.getElementById('address_last_name').value = address.last_name;
+            document.getElementById('phone').value = address.phone || '';
             document.getElementById('address_type').value = address.type;
             document.getElementById('company').value = address.company || '';
             document.getElementById('address_line_1').value = address.address_line_1;
@@ -480,12 +482,13 @@ async function loadAddressData(addressId) {
 
 async function handleAddressSave(e) {
     e.preventDefault();
-    
+
     const messageEl = document.getElementById('address-message');
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData.entries());
     data.is_default = document.getElementById('is_default').checked ? 1 : 0;
-    
+    data.csrf_token = document.getElementById('csrf_token').value;
+
     try {
         const response = await fetch('api/account/save_address.php', {
             method: 'POST',

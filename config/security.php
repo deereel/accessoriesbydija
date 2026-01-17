@@ -58,7 +58,7 @@ function setSecurityHeaders() {
     header('X-Frame-Options: DENY');
     header('X-XSS-Protection: 1; mode=block');
     header('Referrer-Policy: strict-origin-when-cross-origin');
-    header('Content-Security-Policy: default-src \'self\'; script-src \'self\' \'unsafe-inline\' cdnjs.cloudflare.com fonts.googleapis.com cdn.tailwindcss.com cdn.jsdelivr.net; style-src \'self\' \'unsafe-inline\' cdnjs.cloudflare.com fonts.googleapis.com; font-src \'self\' fonts.gstatic.com cdnjs.cloudflare.com; img-src \'self\' data:; connect-src \'self\' api.exchangerate-api.com;');
+    header('Content-Security-Policy: default-src \'self\'; script-src \'self\' \'unsafe-inline\' cdnjs.cloudflare.com fonts.googleapis.com cdn.tailwindcss.com cdn.jsdelivr.net; style-src \'self\' \'unsafe-inline\' cdnjs.cloudflare.com fonts.googleapis.com; font-src \'self\' fonts.gstatic.com cdnjs.cloudflare.com data:; img-src \'self\' data:; connect-src \'self\' api.exchangerate-api.com cdnjs.cloudflare.com;');
 }
 
 // Call security headers on every page load

@@ -1,9 +1,122 @@
 <?php
+require_once '../config/database.php';
+
+if (session_status() == PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Handle delete before any output
+if (isset($_POST['delete_product'])) {
+    $product_id = (int)$_POST['delete_product'];
+    error_log("Attempting to delete product ID: $product_id");
+
+    try {
+        // Check if product exists
+        $stmt = $pdo->prepare("SELECT id FROM products WHERE id = ?");
+        $stmt->execute([$product_id]);
+        if (!$stmt->fetch()) {
+            error_log("Product not found: $product_id");
+            $_SESSION['flash_message'] = "Product not found.";
+        } else {
+            // Check for orders
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM order_items WHERE product_id = ?");
+            $stmt->execute([$product_id]);
+            $order_count = $stmt->fetchColumn();
+            if ($order_count > 0) {
+                error_log("Cannot delete product $product_id: has $order_count order items");
+                $_SESSION['flash_message'] = "Cannot delete product that has been ordered.";
+            } else {
+                // Delete related records
+                $pdo->beginTransaction();
+
+                $stmt = $pdo->prepare("DELETE FROM wishlists WHERE product_id = ?");
+                $stmt->execute([$product_id]);
+
+                $stmt = $pdo->prepare("DELETE FROM product_categories WHERE product_id = ?");
+                $stmt->execute([$product_id]);
+
+                $stmt = $pdo->prepare("DELETE FROM product_materials WHERE product_id = ?");
+                $stmt->execute([$product_id]);
+
+                // Delete images and files
+                $stmt = $pdo->prepare("SELECT image_url FROM product_images WHERE product_id = ?");
+                $stmt->execute([$product_id]);
+                $images = $stmt->fetchAll(PDO::FETCH_COLUMN);
+                foreach ($images as $image_url) {
+                    $file_path = '../' . $image_url;
+                    if (file_exists($file_path)) {
+                        unlink($file_path);
+                    }
+                }
+                $stmt = $pdo->prepare("DELETE FROM product_images WHERE product_id = ?");
+                $stmt->execute([$product_id]);
+
+                // Delete variations and sizes
+                $stmt = $pdo->prepare("DELETE FROM variation_sizes WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id = ?)");
+                $stmt->execute([$product_id]);
+
+                $stmt = $pdo->prepare("DELETE FROM product_variations WHERE product_id = ?");
+                $stmt->execute([$product_id]);
+
+                // Delete product
+                $stmt = $pdo->prepare("DELETE FROM products WHERE id = ?");
+                $stmt->execute([$product_id]);
+
+                $pdo->commit();
+
+                error_log("Product deleted successfully: $product_id");
+                $_SESSION['flash_message'] = "Product deleted successfully.";
+            }
+        }
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        error_log("Error deleting product $product_id: " . $e->getMessage());
+        $_SESSION['flash_message'] = $e->getMessage();
+    }
+
+    // Redirect back
+    header("Location: " . $_SERVER['PHP_SELF']);
+    exit;
+}
+
+// Handle toggle feature
+if (isset($_POST['toggle_feature'])) {
+    $product_id = (int)$_POST['toggle_feature'];
+    try {
+        $stmt = $pdo->prepare("UPDATE products SET is_featured = 1 - is_featured WHERE id = ?");
+        $stmt->execute([$product_id]);
+        $_SESSION['flash_message'] = "Product featured status updated.";
+    } catch (Exception $e) {
+        $_SESSION['flash_message'] = $e->getMessage();
+    }
+    header("Location: " . $_SERVER['PHP_SELF']);
+    exit;
+}
+
+// Handle toggle active
+if (isset($_POST['toggle_active'])) {
+    $product_id = (int)$_POST['toggle_active'];
+    try {
+        $stmt = $pdo->prepare("UPDATE products SET is_active = 1 - is_active WHERE id = ?");
+        $stmt->execute([$product_id]);
+        $_SESSION['flash_message'] = "Product active status updated.";
+    } catch (Exception $e) {
+        $_SESSION['flash_message'] = $e->getMessage();
+    }
+    header("Location: " . $_SERVER['PHP_SELF']);
+    exit;
+}
+
 $page_title = "Products Management";
 $active_nav = "products";
 include '_layout_header.php';
 
-require_once '../config/database.php';
+if (isset($_SESSION['flash_message'])) {
+    echo '<div class="card" style="background: #d4edda; color: #155724;"><div class="card-body">' . $_SESSION['flash_message'] . '</div></div>';
+    unset($_SESSION['flash_message']);
+}
 
 // Handle form submission
 if ($_POST) {
@@ -72,7 +185,7 @@ if ($_POST) {
             $success = "Product added successfully!";
         } catch (Exception $e) {
             $pdo->rollBack();
-            $error = $e->getMessage();
+            $_SESSION['flash_message'] = $e->getMessage();
         }
     }
     
@@ -196,7 +309,7 @@ if ($_POST) {
             $success = "Product updated successfully!";
         } catch (Exception $e) {
             $pdo->rollBack();
-            $error = $e->getMessage();
+            $_SESSION['flash_message'] = $e->getMessage();
         }
     }
 }
@@ -272,7 +385,18 @@ $categories = $stmt->fetchAll();
                         <td><?= $product['variation_count'] ?> variations</td>
                         <td>
                             <button class="btn" onclick="editProduct(<?= $product['id'] ?>)" style="margin-right: 5px;">Edit</button>
-                            <button class="btn btn-danger" onclick="deleteProduct(<?= $product['id'] ?>)">Delete</button>
+                            <form method="POST" style="display:inline; margin-right: 5px;">
+                                <input type="hidden" name="toggle_feature" value="<?= $product['id'] ?>">
+                                <button type="submit" class="btn"><?= $product['is_featured'] ? 'Unfeature' : 'Feature' ?></button>
+                            </form>
+                            <form method="POST" style="display:inline; margin-right: 5px;">
+                                <input type="hidden" name="toggle_active" value="<?= $product['id'] ?>">
+                                <button type="submit" class="btn"><?= $product['is_active'] ? 'Deactivate' : 'Activate' ?></button>
+                            </form>
+                            <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this product?')">
+                                <input type="hidden" name="delete_product" value="<?= $product['id'] ?>">
+                                <button type="submit" class="btn btn-danger">Delete</button>
+                            </form>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -593,16 +717,19 @@ function addImageField() {
             const sizesContainer = button.closest('.sizes-container');
             const sizeCount = sizesContainer.querySelectorAll('.size-item').length - 1; // Exclude the add button row
             const variationIndex = button.closest('.variation-item').querySelector('select').name.match(/\[(\d+)\]/)[1];
-            
+
             const newSize = document.createElement('div');
             newSize.className = 'size-item';
             newSize.innerHTML = `
-                <input type="text" name="variations[${variationIndex}][sizes][${sizeCount}][size]" placeholder="Size" style="width: 150px;">
-                <input type="number" name="variations[${variationIndex}][sizes][${sizeCount}][stock]" placeholder="Stock" style="width: 100px;">
-                <input type="number" name="variations[${variationIndex}][sizes][${sizeCount}][price_adjustment]" placeholder="New Price" step="0.01" style="width: 120px;">
+                <label for="size-${variationIndex}-${sizeCount}">Size</label>
+                <input type="text" id="size-${variationIndex}-${sizeCount}" name="variations[${variationIndex}][sizes][${sizeCount}][size]" placeholder="Size" style="width: 150px;">
+                <label for="stock-${variationIndex}-${sizeCount}">Stock</label>
+                <input type="number" id="stock-${variationIndex}-${sizeCount}" name="variations[${variationIndex}][sizes][${sizeCount}][stock]" placeholder="Stock" style="width: 100px;">
+                <label for="price-${variationIndex}-${sizeCount}">Price Adjustment</label>
+                <input type="number" id="price-${variationIndex}-${sizeCount}" name="variations[${variationIndex}][sizes][${sizeCount}][price_adjustment]" placeholder="New Price" step="0.01" style="width: 120px;">
                 <button type="button" onclick="removeSize(this)" class="btn btn-danger">Remove</button>
             `;
-            
+
             // Insert before the add button row
             const addButtonRow = button.parentElement;
             sizesContainer.insertBefore(newSize, addButtonRow);
@@ -762,20 +889,26 @@ function addImageField() {
                     
                     <h4>Sizes for this variation</h4>
                     <div class="sizes-container">
-                        ${variation.sizes && variation.sizes.length > 0 ? 
+                        ${variation.sizes && variation.sizes.length > 0 ?
                             variation.sizes.map((size, sizeIndex) => `
                                 <div class="size-item">
-                                    <input type="text" name="variations[${index}][sizes][${sizeIndex}][size]" value="${size.size || ''}" placeholder="Size" style="width: 150px;">
-                                    <input type="number" name="variations[${index}][sizes][${sizeIndex}][stock]" value="${size.stock_quantity || ''}" placeholder="Stock" style="width: 100px;">
-                                    <input type="number" name="variations[${index}][sizes][${sizeIndex}][price_adjustment]" value="${size.price_adjustment || 0}" placeholder="New Price" step="0.01" style="width: 120px;">
+                                    <label for="size-${index}-${sizeIndex}">Size</label>
+                                    <input type="text" id="size-${index}-${sizeIndex}" name="variations[${index}][sizes][${sizeIndex}][size]" value="${size.size || ''}" placeholder="Size" style="width: 150px;">
+                                    <label for="stock-${index}-${sizeIndex}">Stock</label>
+                                    <input type="number" id="stock-${index}-${sizeIndex}" name="variations[${index}][sizes][${sizeIndex}][stock]" value="${size.stock_quantity || ''}" placeholder="Stock" style="width: 100px;">
+                                    <label for="price-${index}-${sizeIndex}">Price Adjustment</label>
+                                    <input type="number" id="price-${index}-${sizeIndex}" name="variations[${index}][sizes][${sizeIndex}][price_adjustment]" value="${size.price_adjustment || 0}" placeholder="New Price" step="0.01" style="width: 120px;">
                                     <button type="button" onclick="removeSize(this)" class="btn btn-danger">Remove</button>
                                 </div>
                             `).join('') : ''
                         }
                         <div class="size-item">
-                            <input type="text" name="variations[${index}][sizes][${variation.sizes ? variation.sizes.length : 0}][size]" placeholder="Size (e.g., S, M, L, 6, 7, 8)" style="width: 150px;">
-                            <input type="number" name="variations[${index}][sizes][${variation.sizes ? variation.sizes.length : 0}][stock]" placeholder="Stock" style="width: 100px;">
-                            <input type="number" name="variations[${index}][sizes][${variation.sizes ? variation.sizes.length : 0}][price_adjustment]" placeholder="New Price" step="0.01" style="width: 120px;">
+                            <label for="size-${index}-${variation.sizes ? variation.sizes.length : 0}">Size</label>
+                            <input type="text" id="size-${index}-${variation.sizes ? variation.sizes.length : 0}" name="variations[${index}][sizes][${variation.sizes ? variation.sizes.length : 0}][size]" placeholder="Size (e.g., S, M, L, 6, 7, 8)" style="width: 150px;">
+                            <label for="stock-${index}-${variation.sizes ? variation.sizes.length : 0}">Stock</label>
+                            <input type="number" id="stock-${index}-${variation.sizes ? variation.sizes.length : 0}" name="variations[${index}][sizes][${variation.sizes ? variation.sizes.length : 0}][stock]" placeholder="Stock" style="width: 100px;">
+                            <label for="price-${index}-${variation.sizes ? variation.sizes.length : 0}">Price Adjustment</label>
+                            <input type="number" id="price-${index}-${variation.sizes ? variation.sizes.length : 0}" name="variations[${index}][sizes][${variation.sizes ? variation.sizes.length : 0}][price_adjustment]" placeholder="New Price" step="0.01" style="width: 120px;">
                             <button type="button" onclick="removeSize(this)" class="btn btn-danger">Remove</button>
                         </div>
                         <div style="margin-top: 10px;">
@@ -787,11 +920,6 @@ function addImageField() {
             container.insertAdjacentHTML('beforeend', variationHtml);
         }
         
-        function deleteProduct(id) {
-            if (confirm('Are you sure you want to delete this product?')) {
-                window.location.href = `?delete=${id}`;
-            }
-        }
         
         function validateStock() {
             const baseStock = parseInt(document.querySelector('input[name="stock"]').value) || 0;

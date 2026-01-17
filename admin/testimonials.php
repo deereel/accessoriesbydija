@@ -68,50 +68,37 @@ $stmt = $pdo->query("SELECT id, name FROM products WHERE is_active = 1 ORDER BY 
 $products = $stmt->fetchAll();
 ?>
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Testimonials Management - Dija Accessories Admin</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f4f4f4; }
-        .admin-header { background: #333; color: white; padding: 1rem; margin: -20px -20px 20px; }
-        .admin-nav { background: #C27BA0; padding: 1rem; margin: -20px -20px 20px; }
-        .admin-nav a { color: white; text-decoration: none; margin-right: 2rem; padding: 0.5rem 1rem; border-radius: 4px; }
-        .admin-nav a:hover, .admin-nav a.active { background: rgba(255,255,255,0.2); }
-        .controls { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-        .testimonials-table { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background: #f8f8f8; font-weight: 600; }
-        .rating { color: #ffc107; }
-        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; }
-        .status-approved { background: #d4edda; color: #155724; }
-        .status-pending { background: #fff3cd; color: #856404; }
-        .featured-badge { background: #C27BA0; color: white; }
-        .btn { padding: 6px 12px; background: #C27BA0; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 12px; margin-right: 5px; }
-        .btn:hover { background: #a66889; }
-        .btn-success { background: #28a745; }
-        .btn-danger { background: #dc3545; }
-        .success { background: #d4edda; color: #155724; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
-        .modal-content { background: white; margin: 5% auto; padding: 20px; width: 80%; max-width: 600px; border-radius: 8px; max-height: 80vh; overflow-y: auto; }
-        .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
-        .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        .close { float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
-        .client-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 10px; vertical-align: middle; }
-        .client-initial { width: 40px; height: 40px; border-radius: 50%; background: #C27BA0; color: white; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; margin-right: 10px; vertical-align: middle; }
-        .image-preview { max-width: 150px; max-height: 150px; margin-top: 10px; border-radius: 8px; display: none; }
-        .image-preview.show { display: block; }
-        .remove-image { color: #dc3545; cursor: pointer; font-size: 12px; margin-left: 10px; }
-    </style>
-</head>
-<body>
-
 <?php include '_layout_header.php'; ?>
+
+<style>
+    .controls { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+    .testimonials-table { background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #f8f8f8; font-weight: 600; }
+    .rating { color: #ffc107; }
+    .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+    .status-approved { background: #d4edda; color: #155724; }
+    .status-pending { background: #fff3cd; color: #856404; }
+    .featured-badge { background: #C27BA0; color: white; }
+    .btn { padding: 6px 12px; background: #C27BA0; color: white; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; display: inline-block; font-size: 12px; margin-right: 5px; }
+    .btn:hover { background: #a66889; }
+    .btn-success { background: #28a745; }
+    .btn-danger { background: #dc3545; }
+    .success { background: #d4edda; color: #155724; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; }
+    .modal-content { background: white; margin: 5% auto; padding: 20px; width: 80%; max-width: 600px; border-radius: 8px; max-height: 80vh; overflow-y: auto; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .close { float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+    .client-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-right: 10px; vertical-align: middle; }
+    .client-initial { width: 40px; height: 40px; border-radius: 50%; background: #C27BA0; color: white; display: inline-flex; align-items: center; justify-content: center; font-weight: bold; font-size: 18px; margin-right: 10px; vertical-align: middle; }
+    .image-preview { max-width: 150px; max-height: 150px; margin-top: 10px; border-radius: 8px; display: none; }
+    .image-preview.show { display: block; }
+    .remove-image { color: #dc3545; cursor: pointer; font-size: 12px; margin-left: 10px; }
+</style>
 
     <?php if (isset($success)): ?>
         <div class="card">

@@ -24,21 +24,12 @@ try {
     $order = $stmt->fetch();
 
     if (!$order) {
+        error_log("Order confirmation: Order not found for ID: $order_id");
         header('Location: index.php');
         exit;
     }
 
-    // Clear customer cart if order is paid and customer is logged in
-    if ($order['status'] !== 'pending' && !empty($order['customer_id'])) {
-        try {
-            $deleteStmt = $pdo->prepare("DELETE FROM cart WHERE customer_id = ?");
-            $result = $deleteStmt->execute([$order['customer_id']]);
-            $affected = $deleteStmt->rowCount();
-            error_log('Order confirmation: Cart cleared for customer ' . $order['customer_id'] . ' for paid order ' . $order_id . ' - affected rows: ' . $affected);
-        } catch (Exception $e) {
-            error_log('Order confirmation: Failed to clear cart for customer ' . $order['customer_id'] . ': ' . $e->getMessage());
-        }
-    }
+    error_log("Order confirmation: Order ID $order_id - Status: {$order['status']}, Payment Status: {$order['payment_status']}, Payment Method: {$order['payment_method']}");
 
     // Fetch order items
     $stmt = $pdo->prepare("SELECT oi.*, p.name, p.sku
@@ -60,6 +51,97 @@ try {
 }
 
 $is_paid = $order['status'] !== 'pending';
+
+// Simple log function
+function debug_log($message) {
+    $log_file = __DIR__ . '/debug.log';
+    $timestamp = date('Y-m-d H:i:s');
+    file_put_contents($log_file, "[$timestamp] $message\n", FILE_APPEND);
+}
+
+// For Stripe payments that are still pending, verify the session status
+if (!$is_paid && $order['payment_method'] === 'stripe' && isset($_GET['session_id'])) {
+    debug_log("Order confirmation: Attempting Stripe session verification for order {$order_id}, session_id: {$_GET['session_id']}");
+    error_log("Order confirmation: Attempting Stripe session verification for order {$order_id}, session_id: {$_GET['session_id']}");
+    try {
+        $session_id = $_GET['session_id'];
+
+        // Load Stripe config
+        require_once 'config/env.php';
+        $STRIPE_SECRET_KEY = getenv('STRIPE_SECRET_KEY') ?: 'sk_test_your_secret_key_here';
+
+        if (!empty($STRIPE_SECRET_KEY) && strpos($STRIPE_SECRET_KEY, 'your_secret_key') === false) {
+            // Verify session with Stripe API
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => 'https://api.stripe.com/v1/checkout/sessions/' . urlencode($session_id),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => [
+                    'Authorization: Bearer ' . $STRIPE_SECRET_KEY,
+                    'Content-Type: application/json'
+                ],
+                CURLOPT_TIMEOUT => 10
+            ]);
+
+            $response = curl_exec($ch);
+            $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            debug_log("Order confirmation: Stripe API response - HTTP Code: $http_code, Payment Status: " . ($session['payment_status'] ?? 'unknown'));
+            error_log("Order confirmation: Stripe API response - HTTP Code: $http_code, Payment Status: " . ($session['payment_status'] ?? 'unknown'));
+
+            if ($http_code === 200) {
+                $session = json_decode($response, true);
+                if ($session && $session['payment_status'] === 'paid') {
+                    // Update order status
+                    $updateStmt = $pdo->prepare("UPDATE orders SET status = 'processing', payment_status = 'paid', notes = CONCAT(notes, ' - Verified via session check') WHERE id = ?");
+                    $updateStmt->execute([$order_id]);
+
+                    // Refresh order data
+                    $stmt = $pdo->prepare("SELECT o.*, c.first_name, c.last_name, c.email, CONCAT(a.first_name, ' ', a.last_name) AS address_name, a.address_line_1, a.city, a.postal_code
+                                            FROM orders o
+                                            LEFT JOIN customers c ON o.customer_id = c.id
+                                            LEFT JOIN customer_addresses a ON o.address_id = a.id
+                                            WHERE o.id = ?");
+                    $stmt->execute([$order_id]);
+                    $order = $stmt->fetch();
+
+                    $is_paid = true;
+                    debug_log("Order confirmation: Stripe session verified and order {$order_id} updated to paid");
+                    error_log("Order confirmation: Stripe session verified and order {$order_id} updated to paid");
+                } else {
+                    debug_log("Order confirmation: Stripe session not paid, status: " . ($session['payment_status'] ?? 'null'));
+                    error_log("Order confirmation: Stripe session not paid, status: " . ($session['payment_status'] ?? 'null'));
+                }
+            } else {
+                debug_log("Order confirmation: Stripe API failed - HTTP Code: $http_code, Response: " . substr($response, 0, 200));
+                error_log("Order confirmation: Stripe API failed - HTTP Code: $http_code, Response: " . substr($response, 0, 200));
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Order confirmation: Failed to verify Stripe session: " . $e->getMessage());
+    }
+}
+
+// Clear customer cart if order is paid and customer is logged in
+if ($order['status'] !== 'pending' && !empty($order['customer_id'])) {
+    try {
+        $deleteStmt = $pdo->prepare("DELETE FROM cart WHERE customer_id = ?");
+        $result = $deleteStmt->execute([$order['customer_id']]);
+        $affected = $deleteStmt->rowCount();
+        error_log('Order confirmation: Cart cleared for customer ' . $order['customer_id'] . ' for paid order ' . $order_id . ' - affected rows: ' . $affected);
+    } catch (Exception $e) {
+        error_log('Order confirmation: Failed to clear cart for customer ' . $order['customer_id'] . ': ' . $e->getMessage());
+    }
+}
+
+// Clear guest session cart if order is paid
+if ($order['status'] !== 'pending' && empty($order['customer_id'])) {
+    if (isset($_SESSION['cart'])) {
+        unset($_SESSION['cart']);
+        error_log('Order confirmation: Guest session cart cleared for order ' . $order_id);
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

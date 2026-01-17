@@ -15,7 +15,9 @@ if (!isset($_SESSION['admin_logged_in']) && isset($_POST['username'])) {
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password_hash'])) {
-            if ($user['is_active']) {
+            if (!isset($_POST['captcha']) || strtoupper($_POST['captcha']) !== $_SESSION['admin_captcha']) {
+                $error = 'Invalid verification code.';
+            } elseif ($user['is_active']) {
                 session_regenerate_id(true);
                 $_SESSION['admin_logged_in'] = true;
                 $_SESSION['admin_user_id'] = $user['id'];
@@ -26,7 +28,7 @@ if (!isset($_SESSION['admin_logged_in']) && isset($_POST['username'])) {
                 // Update last login timestamp
                 $update_stmt = $pdo->prepare("UPDATE admin_users SET last_login = CURRENT_TIMESTAMP WHERE id = ?");
                 $update_stmt->execute([$user['id']]);
-                
+
                 header('Location: index.php');
                 exit;
             } else {
@@ -49,7 +51,11 @@ if (isset($_GET['logout'])) {
     exit;
 }
 
-if (!isset($_SESSION['admin_logged_in'])): ?>
+if (!isset($_SESSION['admin_logged_in'])):
+// Generate CAPTCHA
+$captcha_code = strtoupper(substr(md5(rand()), 0, 5));
+$_SESSION['admin_captcha'] = $captcha_code;
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -72,6 +78,12 @@ if (!isset($_SESSION['admin_logged_in'])): ?>
     <form method="POST" class="login-form">
       <input type="text" name="username" placeholder="Username" required>
       <input type="password" name="password" placeholder="Password" required>
+      <div style="margin: 1rem 0; text-align: center;">
+        <div style="display: inline-block; padding: 0.5rem; background: #f0f0f0; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 1.2rem; letter-spacing: 0.2rem;">
+          <?php echo $captcha_code; ?>
+        </div>
+      </div>
+      <input type="text" name="captcha" placeholder="Enter the code above" required style="text-transform: uppercase;">
       <button type="submit">Login</button>
     </form>
     <p style="text-align:center; color:#666; margin-top:1rem; font-size:12px;">Please use your assigned administrator credentials to log in.</p>

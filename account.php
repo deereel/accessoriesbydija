@@ -10,6 +10,10 @@ if (!isset($_SESSION['customer_id'])) {
 }
 
 require_once 'config/database.php';
+require_once 'config/security.php';
+
+// Generate CSRF token for AJAX requests
+generateCSRFToken();
 
 // Get customer data
 try {
@@ -27,6 +31,30 @@ try {
 }
 
 include 'includes/header.php';
+
+// Countries list for address form
+$countries = [
+    'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 'Australia', 'Austria',
+    'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bhutan',
+    'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cambodia',
+    'Cameroon', 'Canada', 'Central African Republic', 'Chad', 'Chile', 'China', 'Colombia', 'Comoros', 'Congo', 'Costa Rica',
+    'Croatia', 'Cuba', 'Cyprus', 'Czech Republic', 'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic', 'East Timor', 'Ecuador',
+    'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 'Eswatini', 'Ethiopia', 'Fiji', 'Finland', 'France',
+    'Gabon', 'Gambia', 'Georgia', 'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau',
+    'Guyana', 'Haiti', 'Honduras', 'Hungary', 'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland',
+    'Israel', 'Italy', 'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kenya', 'Kiribati', 'Korea North', 'Korea South',
+    'Kosovo', 'Kuwait', 'Kyrgyzstan', 'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein',
+    'Lithuania', 'Luxembourg', 'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta', 'Marshall Islands', 'Mauritania',
+    'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 'Mozambique', 'Myanmar',
+    'Namibia', 'Nauru', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 'Niger', 'Nigeria', 'North Macedonia', 'Norway',
+    'Oman', 'Pakistan', 'Palau', 'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal',
+    'Qatar', 'Romania', 'Russia', 'Rwanda', 'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines', 'Samoa', 'San Marino', 'Sao Tome and Principe',
+    'Saudi Arabia', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia',
+    'South Africa', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Switzerland', 'Syria', 'Taiwan',
+    'Tajikistan', 'Tanzania', 'Thailand', 'Togo', 'Tonga', 'Trinidad and Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu',
+    'Uganda', 'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatican City', 'Venezuela',
+    'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe'
+];
 ?>
 
 <main class="account-page">
@@ -245,6 +273,8 @@ include 'includes/header.php';
     </div>
 </main>
 
+<input type="hidden" id="csrf_token" value="<?php echo htmlspecialchars($_SESSION['csrf_token']); ?>">
+
 <!-- Address Modal -->
 <div id="address-modal" class="modal">
     <div class="modal-content">
@@ -263,6 +293,11 @@ include 'includes/header.php';
                     <label for="address_last_name">Last Name *</label>
                     <input type="text" id="address_last_name" name="last_name" required>
                 </div>
+            </div>
+
+            <div class="form-group">
+                <label for="phone">Phone Number *</label>
+                <input type="tel" id="phone" name="phone" required>
             </div>
             
             <div class="form-group">
@@ -301,12 +336,17 @@ include 'includes/header.php';
             
             <div class="form-row">
                 <div class="form-group">
-                    <label for="postal_code">Postal Code *</label>
-                    <input type="text" id="postal_code" name="postal_code" required>
+                    <label for="postal_code">Postal Code</label>
+                    <input type="text" id="postal_code" name="postal_code">
                 </div>
                 <div class="form-group">
                     <label for="country">Country *</label>
-                    <input type="text" id="country" name="country" value="United Kingdom" required>
+                    <select id="country" name="country" required>
+                        <option value="">Select Country</option>
+                        <?php foreach ($countries as $country): ?>
+                            <option value="<?php echo htmlspecialchars($country); ?>" <?php echo $country === 'United Kingdom' ? 'selected' : ''; ?>><?php echo htmlspecialchars($country); ?></option>
+                        <?php endforeach; ?>
+                    </select>
                 </div>
             </div>
             

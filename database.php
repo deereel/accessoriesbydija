@@ -1,11 +1,8 @@
 <?php
-// Database Update Script for XAMPP
-// Access via: http://localhost/accessoriesbydija/database.php
+// Database Update Script
+// Access via: http://yourdomain.com/database.php
 
-$host = 'localhost';
-$username = 'root';
-$password = '';
-$database = 'dija_accessories';
+require_once 'config/database.php';
 
 try {
     $pdo = new PDO("mysql:host=$host", $username, $password);

@@ -35,6 +35,18 @@ require_once __DIR__ . '/../../../config/database.php';
 // Get order ID
 $order_id = $_GET['order_id'] ?? null;
 
+// Simple log function
+function debug_log($message) {
+    $log_file = __DIR__ . '/../../../debug.log';
+    $timestamp = date('Y-m-d H:i:s');
+    file_put_contents($log_file, "[$timestamp] $message\n", FILE_APPEND);
+}
+
+// Debug logging
+$host = $_SERVER['HTTP_HOST'] ?? 'unknown';
+debug_log("Stripe create-session: Host: $host, Order ID: $order_id");
+error_log("Stripe create-session: Host: $host, Order ID: $order_id");
+
 if (!$order_id) {
     http_response_code(400);
     echo json_encode(['success' => false, 'message' => 'Order ID is required']);
@@ -66,6 +78,18 @@ try {
 
     // TODO: Get STRIPE_SECRET_KEY from environment
     $STRIPE_SECRET_KEY = getenv('STRIPE_SECRET_KEY') ?: 'sk_test_your_secret_key_here';
+
+    // Debug logging for key status
+    $key_status = 'set';
+    if (empty($STRIPE_SECRET_KEY)) {
+        $key_status = 'empty';
+    } elseif (strpos($STRIPE_SECRET_KEY, 'your_secret_key') !== false) {
+        $key_status = 'placeholder_your_secret_key';
+    } elseif (strpos($STRIPE_SECRET_KEY, 'xxxxx') !== false) {
+        $key_status = 'placeholder_xxxxx';
+    }
+    debug_log("Stripe create-session: STRIPE_SECRET_KEY status: $key_status");
+    error_log("Stripe create-session: STRIPE_SECRET_KEY status: $key_status");
 
     if (empty($STRIPE_SECRET_KEY) || strpos($STRIPE_SECRET_KEY, 'your_secret_key') !== false || strpos($STRIPE_SECRET_KEY, 'xxxxx') !== false) {
         http_response_code(500);

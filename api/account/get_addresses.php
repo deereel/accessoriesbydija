@@ -12,7 +12,7 @@ try {
     if (isset($_GET['id'])) {
         // Get single address
         $stmt = $pdo->prepare("SELECT * FROM customer_addresses WHERE id = ? AND customer_id = ?");
-        $stmt->execute([$_GET['id'], $_SESSION['customer_id']]);
+        $stmt->execute([(int)$_GET['id'], $_SESSION['customer_id']]);
         $address = $stmt->fetch(PDO::FETCH_ASSOC);
         
         echo json_encode(['success' => true, 'address' => $address]);

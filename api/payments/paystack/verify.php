@@ -110,10 +110,13 @@ try {
     $order = $stmt->fetch();
 
     if (!$order) {
+        error_log("Paystack verify: Order not found for reference: {$transaction['reference']}");
         http_response_code(404);
         echo json_encode(['success' => false, 'message' => 'Order not found']);
         exit;
     }
+
+    error_log("Paystack verify: Found order ID {$order['id']} for reference {$transaction['reference']}, current status: {$order['status']}");
 
     // SECURITY: Verify amount matches exactly (in kobo for GBP currency)
     $expected_amount = intval($order['total_amount'] * 100);
@@ -152,12 +155,18 @@ try {
 
     // Update order status to paid
     $stmt = $pdo->prepare("UPDATE orders SET status = ?, payment_status = ?, notes = ? WHERE id = ?");
-    $stmt->execute([
+    $result = $stmt->execute([
         'processing',  // Set to processing after payment confirmed
         'paid',
         'Paid via Paystack. Reference: ' . $reference,
         $order['id']
     ]);
+
+    if ($result) {
+        error_log("Paystack verify: Successfully updated order {$order['id']} status to 'processing', payment_status to 'paid'");
+    } else {
+        error_log("Paystack verify: FAILED to update order {$order['id']} status");
+    }
 
     // Clear customer's cart now that payment is confirmed (if customer exists)
     if (!empty($order['customer_id'])) {

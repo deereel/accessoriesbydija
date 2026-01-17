@@ -90,12 +90,13 @@ echo '<script type="application/ld+json">' . json_encode($faq_schema) . '</scrip
 ?>
 
 <main>
+    <h1 style="display:none;">Premium Jewelry Collection</h1>
     <!-- Hero Slider -->
     <section class="hero-slider">
         <div class="slider-container">
-            <div class="slide active" data-bg="assets/images/hero-1.jpg">
+            <div class="slide active" data-bg="assets/images/hero-1.jpg" aria-label="Timeless Elegance" title="Timeless Elegance">
                 <div class="slide-content">
-                    <h1>Timeless Elegance</h1>
+                    <h2>Timeless Elegance</h2>
                     <p>Discover modern jewelry made to match your everyday elegance</p>
                     <div class="hero-buttons">
                         <a href="category.php?cat=women" class="hero-btn">Shop Women</a>
@@ -103,16 +104,16 @@ echo '<script type="application/ld+json">' . json_encode($faq_schema) . '</scrip
                     </div>
                 </div>
             </div>
-            <div class="slide" data-bg="assets/images/hero-2.jpg">
+            <div class="slide" data-bg="assets/images/hero-2.jpg" aria-label="Luxury Redefined" title="Luxury Redefined">
                 <div class="slide-content">
-                    <h1>Luxury Redefined</h1>
+                    <h2>Luxury Redefined</h2>
                     <p>Handcrafted pieces that tell your unique story</p>
                     <a href="category.php?cat=women" class="hero-btn">Explore Collections</a>
                 </div>
             </div>
-            <div class="slide" data-bg="assets/images/hero-3.jpg">
+            <div class="slide" data-bg="assets/images/hero-3.jpg" aria-label="Custom Creations" title="Custom Creations">
                 <div class="slide-content">
-                    <h1>Custom Creations</h1>
+                    <h2>Custom Creations</h2>
                     <p>Work with our designers to create your perfect piece</p>
                     <a href="custom-jewelry.php" class="hero-btn">Start Designing</a>
                 </div>
@@ -222,21 +223,21 @@ echo '<script type="application/ld+json">' . json_encode($faq_schema) . '</scrip
     <!-- Collection Banner Swiper -->
     <section class="collection-banners">
         <div class="banner-swiper">
-            <div class="banner-slide active" data-bg="assets/images/golden-hour-banner.jpg">
+            <div class="banner-slide active" data-bg="assets/images/golden-hour-banner.jpg" aria-label="Golden Hour Glow" title="Golden Hour Glow">
                 <div class="banner-content">
                     <h2>Golden Hour Glow</h2>
                     <p>Discover our exclusive collection of warm-toned jewelry that captures the magic of golden hour</p>
                     <a href="collection.php?name=golden-hour" class="banner-btn">Shop Collection</a>
                 </div>
             </div>
-            <div class="banner-slide" data-bg="assets/images/luxury-banner.jpg">
+            <div class="banner-slide" data-bg="assets/images/luxury-banner.jpg" aria-label="Luxury Collection" title="Luxury Collection">
                 <div class="banner-content">
                     <h2>Luxury Collection</h2>
                     <p>Exquisite pieces crafted with the finest materials and exceptional attention to detail</p>
                     <a href="collection.php?name=luxury" class="banner-btn">Explore Luxury</a>
                 </div>
             </div>
-            <div class="banner-slide" data-bg="assets/images/holiday-banner.jpg">
+            <div class="banner-slide" data-bg="assets/images/holiday-banner.jpg" aria-label="Holiday Sale" title="Holiday Sale">
                 <div class="banner-content">
                     <h2>Holiday Sale</h2>
                     <p>Special offers on selected jewelry pieces - perfect gifts for your loved ones</p>
@@ -260,7 +261,80 @@ echo '<script type="application/ld+json">' . json_encode($faq_schema) . '</scrip
         <div class="container">
             <h2>Featured Products</h2>
             <div class="featured-grid-4x2" id="featured-products">
-                <!-- Products loaded via JavaScript -->
+                <?php
+                try {
+                    $shuffle_seed = floor(time() / (2 * 24 * 60 * 60));
+                    $stmt = $pdo->prepare("
+                        SELECT p.*, 
+                               COALESCE(pi_primary.image_url, pi_first.image_url) as image_url
+                        FROM products p 
+                        LEFT JOIN product_images pi_primary ON p.id = pi_primary.product_id AND pi_primary.is_primary = 1
+                        LEFT JOIN product_images pi_first ON p.id = pi_first.product_id AND pi_first.id = (
+                            SELECT MIN(id) FROM product_images WHERE product_id = p.id
+                        )
+                        WHERE p.is_featured = 1 AND p.is_active = 1 
+                        ORDER BY RAND(?) 
+                        LIMIT 8
+                    ");
+                    $stmt->execute([$shuffle_seed]);
+                    $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                    if ($products) {
+                        foreach ($products as $product) {
+                            $price = (float)($product['price'] ?? 0);
+                            $desc = trim($product['description'] ?? '');
+                            $shortDesc = strlen($desc) > 80 ? substr($desc, 0, 80) . '…' : $desc;
+                            ?>
+                            <div class="featured-card" data-product-id="<?php echo $product['id']; ?>" data-price="<?php echo $price; ?>" data-name="<?php echo htmlspecialchars($product['name']); ?>">
+                                <button class="wishlist-btn" data-product-id="<?php echo $product['id']; ?>" onclick="toggleWishlist(<?php echo $product['id']; ?>)" aria-label="Add to wishlist">
+                                    <i class="far fa-heart"></i>
+                                </button>
+                                <div class="featured-image">
+                                    <a href="product.php?slug=<?php echo $product['slug']; ?>" aria-label="View <?php echo htmlspecialchars($product['name']); ?>">
+                                        <?php if ($product['image_url']): ?>
+                                            <img src="<?php echo htmlspecialchars($product['image_url']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" loading="lazy">
+                                        <?php else: ?>
+                                            <div class="featured-placeholder"><?php echo htmlspecialchars(strtoupper(substr($product['name'], 0, 2))); ?></div>
+                                        <?php endif; ?>
+                                    </a>
+                                </div>
+                                <div class="featured-info">
+                                    <h3><a href="product.php?slug=<?php echo $product['slug']; ?>" style="text-decoration:none;color:inherit;"><?php echo htmlspecialchars($product['name']); ?></a></h3>
+                                    <?php if ($shortDesc): ?>
+                                        <p class="featured-description"><?php echo htmlspecialchars($shortDesc); ?></p>
+                                    <?php endif; ?>
+                                    <?php if ($product['weight']): ?>
+                                        <p style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem;">⚖️ <?php echo htmlspecialchars((string)$product['weight']); ?>g</p>
+                                    <?php endif; ?>
+                                    <div class="featured-footer">
+                                        <span class="featured-price" data-price="<?php echo $price; ?>">£<?php echo number_format($price, 2); ?></span>
+                                        <div class="featured-actions">
+                                            <button class="action-btn add-to-cart" onclick="addToCart(<?php echo $product['id']; ?>)" data-product-id="<?php echo $product['id']; ?>" <?php echo $product['stock_quantity'] <= 0 ? 'disabled' : ''; ?>>
+                                                Add to Cart
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="stock-badge" style="margin-top: 8px; text-align: center; font-size: 0.85rem; font-weight: 500;">
+                                        <?php if ($product['stock_quantity'] <= 0): ?>
+                                            <span style="color: #d32f2f; background-color: #ffebee; padding: 4px 8px; border-radius: 4px; display: inline-block;">Out of Stock</span>
+                                        <?php elseif ($product['stock_quantity'] < 10): ?>
+                                            <span style="color: #f57c00; background-color: #fff3e0; padding: 4px 8px; border-radius: 4px; display: inline-block;">Only <?php echo $product['stock_quantity']; ?> left</span>
+                                        <?php else: ?>
+                                            <span style="color: #388e3c; background-color: #e8f5e9; padding: 4px 8px; border-radius: 4px; display: inline-block;">In Stock</span>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php
+                        }
+                    } else {
+                        echo '<p style="text-align: center; color: #666;">No featured products available.</p>';
+                    }
+                } catch (Exception $e) {
+                    error_log('Error fetching featured products in index.php: ' . $e->getMessage());
+                    echo '<p style="text-align: center; color: #666;">Error loading products.</p>';
+                }
+                ?>
             </div>
             <div style="text-align: center; margin-top: 2rem;">
                 <a href="products.php" class="custom-btn">View All Products</a>

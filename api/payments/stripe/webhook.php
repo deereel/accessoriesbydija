@@ -18,13 +18,33 @@
 
 header('Content-Type: application/json');
 
+// Simple log function
+function debug_log($message) {
+    $log_file = __DIR__ . '/../../../debug.log';
+    $timestamp = date('Y-m-d H:i:s');
+    file_put_contents($log_file, "[$timestamp] $message\n", FILE_APPEND);
+}
+
 // Load environment variables from .env file
 require_once __DIR__ . '/../../../config/env.php';
 require_once __DIR__ . '/../../../config/database.php';
 require_once __DIR__ . '/../../../includes/email.php';
 
+debug_log("Stripe webhook: Request received - Method: " . $_SERVER['REQUEST_METHOD'] . ", Path: " . $_SERVER['REQUEST_URI'] . ", Host: " . ($_SERVER['HTTP_HOST'] ?? 'unknown'));
+error_log("Stripe webhook: Request received - Method: " . $_SERVER['REQUEST_METHOD'] . ", Path: " . $_SERVER['REQUEST_URI'] . ", Host: " . ($_SERVER['HTTP_HOST'] ?? 'unknown'));
+
 // TODO: Get webhook signing secret from environment
 $STRIPE_WEBHOOK_SECRET = getenv('STRIPE_WEBHOOK_SECRET') ?: 'whsec_your_webhook_secret_here';
+
+// Debug logging for webhook secret
+$webhook_secret_status = 'set';
+if (empty($STRIPE_WEBHOOK_SECRET)) {
+    $webhook_secret_status = 'empty';
+} elseif (strpos($STRIPE_WEBHOOK_SECRET, 'your_webhook_secret') !== false) {
+    $webhook_secret_status = 'placeholder';
+}
+debug_log("Stripe webhook: STRIPE_WEBHOOK_SECRET status: $webhook_secret_status");
+error_log("Stripe webhook: STRIPE_WEBHOOK_SECRET status: $webhook_secret_status");
 
 // Get raw request body
 $raw_body = file_get_contents('php://input');
@@ -94,6 +114,7 @@ switch ($event->type) {
     
     default:
         // Ignore other event types
+        debug_log("Unhandled webhook event type: " . $event->type);
         error_log("Unhandled webhook event type: " . $event->type);
         break;
 }
@@ -106,7 +127,12 @@ echo json_encode(['success' => true]);
 function handleCheckoutSessionCompleted($event, $pdo) {
     $session = $event->data->object;
 
+    debug_log("Stripe webhook: Handling checkout.session.completed - Session ID: {$session->id}, Payment Status: {$session->payment_status}");
+    error_log("Stripe webhook: Handling checkout.session.completed - Session ID: {$session->id}, Payment Status: {$session->payment_status}");
+
     if ($session->payment_status !== 'paid') {
+        debug_log("Stripe webhook: Payment not completed, status: {$session->payment_status}");
+        error_log("Stripe webhook: Payment not completed, status: {$session->payment_status}");
         return; // Payment not completed
     }
 
@@ -165,17 +191,29 @@ function handleCheckoutSessionCompleted($event, $pdo) {
 
         // Check if already processed (idempotent)
         if ($order['status'] === 'paid' || $order['status'] === 'processing') {
+            error_log("Stripe webhook: Order {$order_id} already processed with status {$order['status']}");
             return; // Already processed
         }
 
+        debug_log("Stripe webhook: Updating order {$order_id} from status {$order['status']} to 'processing'");
+        error_log("Stripe webhook: Updating order {$order_id} from status {$order['status']} to 'processing'");
+
         // Update order status to paid
         $stmt = $pdo->prepare("UPDATE orders SET status = ?, payment_status = ?, notes = ? WHERE id = ?");
-        $stmt->execute([
+        $result = $stmt->execute([
             'processing',
             'paid',
             'Paid via Stripe. Session: ' . $session->id,
             $order_id
         ]);
+
+        if ($result) {
+            debug_log("Stripe webhook: Successfully updated order {$order_id} status to 'processing'");
+            error_log("Stripe webhook: Successfully updated order {$order_id} status to 'processing'");
+        } else {
+            debug_log("Stripe webhook: FAILED to update order {$order_id} status");
+            error_log("Stripe webhook: FAILED to update order {$order_id} status");
+        }
 
         // Clear customer's cart now that payment is confirmed (if customer exists)
         if (!empty($order['customer_id'])) {

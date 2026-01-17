@@ -124,13 +124,17 @@ function formatDate(dateString) {
 
 function initTestimonialsSlider() {
     const sliderEl = document.querySelector('.testimonials-slider');
-    if (!sliderEl || typeof Swiper === 'undefined') return;
+    if (!sliderEl || typeof Swiper === 'undefined') {
+        console.log('Testimonials slider init failed: sliderEl=', !!sliderEl, 'Swiper=', typeof Swiper);
+        return;
+    }
 
     if (sliderEl.swiper) {
         sliderEl.swiper.destroy(true, true);
     }
 
-    new Swiper(sliderEl, {
+    console.log('Initializing testimonials slider with autoplay');
+    const swiper = new Swiper(sliderEl, {
         slidesPerView: 1,
         spaceBetween: 24,
         loop: true,
@@ -159,6 +163,23 @@ function initTestimonialsSlider() {
             1024: {
                 slidesPerView: 3,
             }
+        },
+
+        on: {
+            init: function() {
+                console.log('Testimonials swiper initialized');
+            },
+            autoplayStart: function() {
+                console.log('Testimonials autoplay started');
+            },
+            autoplayStop: function() {
+                console.log('Testimonials autoplay stopped');
+            },
+            slideChange: function() {
+                console.log('Testimonials slide changed to', this.activeIndex);
+            }
         }
     });
+
+    console.log('Testimonials swiper created:', swiper);
 }

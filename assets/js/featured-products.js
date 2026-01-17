@@ -9,6 +9,12 @@ async function loadFeaturedProducts() {
     const container = document.getElementById('featured-products');
     if (!container) return; // Not on a page with featured products
 
+    // If products are already rendered by the server, just initialize wishlist buttons
+    if (container.children.length > 0 && !container.querySelector('.loading-spinner')) {
+        initializeWishlistButtons();
+        return;
+    }
+
     try {
         // Show loading spinner
         container.innerHTML = '<div class="loading-spinner">Loading featured products...</div>';

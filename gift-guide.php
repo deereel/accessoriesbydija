@@ -25,26 +25,38 @@ include 'includes/header.php';
             
             <div class="gift-grid">
                 <!-- By Material -->
-                <a href="products.php?material=gold" class="gift-card">
+                <a href="products.php?color[]=Gold&color[]=Rose%20Gold" class="gift-card">
                     <div class="gift-icon">🥇</div>
                     <div class="gift-content">
                         <h3>Gold Collection</h3>
                         <p>Timeless gold jewelry pieces that never go out of style</p>
                         <div class="gift-features">
-                            <span class="gift-tag">14K & 18K Gold</span>
+                            <span class="gift-tag">Gold & Rose Gold</span>
                             <span class="gift-tag">Classic</span>
                         </div>
                     </div>
                 </a>
 
-                <a href="products.php?material=silver" class="gift-card">
+                <a href="products.php?color=Silver&material=Sterling%20Silver" class="gift-card">
                     <div class="gift-icon">🥈</div>
                     <div class="gift-content">
                         <h3>Silver Collection</h3>
                         <p>Elegant sterling silver pieces for everyday luxury</p>
                         <div class="gift-features">
+                            <span class="gift-tag">Silver Color</span>
                             <span class="gift-tag">Sterling Silver</span>
-                            <span class="gift-tag">Versatile</span>
+                        </div>
+                    </div>
+                </a>
+
+                <a href="products.php?adornment=Pearl&material=Pearl" class="gift-card">
+                    <div class="gift-icon">🦪</div>
+                    <div class="gift-content">
+                        <h3>Pearl Collection</h3>
+                        <p>Elegant pearl jewelry for timeless sophistication</p>
+                        <div class="gift-features">
+                            <span class="gift-tag">Freshwater Pearls</span>
+                            <span class="gift-tag">Pearl Material</span>
                         </div>
                     </div>
                 </a>
@@ -117,7 +129,7 @@ include 'includes/header.php';
                     </div>
                 </a>
 
-                <a href="products.php?featured=1" class="gift-card special">
+                <a href="gift_box.php" class="gift-card special">
                     <div class="gift-icon">
                         🎁
                         <span class="gift-badge">Popular</span>

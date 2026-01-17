@@ -35,6 +35,8 @@ require_once 'config/database.php';
     <meta name="keywords" content="<?php echo $meta_tags['keywords']; ?>">
     <meta name="robots" content="<?php echo $meta_tags['robots']; ?>">
     <link rel="canonical" href="<?php echo $meta_tags['canonical']; ?>">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="apple-touch-icon" href="assets/images/logo.webp">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#C27BA0">
 
@@ -47,6 +49,7 @@ require_once 'config/database.php';
     <?php foreach ($twitter_tags as $name => $content): ?>
     <meta name="twitter:<?php echo $name; ?>" content="<?php echo $content; ?>">
     <?php endforeach; ?>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" />
     <link rel="stylesheet" href="assets/css/header.css">
     <link rel="stylesheet" href="assets/css/hero.css">
     <link rel="stylesheet" href="assets/css/category-section.css">
@@ -237,7 +240,7 @@ require_once 'config/database.php';
                 <a href="new-arrivals.php">NEW &#9660;</a>
             </div>
             <div class="nav-item" data-menu="shop">
-                <a href="products.php">SHOP &#9660;</a>
+                <a href="products.php">SHOP;</a>
             </div>
             <div class="nav-item" data-menu="women">
                 <a href="products.php?gender=women">WOMEN &#9660;</a>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'accessories-by-dija-v1';
+const CACHE_NAME = 'accessories-by-dija-v2';
 const urlsToCache = [
   '/',
   '/index.php',
