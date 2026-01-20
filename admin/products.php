@@ -126,16 +126,18 @@ if ($_POST) {
         $pdo->beginTransaction();
         try {
             $slug = strtolower(str_replace(' ', '-', $_POST['product_name']));
-            $stmt = $pdo->prepare("INSERT INTO products (name, slug, description, sku, price, stock_quantity, gender, category_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-            $stmt->execute([$_POST['product_name'], $slug, $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], trim($_POST['gender']), $_POST['category_id']]);
+            $weight = !empty($_POST['weight']) ? $_POST['weight'] : null;
+            $stmt = $pdo->prepare("INSERT INTO products (name, slug, short_description, description, sku, price, stock_quantity, gender, category_id, weight, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            $stmt->execute([$_POST['product_name'], $slug, $_POST['short_description'], $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], trim($_POST['gender']), $_POST['category_id'], $weight]);
             $product_id = $pdo->lastInsertId();
             
             // Add variations
             if (isset($_POST['variations'])) {
                 foreach ($_POST['variations'] as $variation) {
                     $price_adjustment = !empty($variation['price_adjustment']) ? $variation['price_adjustment'] : null;
-                    $stmt = $pdo->prepare("INSERT INTO product_variations (product_id, material_id, tag, color, adornment, price_adjustment, stock_quantity) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([$product_id, $variation['material_id'], $variation['tag'], $variation['color'], $variation['adornment'], $price_adjustment, $variation['stock']]);
+                    $variation_weight = !empty($variation['weight']) ? $variation['weight'] : null;
+                    $stmt = $pdo->prepare("INSERT INTO product_variations (product_id, material_id, tag, color, adornment, price_adjustment, stock_quantity, weight) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([$product_id, $variation['material_id'], $variation['tag'], $variation['color'], $variation['adornment'], $price_adjustment, $variation['stock'], $variation_weight]);
                     $variation_id = $pdo->lastInsertId();
 
                     // Add sizes for this variation
@@ -194,10 +196,11 @@ if ($_POST) {
         try {
             $product_id = $_POST['product_id'];
             $slug = strtolower(str_replace(' ', '-', $_POST['product_name']));
-            
+            $weight = !empty($_POST['weight']) ? $_POST['weight'] : null;
+
             // Update product
-            $stmt = $pdo->prepare("UPDATE products SET name = ?, slug = ?, description = ?, sku = ?, price = ?, stock_quantity = ?, gender = ?, category_id = ? WHERE id = ?");
-            $stmt->execute([$_POST['product_name'], $slug, $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], trim($_POST['gender']), $_POST['category_id'], $product_id]);
+            $stmt = $pdo->prepare("UPDATE products SET name = ?, slug = ?, short_description = ?, description = ?, sku = ?, price = ?, stock_quantity = ?, gender = ?, category_id = ?, weight = ? WHERE id = ?");
+            $stmt->execute([$_POST['product_name'], $slug, $_POST['short_description'], $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], trim($_POST['gender']), $_POST['category_id'], $weight, $product_id]);
             
             // Delete existing variations and sizes
             $stmt = $pdo->prepare("DELETE FROM variation_sizes WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id = ?)");
@@ -209,8 +212,9 @@ if ($_POST) {
             if (isset($_POST['variations'])) {
                 foreach ($_POST['variations'] as $variation) {
                     $price_adjustment = !empty($variation['price_adjustment']) ? $variation['price_adjustment'] : null;
-                    $stmt = $pdo->prepare("INSERT INTO product_variations (product_id, material_id, tag, color, adornment, price_adjustment, stock_quantity) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([$product_id, $variation['material_id'], $variation['tag'], $variation['color'], $variation['adornment'], $price_adjustment, $variation['stock']]);
+                    $variation_weight = !empty($variation['weight']) ? $variation['weight'] : null;
+                    $stmt = $pdo->prepare("INSERT INTO product_variations (product_id, material_id, tag, color, adornment, price_adjustment, stock_quantity, weight) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                    $stmt->execute([$product_id, $variation['material_id'], $variation['tag'], $variation['color'], $variation['adornment'], $price_adjustment, $variation['stock'], $variation_weight]);
                     $variation_id = $pdo->lastInsertId();
 
                     // Add sizes for this variation
@@ -440,8 +444,13 @@ $categories = $stmt->fetchAll();
                     </div>
                     
                     <div class="form-group">
-                        <label>Description</label>
-                        <textarea name="description" rows="3"></textarea>
+                        <label>Short Description</label>
+                        <textarea name="short_description" rows="2" placeholder="Brief description for product cards and listings"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Detailed Description</label>
+                        <textarea name="description" rows="4" placeholder="Full product description for detail pages"></textarea>
                     </div>
 
                     <div class="form-row">
@@ -464,9 +473,15 @@ $categories = $stmt->fetchAll();
                         </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label>Total Stock</label>
-                        <input type="number" name="stock" required>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Total Stock</label>
+                            <input type="number" name="stock" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Base Weight (g)</label>
+                            <input type="number" name="weight" step="0.1" placeholder="Weight in grams">
+                        </div>
                     </div>
                 </div>
                 
@@ -499,7 +514,7 @@ $categories = $stmt->fetchAll();
                                 </div>
                                 <div class="form-group">
                                     <label>Primary Image</label>
-                                    <input type="checkbox" name="images[0][is_primary]" value="1">
+                                    <input type="checkbox" name="images[0][is_primary]" value="1" class="primary-image-checkbox" onclick="handlePrimaryImageChange(this)">
                                 </div>
                             </div>
                         </div>
@@ -757,10 +772,12 @@ function addImageField() {
                     document.querySelector('input[name="product_name"]').value = product.name || '';
                     document.querySelector('input[name="sku"]').value = product.sku || '';
                     document.querySelector('input[name="price"]').value = product.price || '';
+                    document.querySelector('textarea[name="short_description"]').value = product.short_description || '';
                     document.querySelector('textarea[name="description"]').value = product.description || '';
                     document.querySelector('input[name="stock"]').value = product.stock_quantity || '';
                     document.querySelector('select[name="gender"]').value = product.gender || 'Unisex';
                     document.querySelector('select[name="category_id"]').value = product.category_id || '';
+                    document.querySelector('input[name="weight"]').value = product.weight || '';
                     
                     // Update form action for editing
                     const form = document.querySelector('#productModal form');
@@ -885,6 +902,10 @@ function addImageField() {
                     <div class="form-group">
                         <label>Stock</label>
                         <input type="number" name="variations[${index}][stock]" value="${variation.stock_quantity || ''}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Weight (g)</label>
+                        <input type="number" name="variations[${index}][weight]" step="0.1" value="${variation.weight || ''}" placeholder="Weight in grams">
                     </div>
                     
                     <h4>Sizes for this variation</h4>

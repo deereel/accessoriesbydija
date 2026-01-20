@@ -448,7 +448,7 @@ if (!empty($reviews)) {
             <div class="price-display" id="finalPrice" style="display: none;"></div>
             
             <div class="product-description">
-                <?= nl2br(htmlspecialchars($product['description'])) ?>
+                <?= nl2br(htmlspecialchars($product['short_description'] ?: $product['description'])) ?>
             </div>
             
             <div class="product-options">
@@ -510,13 +510,29 @@ if (!empty($reviews)) {
                         <i class="fas fa-chevron-down"></i>
                     </button>
                     <div class="accordion-content">
-                        <p>Our jewelry is crafted with the finest materials and attention to detail. Each piece is designed to last a lifetime and comes with our quality guarantee.</p>
-                        <ul>
-                            <li>Premium materials sourced ethically</li>
-                            <li>Handcrafted by skilled artisans</li>
-                            <li>Lifetime warranty on all pieces</li>
-                            <li>Free shipping on orders over £100</li>
-                        </ul>
+                        <?php if (!empty($product['description'])): ?>
+                            <p><?= nl2br(htmlspecialchars($product['description'])) ?></p>
+                        <?php else: ?>
+                            <div class="product-specs">
+                                <ul>
+                                    <?php if ($product['weight']): ?>
+                                        <li><strong>Weight:</strong> <?= htmlspecialchars($product['weight']) ?>g</li>
+                                    <?php endif; ?>
+                                    <li><strong>Stock:</strong> <?= htmlspecialchars($product['stock_quantity']) ?> available</li>
+                                    <?php if ($product['material']): ?>
+                                        <li><strong>Material:</strong> <?= htmlspecialchars($product['material']) ?></li>
+                                    <?php endif; ?>
+                                    <?php if ($product['stone_type']): ?>
+                                        <li><strong>Stone Type:</strong> <?= htmlspecialchars($product['stone_type']) ?></li>
+                                    <?php endif; ?>
+                                    <li><strong>Gender:</strong> <?= htmlspecialchars($gender_display ?? 'Unisex') ?></li>
+                                    <li>Premium materials sourced ethically</li>
+                                    <li>Handcrafted by skilled artisans</li>
+                                    <li>Lifetime warranty on all pieces</li>
+                                    <li>Free shipping on orders over £100</li>
+                                </ul>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
 

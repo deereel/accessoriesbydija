@@ -38,22 +38,18 @@ function isFirstTimeCustomer($customer_id, $pdo) {
  */
 function getFreeShippingThreshold($customer_id, $country, $pdo) {
     // Check if order qualifies for free shipping
-    // First-time customers: UK only, threshold £100
-    // Returning customers: Any of 4 countries, threshold £300
-    
-    if (isFirstTimeCustomer($customer_id, $pdo)) {
-        // First-time customer: only UK gets free shipping at £100
-        if ($country === 'United Kingdom') {
-            return 100.00;
+    // UK: £100 for first-time, £300 for returning
+    // Foreign countries: £500 for all customers
+
+    if ($country === 'United Kingdom') {
+        if (isFirstTimeCustomer($customer_id, $pdo)) {
+            return 100.00; // First-time UK customers
+        } else {
+            return 300.00; // Returning UK customers
         }
-        return PHP_FLOAT_MAX; // No free shipping for first-time customers outside UK
     } else {
-        // Returning customer: all 4 supported countries get free shipping at £300
-        $supported_countries = ['United Kingdom', 'Canada', 'United States', 'Ireland'];
-        if (in_array($country, $supported_countries)) {
-            return 300.00;
-        }
-        return PHP_FLOAT_MAX; // No free shipping for unsupported countries
+        // Foreign countries (non-UK)
+        return 500.00;
     }
 }
 
@@ -75,65 +71,47 @@ function calculateShippingFee($country, $total_weight_grams = 0, $subtotal = 0, 
             return 0.00; // Free shipping
         }
     }
-    
-    // Convert grams to kg for calculation
-    $weight_kg = $total_weight_grams / 1000;
-    
-    $shipping_rates = [
-        'United Kingdom' => [
-            'name' => 'UK standard shipping',
-            'rates' => [
-                ['max' => 1, 'fee' => 3.50],
-                ['max' => 4, 'fee' => 5.20],
-                ['max' => PHP_FLOAT_MAX, 'fee' => 7.00]
-            ]
-        ],
-        'Canada' => [
-            'name' => 'Canada international tracked',
-            'rates' => [
-                ['max' => 1, 'fee' => 19.30],
-                ['max' => 2, 'fee' => 23.35],
-                ['max' => PHP_FLOAT_MAX, 'fee' => 28.00]
-            ]
-        ],
-        'United States' => [
-            'name' => 'USA tracked',
-            'rates' => [
-                ['max' => 1, 'fee' => 16.50],
-                ['max' => 2, 'fee' => 20.20],
-                ['max' => PHP_FLOAT_MAX, 'fee' => 30.90]
-            ]
-        ],
-        'Ireland' => [
-            'name' => 'Ireland tracked',
-            'rates' => [
-                ['max' => 1, 'fee' => 8.65],
-                ['max' => 2, 'fee' => 10.10],
-                ['max' => PHP_FLOAT_MAX, 'fee' => 11.10]
-            ]
-        ]
-    ];
-    
-    // Normalize country name
-    $country = trim($country);
-    
-    // Check if country has defined rates
-    if (!isset($shipping_rates[$country])) {
-        // Country not found in defined rates - return null to indicate location-based pricing
+
+    // If no database connection, return null
+    if ($pdo === null) {
         return null;
     }
-    
-    $rates = $shipping_rates[$country]['rates'];
-    
-    // Find applicable rate based on weight
-    foreach ($rates as $rate) {
-        if ($weight_kg <= $rate['max']) {
-            return round($rate['fee'], 2);
+
+    // Convert grams to kg for calculation
+    $weight_kg = $total_weight_grams / 1000;
+
+    // Normalize country name
+    $country = trim($country);
+
+    try {
+        // Fetch shipping rates from database
+        $stmt = $pdo->prepare("SELECT weight_min, weight_max, fee FROM shipping_rates
+                              WHERE country = ? AND is_active = 1
+                              ORDER BY weight_min ASC");
+        $stmt->execute([$country]);
+        $rates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Check if country has defined rates
+        if (empty($rates)) {
+            // Country not found in database rates - return null to indicate location-based pricing
+            return null;
         }
+
+        // Find applicable rate based on weight
+        foreach ($rates as $rate) {
+            if ($weight_kg >= $rate['weight_min'] && $weight_kg <= $rate['weight_max']) {
+                return round($rate['fee'], 2);
+            }
+        }
+
+        // Default to highest rate if weight exceeds all tiers
+        return round(end($rates)['fee'], 2);
+
+    } catch (PDOException $e) {
+        // Log error and fall back to null
+        error_log("Shipping calculation error: " . $e->getMessage());
+        return null;
     }
-    
-    // Default to highest rate if weight exceeds all tiers
-    return round(end($rates)['fee'], 2);
 }
 
 /**
@@ -196,24 +174,42 @@ function getShippingFeeWithDescription($country, $total_weight_grams = 0, $subto
  */
 function calculateTotalWeight($cart_items, $pdo) {
     $total_weight = 0;
-    
+
     foreach ($cart_items as $item) {
         $product_id = isset($item['product_id']) ? $item['product_id'] : null;
+        $variation_id = isset($item['variation_id']) ? $item['variation_id'] : null;
         $quantity = isset($item['quantity']) ? intval($item['quantity']) : 0;
-        
+
         if ($product_id && $quantity > 0) {
-            // Fetch product weight
-            $stmt = $pdo->prepare("SELECT weight FROM products WHERE id = ?");
-            $stmt->execute([$product_id]);
-            $product = $stmt->fetch(PDO::FETCH_ASSOC);
-            
-            if ($product && $product['weight']) {
+            $weight = 0;
+
+            // Check for variation weight first
+            if ($variation_id) {
+                $stmt = $pdo->prepare("SELECT weight FROM product_variations WHERE id = ?");
+                $stmt->execute([$variation_id]);
+                $variation = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($variation && $variation['weight']) {
+                    $weight = floatval($variation['weight']);
+                }
+            }
+
+            // If no variation weight, use product weight
+            if ($weight == 0) {
+                $stmt = $pdo->prepare("SELECT weight FROM products WHERE id = ?");
+                $stmt->execute([$product_id]);
+                $product = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($product && $product['weight']) {
+                    $weight = floatval($product['weight']);
+                }
+            }
+
+            if ($weight > 0) {
                 // weight is in grams
-                $total_weight += floatval($product['weight']) * $quantity;
+                $total_weight += $weight * $quantity;
             }
         }
     }
-    
+
     return round($total_weight, 2);
 }
 ?>

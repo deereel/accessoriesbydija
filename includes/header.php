@@ -239,7 +239,7 @@ require_once 'config/cache.php';
                 <a href="new-arrivals.php">NEW &#9660;</a>
             </div>
             <div class="nav-item" data-menu="shop">
-                <a href="products.php">SHOP;</a>
+                <a href="products.php">SHOP</a>
             </div>
             <div class="nav-item" data-menu="women">
                 <a href="products.php?gender=women">WOMEN &#9660;</a>

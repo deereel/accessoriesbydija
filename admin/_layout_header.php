@@ -99,8 +99,9 @@ $active_nav = isset($active_nav) ? $active_nav : '';
     <a class="nav-link <?php echo $active_nav==='inventory'?'active':''; ?>" href="/admin/inventory.php"><i class="fas fa-boxes"></i> <span>Inventory</span></a>
     <?php endif; ?>
     <a class="nav-link <?php echo $active_nav==='products'?'active':''; ?>" href="/admin/products.php"><i class="fas fa-gem"></i> <span>Products</span></a>
-    
+
     <?php if (isset($user_role) && in_array($user_role, ['admin', 'superadmin'])): ?>
+    <a class="nav-link <?php echo $active_nav==='shipping'?'active':''; ?>" href="/admin/shipping.php"><i class="fas fa-truck"></i> <span>Shipping Rates</span></a>
     <a class="nav-link <?php echo $active_nav==='categories'?'active':''; ?>" href="/admin/categories.php"><i class="fas fa-list"></i> <span>Categories</span></a>
     <?php endif; ?>
 

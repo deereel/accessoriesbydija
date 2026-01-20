@@ -30,7 +30,13 @@ function send_email_smtp($to, $subject, $body, $is_html = false, &$error_message
 
         // Recipients
         $mail->setFrom($_ENV['MAIL_FROM_ADDRESS'] ?? 'orders@accessoriesbydija.uk', $_ENV['MAIL_FROM_NAME'] ?? 'Dija Accessories');
-        $mail->addAddress($to);
+        if (is_array($to)) {
+            foreach ($to as $email) {
+                $mail->addAddress($email);
+            }
+        } else {
+            $mail->addAddress($to);
+        }
 
         // Content
         $mail->isHTML($is_html);
@@ -40,9 +46,10 @@ function send_email_smtp($to, $subject, $body, $is_html = false, &$error_message
             $mail->AltBody = strip_tags($body);
         }
 
-        error_log("Attempting to send email to $to with subject: $subject");
+        $to_display = is_array($to) ? implode(', ', $to) : $to;
+        error_log("Attempting to send email to $to_display with subject: $subject");
         $mail->send();
-        error_log("Email sent successfully to $to");
+        error_log("Email sent successfully to $to_display");
         return true;
     } catch (Exception $e) {
         $error_message = $mail->ErrorInfo;
@@ -132,30 +139,112 @@ function send_admin_order_notification($pdo, $order_id) {
     $order = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$order) return false;
 
-    // Fetch order items
-    $it = $pdo->prepare("SELECT oi.quantity, oi.unit_price, p.name FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ?");
+    // Fetch order items with detailed product information and images
+    $it = $pdo->prepare("SELECT oi.*, p.description, p.short_description,
+                               GROUP_CONCAT(DISTINCT pi.image_url ORDER BY
+                                   CASE WHEN oi.variation_id IS NOT NULL AND pi.variant_id = oi.variation_id THEN 0
+                                        WHEN pi.variant_id IS NULL THEN 1
+                                        ELSE 2 END,
+                                   pi.is_primary DESC, pi.sort_order ASC) as images
+                        FROM order_items oi
+                        JOIN products p ON p.id = oi.product_id
+                        LEFT JOIN product_images pi ON pi.product_id = p.id
+                            AND (pi.variant_id IS NULL OR pi.variant_id = oi.variation_id)
+                        WHERE oi.order_id = ?
+                        GROUP BY oi.id");
     $it->execute([$order_id]);
     $items = $it->fetchAll(PDO::FETCH_ASSOC);
 
-    $admin_email = $_ENV['ADMIN_EMAIL'] ?? 'admin@accessoriesbydija.uk';
+    $admin_emails = ['biodunoladayo@gmail.com', 'accessoriesbydija@gmail.com'];
     $subject = "New Order Received - Order #" . $order_id;
 
-    $body = "A new order has been placed.\n\n";
-    $body .= "Order Details:\n";
-    $body .= "Order ID: " . $order_id . "\n";
-    $body .= "Order Number: " . $order['order_number'] . "\n";
-    $body .= "Customer: " . ($order['first_name'] ? htmlspecialchars($order['first_name'] . ' ' . $order['last_name']) : 'Guest') . "\n";
-    $body .= "Email: " . $order['email'] . "\n";
-    $body .= "Total: £" . number_format($order['total_amount'], 2) . "\n\n";
+    // Get base URL for images
+    $base_url = $_ENV['APP_URL'] ?? 'https://accessoriesbydija.uk';
 
-    $body .= "Items:\n";
+    // Create HTML email body
+    $body = "<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <title>New Order Received</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .header { background-color: #f8f9fa; padding: 20px; border-bottom: 2px solid #dee2e6; }
+        .order-details { margin: 20px 0; }
+        .product { border: 1px solid #dee2e6; margin: 10px 0; padding: 15px; border-radius: 5px; }
+        .product-image { max-width: 100px; max-height: 100px; margin-right: 15px; float: left; }
+        .product-info { margin-left: 120px; }
+        .product-name { font-weight: bold; font-size: 16px; margin-bottom: 5px; }
+        .product-description { color: #666; font-size: 14px; margin-bottom: 10px; }
+        .product-details { font-size: 12px; color: #888; margin-bottom: 10px; }
+        .variant-info { background-color: #f8f9fa; padding: 8px; border-radius: 3px; margin-bottom: 10px; }
+        .price-info { font-weight: bold; color: #28a745; }
+        .clear { clear: both; }
+        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; font-size: 12px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class='header'>
+        <h2>New Order Received</h2>
+        <p>A new order has been placed and requires your attention.</p>
+    </div>
+
+    <div class='order-details'>
+        <h3>Order Information</h3>
+        <p><strong>Order ID:</strong> {$order_id}</p>
+        <p><strong>Order Number:</strong> {$order['order_number']}</p>
+        <p><strong>Customer:</strong> " . ($order['first_name'] ? htmlspecialchars($order['first_name'] . ' ' . $order['last_name']) : 'Guest') . "</p>
+        <p><strong>Email:</strong> {$order['email']}</p>
+        <p><strong>Total Amount:</strong> £" . number_format($order['total_amount'], 2) . "</p>
+        <p><strong>Payment Method:</strong> " . htmlspecialchars($order['payment_method'] ?? 'N/A') . "</p>
+        <p><strong>Order Date:</strong> " . date('Y-m-d H:i:s') . "</p>
+    </div>
+
+    <h3>Order Items</h3>";
+
     foreach ($items as $item) {
-        $body .= "- " . $item['name'] . " x" . $item['quantity'] . " @ £" . number_format($item['unit_price'], 2) . "\n";
+        $images = array_filter(explode(',', $item['images'] ?? ''));
+        $primary_image = !empty($images[0]) ? $base_url . '/' . $images[0] : 'https://via.placeholder.com/100x100?text=No+Image';
+
+        // Build variant information
+        $variant_info = [];
+        if (!empty($item['material_name'])) $variant_info[] = "Material: " . htmlspecialchars($item['material_name']);
+        if (!empty($item['color'])) $variant_info[] = "Color: " . htmlspecialchars($item['color']);
+        if (!empty($item['adornment'])) $variant_info[] = "Adornment: " . htmlspecialchars($item['adornment']);
+        if (!empty($item['size'])) $variant_info[] = "Size: " . htmlspecialchars($item['size']);
+        if (!empty($item['variation_tag'])) $variant_info[] = "Variant: " . htmlspecialchars($item['variation_tag']);
+
+        $body .= "<div class='product'>
+            <img src='{$primary_image}' alt='" . htmlspecialchars($item['product_name']) . "' class='product-image'>
+            <div class='product-info'>
+                <div class='product-name'>" . htmlspecialchars($item['product_name']) . "</div>
+                <div class='product-description'>" . htmlspecialchars($item['short_description'] ?? $item['description'] ?? 'No description available') . "</div>";
+
+        if (!empty($variant_info)) {
+            $body .= "<div class='variant-info'>" . implode(' | ', $variant_info) . "</div>";
+        }
+
+        $body .= "<div class='product-details'>
+                    <strong>SKU:</strong> " . htmlspecialchars($item['product_sku']) . "
+                </div>
+                <div class='price-info'>
+                    Quantity: {$item['quantity']} |
+                    Unit Price: £" . number_format($item['unit_price'], 2) . " |
+                    Total: £" . number_format($item['total_price'], 2) . "
+                </div>
+            </div>
+            <div class='clear'></div>
+        </div>";
     }
 
-    $body .= "\nPlease process this order promptly.\n";
+    $body .= "<div class='footer'>
+        <p><strong>Please process this order promptly.</strong></p>
+        <p>This email was sent automatically from the Dija Accessories order system.</p>
+    </div>
+</body>
+</html>";
 
-    return send_email_smtp($admin_email, $subject, $body);
+    return send_email_smtp($admin_emails, $subject, $body, true);
 }
 
 function send_shipping_notification_email($pdo, $order_id, $tracking_number = null, $carrier = null) {
@@ -307,5 +396,29 @@ function send_failed_payment_email($pdo, $order_id) {
     }
 
     return $sent;
+}
+
+function send_admin_refund_notification($pdo, $order_id, $amount, $reason) {
+    // Fetch order details
+    $stmt = $pdo->prepare("SELECT o.*, c.first_name, c.last_name, c.email AS customer_email
+        FROM orders o LEFT JOIN customers c ON c.id = o.customer_id WHERE o.id = ? LIMIT 1");
+    $stmt->execute([$order_id]);
+    $order = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$order) return false;
+
+    $admin_emails = ['biodunoladayo@gmail.com', 'accessoriesbydija@gmail.com'];
+    $subject = "Refund Processed - Order #" . $order_id;
+
+    $body = "A refund has been processed.\n\n";
+    $body .= "Order Details:\n";
+    $body .= "Order ID: " . $order_id . "\n";
+    $body .= "Order Number: " . $order['order_number'] . "\n";
+    $body .= "Customer: " . ($order['first_name'] ? htmlspecialchars($order['first_name'] . ' ' . $order['last_name']) : 'Guest') . "\n";
+    $body .= "Email: " . $order['email'] . "\n";
+    $body .= "Refund Amount: £" . number_format($amount, 2) . "\n";
+    $body .= "Reason: " . htmlspecialchars($reason) . "\n\n";
+    $body .= "Please note this refund in your records.\n";
+
+    return send_email_smtp($admin_emails, $subject, $body);
 }
 ?>

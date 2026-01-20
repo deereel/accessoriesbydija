@@ -5,9 +5,9 @@
                 <h3>Accessories By Dija</h3>
                 <p>Premium jewelry collection for the modern individual. Crafted with precision and designed for elegance.</p>
                 <div class="contact-info">
-                    <p><i class="fas fa-phone"></i> +44 20 7946 0958</p>
+                    <p><i class="fas fa-phone"></i> +44 7823794582</p>
                     <p><i class="fas fa-envelope"></i> hello@accessoriesbydija.uk</p>
-                    <p><i class="fas fa-map-marker-alt"></i> London, United Kingdom</p>
+                    <p><i class="fas fa-map-marker-alt"></i> 35 Clare Street, Northampton UK NN1 3JE</p>
                 </div>
             </div>
             <div class="footer-section">

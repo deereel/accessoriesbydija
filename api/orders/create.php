@@ -151,23 +151,29 @@ try {
         exit;
     }
 
+    error_log("Order create: Processing " . count($cart_items) . " cart items");
+
     // Validate cart items and calculate subtotal
     foreach ($cart_items as $item) {
+        error_log("Cart item: " . json_encode($item));
+
         if (empty($item['product_id']) || empty($item['quantity']) || !isset($item['price'])) {
+            error_log("Order create: Invalid cart item structure: " . json_encode($item));
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Invalid cart item structure']);
             exit;
         }
-        
+
         $qty = intval($item['quantity']);
         $price = floatval($item['price']);
-        
+
         if ($qty <= 0 || $price < 0) {
+            error_log("Order create: Invalid quantity ({$qty}) or price ({$price}) in cart item: " . json_encode($item));
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Invalid quantity or price in cart']);
             exit;
         }
-        
+
         $subtotal += $price * $qty;
     }
 
@@ -178,27 +184,44 @@ try {
         $variation_id = $item['variation_id'] ?? null;
         $size_id = $item['size_id'] ?? null;
 
+        error_log("Stock check: Product ID {$product_id}, Qty {$qty}, Variation ID " . ($variation_id ?? 'null') . ", Size ID " . ($size_id ?? 'null'));
+
         $stmt = $pdo->prepare("SELECT id, name, stock_quantity FROM products WHERE id = ? AND is_active = 1");
         $stmt->execute([$product_id]);
         $product = $stmt->fetch();
 
         if (!$product) {
+            error_log("Stock check: Product {$product_id} not found or inactive");
             http_response_code(400);
             echo json_encode(['success' => false, 'message' => 'Product not found: ' . htmlspecialchars($item['product_name'] ?? 'Unknown')]);
             exit;
         }
+
+        error_log("Stock check: Product '{$product['name']}' found with base stock {$product['stock_quantity']}");
 
         // Check variation stock if applicable
         if ($variation_id) {
             $vstmt = $pdo->prepare("SELECT stock_quantity FROM product_variations WHERE id = ?");
             $vstmt->execute([$variation_id]);
             $vstock = $vstmt->fetchColumn();
+            error_log("Stock check: Variation {$variation_id} stock: " . ($vstock ?? 'null') . ", type: " . gettype($vstock));
+
+            // Check if variation exists
+            if ($vstock === false) {
+                error_log("Stock check: Variation {$variation_id} does not exist in database");
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => $product['name'] . ' variation does not exist']);
+                exit;
+            }
+
             if ($vstock <= 0) {
+                error_log("Stock check: Variation {$variation_id} out of stock (stock: {$vstock})");
                 http_response_code(400);
                 echo json_encode(['success' => false, 'message' => $product['name'] . ' variation is out of stock']);
                 exit;
             }
             if ($vstock < $qty) {
+                error_log("Stock check: Variation {$variation_id} insufficient stock (available: {$vstock}, requested: {$qty})");
                 http_response_code(400);
                 echo json_encode(['success' => false, 'message' => 'Only ' . $vstock . ' units of ' . $product['name'] . ' variation available in stock']);
                 exit;
@@ -208,24 +231,30 @@ try {
             $sstmt = $pdo->prepare("SELECT stock_quantity FROM variation_sizes WHERE id = ?");
             $sstmt->execute([$size_id]);
             $sstock = $sstmt->fetchColumn();
+            error_log("Stock check: Size {$size_id} stock: " . ($sstock ?? 'null'));
             if ($sstock <= 0) {
+                error_log("Stock check: Size {$size_id} out of stock (stock: {$sstock})");
                 http_response_code(400);
                 echo json_encode(['success' => false, 'message' => $product['name'] . ' size is out of stock']);
                 exit;
             }
             if ($sstock < $qty) {
+                error_log("Stock check: Size {$size_id} insufficient stock (available: {$sstock}, requested: {$qty})");
                 http_response_code(400);
                 echo json_encode(['success' => false, 'message' => 'Only ' . $sstock . ' units of ' . $product['name'] . ' size available in stock']);
                 exit;
             }
         } else {
             // Check base product stock
+            error_log("Stock check: Checking base product stock: {$product['stock_quantity']}");
             if ($product['stock_quantity'] <= 0) {
+                error_log("Stock check: Base product {$product_id} out of stock (stock: {$product['stock_quantity']})");
                 http_response_code(400);
                 echo json_encode(['success' => false, 'message' => $product['name'] . ' is out of stock']);
                 exit;
             }
             if ($product['stock_quantity'] < $qty) {
+                error_log("Stock check: Base product {$product_id} insufficient stock (available: {$product['stock_quantity']}, requested: {$qty})");
                 http_response_code(400);
                 echo json_encode(['success' => false, 'message' => 'Only ' . $product['stock_quantity'] . ' units of ' . $product['name'] . ' available in stock']);
                 exit;

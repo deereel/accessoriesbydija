@@ -396,6 +396,21 @@ CREATE TABLE IF NOT EXISTS currency_settings (
     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
+-- Shipping rates table
+CREATE TABLE IF NOT EXISTS shipping_rates (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    country VARCHAR(100) NOT NULL,
+    weight_min DECIMAL(8,2) DEFAULT 0,
+    weight_max DECIMAL(8,2) DEFAULT 999999.99,
+    fee DECIMAL(10,2) NOT NULL,
+    currency VARCHAR(3) DEFAULT 'GBP',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX (country, weight_min, weight_max),
+    UNIQUE KEY unique_country_weight (country, weight_min, weight_max)
+);
+
 -- Site settings
 CREATE TABLE IF NOT EXISTS site_settings (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -594,6 +609,25 @@ CREATE TABLE IF NOT EXISTS abandoned_carts (
     INDEX (session_id),
     INDEX (guest_email)
 );
+
+-- Insert shipping rates
+INSERT IGNORE INTO shipping_rates (country, weight_min, weight_max, fee, currency) VALUES
+-- United Kingdom rates
+('United Kingdom', 0, 1, 3.50, 'GBP'),
+('United Kingdom', 1, 4, 5.20, 'GBP'),
+('United Kingdom', 4, 999999.99, 7.00, 'GBP'),
+-- Canada rates
+('Canada', 0, 1, 19.30, 'GBP'),
+('Canada', 1, 2, 23.35, 'GBP'),
+('Canada', 2, 999999.99, 28.00, 'GBP'),
+-- United States rates
+('United States', 0, 1, 16.50, 'GBP'),
+('United States', 1, 2, 20.20, 'GBP'),
+('United States', 2, 999999.99, 30.90, 'GBP'),
+-- Ireland rates
+('Ireland', 0, 1, 8.65, 'GBP'),
+('Ireland', 1, 2, 10.10, 'GBP'),
+('Ireland', 2, 999999.99, 11.10, 'GBP');
 
 -- Insert site settings
 INSERT IGNORE INTO site_settings (setting_key, setting_value, setting_type, description) VALUES

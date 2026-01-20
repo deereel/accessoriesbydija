@@ -178,7 +178,7 @@ include 'includes/header.php';
                                     $country = $addr['country'] ?? '';
                                     $label = htmlspecialchars($full_name . ' - ' . $line1 . ', ' . $city . ', ' . $state . ', ' . $country);
                                 ?>
-                                <option value="<?php echo $addr['id']; ?>" <?php echo (!empty($addr['is_default']) ? 'selected' : ''); ?>><?php echo $label; ?></option>
+                                <option value="<?php echo $addr['id']; ?>" data-country="<?php echo htmlspecialchars($country); ?>" <?php echo (!empty($addr['is_default']) ? 'selected' : ''); ?>><?php echo $label; ?></option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -456,9 +456,9 @@ include 'includes/header.php';
                         document.getElementById('shipping-display').textContent = '£' + SHIPPING_COST.toFixed(2);
                     }
                 } else {
-                    // Country not found, show message
-                    SHIPPING_COST = 5.00; // Default
-                    document.getElementById('shipping-display').textContent = 'Depends on location';
+                    // Country not found, show message and don't include shipping in total
+                    SHIPPING_COST = 0;
+                    document.getElementById('shipping-display').textContent = 'Based on location';
                 }
                 
                 // Recalculate order total with new shipping cost
@@ -655,6 +655,27 @@ include 'includes/header.php';
         document.addEventListener('DOMContentLoaded', function(){
             loadCartItems();
             bindSaveAddressCheckout();
+
+            // Handle address selection for shipping calculation
+            const addressDropdown = document.getElementById('address-select-dropdown');
+            if (addressDropdown) {
+                addressDropdown.addEventListener('change', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const country = selectedOption.getAttribute('data-country');
+                    if (country) {
+                        document.getElementById('country').value = country;
+                        updateShippingCost();
+                        updateShippingProgress();
+                    }
+                });
+
+                // Set initial country if default address is selected
+                const selectedOption = addressDropdown.options[addressDropdown.selectedIndex];
+                if (selectedOption && selectedOption.getAttribute('data-country')) {
+                    document.getElementById('country').value = selectedOption.getAttribute('data-country');
+                }
+            }
+
                // Update shipping progress after cart loads
                setTimeout(() => { if (typeof updateShippingProgress === 'function') updateShippingProgress(); }, 200);
                // Calculate initial shipping based on country

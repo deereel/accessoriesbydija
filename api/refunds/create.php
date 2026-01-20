@@ -88,9 +88,10 @@ try {
         $logStmt = $pdo->prepare("INSERT INTO refund_logs (order_id, amount, reason, payment_method, reference, processed_by, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
         $logStmt->execute([$order_id, $amount, $reason, $payment_method, $refund_reference, $_SESSION['admin_id']]);
 
-        // Send refund notification email
+        // Send refund notification emails
         try {
             send_refund_notification_email($pdo, $order_id, $amount, $reason);
+            send_admin_refund_notification($pdo, $order_id, $amount, $reason);
         } catch (Exception $e) {
             error_log('Failed to send refund notification: ' . $e->getMessage());
         }

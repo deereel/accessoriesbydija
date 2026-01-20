@@ -461,7 +461,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
                                      <!-- Product Info -->
                                      <div class="product-info">
                                          <h3><a href="product.php?slug=<?= $product['slug'] ?>" style="text-decoration:none;color:inherit;"><?= htmlspecialchars($product['name']) ?></a></h3>
-                                         <p><?= htmlspecialchars(substr($product['description'] ?? '', 0, 50)) ?>...</p>
+                                         <p><?= htmlspecialchars(substr($product['short_description'] ?: $product['description'] ?: '', 0, 50)) ?>...</p>
                                          <?php if ($product['weight']): ?>
                                          <p style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem;">⚖️ <?= htmlspecialchars($product['weight']) ?>g</p>
                                          <?php endif; ?>
