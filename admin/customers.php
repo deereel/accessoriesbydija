@@ -42,8 +42,10 @@ $customers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <td style="padding:10px;"><?php echo date('M d, Y', strtotime($customer['created_at'])); ?></td>
                             <td style="padding:10px;">
                                 <div style="display:flex; gap:8px; align-items:center;">
-                                    <a href="#" class="btn" style="font-size:12px;">View Profile</a>
+                                    <a href="customer-profile.php?id=<?php echo intval($customer['id']); ?>" class="btn" style="font-size:12px;">View Profile</a>
+                                    <?php if (!isset($user_role) || $user_role !== 'staff'): ?>
                                     <button class="btn force-reset-btn" data-customer-id="<?php echo intval($customer['id']); ?>" style="font-size:12px;">Force Reset</button>
+                                    <?php endif; ?>
                                     <span class="reset-status" style="font-size:12px; color:green; display:none;">Reset!</span>
                                 </div>
                             </td>

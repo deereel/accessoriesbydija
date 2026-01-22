@@ -59,6 +59,14 @@ function send_email_smtp($to, $subject, $body, $is_html = false, &$error_message
 }
 
 function send_order_confirmation_email($pdo, $order_id) {
+    // Check if email was already sent
+    $checkStmt = $pdo->prepare("SELECT id FROM email_logs WHERE order_id = ? AND subject LIKE 'Order Confirmation%' AND sent = 1 LIMIT 1");
+    $checkStmt->execute([$order_id]);
+    if ($checkStmt->fetch()) {
+        error_log("Order confirmation email already sent for order {$order_id}");
+        return true; // Already sent
+    }
+
     // Fetch order and customer details
     $stmt = $pdo->prepare("SELECT o.*, c.email AS customer_email, c.first_name, c.last_name
         FROM orders o LEFT JOIN customers c ON c.id = o.customer_id WHERE o.id = ? LIMIT 1");
@@ -69,31 +77,86 @@ function send_order_confirmation_email($pdo, $order_id) {
     $to = $order['customer_email'] ?? null;
     if (!$to) return false; // no email to send to
 
-    // Fetch items
-    $it = $pdo->prepare("SELECT oi.quantity, oi.unit_price, p.name FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ?");
+    // Fetch items with variant details
+    $it = $pdo->prepare("SELECT oi.quantity, oi.unit_price, oi.material_name, oi.color, oi.adornment, oi.size, oi.variation_tag, p.name
+        FROM order_items oi JOIN products p ON p.id = oi.product_id WHERE oi.order_id = ?");
     $it->execute([$order_id]);
     $items = $it->fetchAll(PDO::FETCH_ASSOC);
 
-    $subject = "Order Confirmation - Order #" . $order_id;
+    $subject = "Order Confirmation - Order #" . $order['order_number'];
 
-    $body = "Hello " . ($order['first_name'] ? htmlspecialchars($order['first_name']) : 'Customer') . ",\n\n";
-    $body .= "Thank you for your order. Your order number is #" . $order_id . ".\n\n";
-    $body .= "Order details:\n";
+    // Helper function to format variant details
+    function format_variant_details($item) {
+        $details = [];
+        if (!empty($item['material_name'])) $details[] = 'Material: ' . htmlspecialchars($item['material_name']);
+        if (!empty($item['color'])) $details[] = 'Color: ' . htmlspecialchars($item['color']);
+        if (!empty($item['adornment'])) $details[] = 'Adornment: ' . htmlspecialchars($item['adornment']);
+        if (!empty($item['size'])) $details[] = 'Size: ' . htmlspecialchars($item['size']);
+        if (!empty($item['variation_tag'])) $details[] = 'Variant: ' . htmlspecialchars($item['variation_tag']);
+        return $details ? ' (' . implode(', ', $details) . ')' : '';
+    }
+
+    $body = '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Order Confirmation</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #f8f9fa; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .order-details { border: 1px solid #ddd; padding: 15px; margin: 20px 0; }
+        .order-item { margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #eee; }
+        .order-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+        .item-name { font-weight: bold; }
+        .item-details { color: #666; font-size: 0.9em; margin-left: 10px; }
+        .item-price { text-align: right; font-weight: bold; }
+        .total { font-weight: bold; font-size: 18px; }
+        .footer { background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Dija Accessories</h1>
+            <h2>Order Confirmation</h2>
+        </div>
+        <div class="content">
+            <p>Hello ' . ($order['first_name'] ? htmlspecialchars($order['first_name']) : 'Customer') . ',</p>
+            <p>Thank you for your order. Your order number is <strong>#' . $order['order_number'] . '</strong>.</p>
+            <div class="order-details">
+                <h3>Order Details:</h3>
+                <div>';
     foreach ($items as $row) {
-        $body .= sprintf(" - %s x %d @ £%.2f = £%.2f\n", $row['name'], $row['quantity'], $row['unit_price'], $row['quantity'] * $row['unit_price']);
+        $variant_details = format_variant_details($row);
+        $body .= '<div class="order-item">
+                    <div class="item-name">' . htmlspecialchars($row['name']) . $variant_details . '</div>
+                    <div class="item-details">Quantity: ' . intval($row['quantity']) . ' @ £' . number_format($row['unit_price'], 2) . ' each</div>
+                    <div class="item-price">£' . number_format($row['quantity'] * $row['unit_price'], 2) . '</div>
+                  </div>';
     }
     // Calculate subtotal from total + discount - shipping
     $subtotal = ($order['total_amount'] ?? 0) + ($order['discount_amount'] ?? 0) - ($order['shipping_amount'] ?? 0);
 
-    $body .= "\nSubtotal: £" . number_format($subtotal, 2) . "\n";
-    $body .= "Shipping: £" . number_format($order['shipping_amount'] ?? 0, 2) . "\n";
-    $body .= "Discount: -£" . number_format($order['discount_amount'] ?? 0, 2) . "\n";
-    $body .= "Total: £" . number_format($order['total_amount'] ?? 0, 2) . "\n\n";
-    $body .= "We will send another email when your order ships.\n\n";
-    $body .= "Regards,\nThe Team\n";
+    $body .= '</div>
+                <p><strong>Subtotal:</strong> £' . number_format($subtotal, 2) . '</p>
+                <p><strong>Shipping:</strong> £' . number_format($order['shipping_amount'] ?? 0, 2) . '</p>
+                <p><strong>Discount:</strong> -£' . number_format($order['discount_amount'] ?? 0, 2) . '</p>
+                <p class="total">Total: £' . number_format($order['total_amount'] ?? 0, 2) . '</p>
+            </div>
+            <p>We will send another email when your order ships.</p>
+            <p>Regards,<br>The Dija Accessories Team</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2024 Dija Accessories. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>';
 
-    // Use PHPMailer SMTP
-    $sent = send_email_smtp($to, $subject, $body);
+    // Use PHPMailer SMTP with HTML
+    $sent = send_email_smtp($to, $subject, $body, true);
 
     // Log to DB (simple analytics / record)
     try {
@@ -149,7 +212,7 @@ function send_admin_order_notification($pdo, $order_id) {
                         FROM order_items oi
                         JOIN products p ON p.id = oi.product_id
                         LEFT JOIN product_images pi ON pi.product_id = p.id
-                            AND (pi.variant_id IS NULL OR pi.variant_id = oi.variation_id)
+                           AND (pi.variant_id IS NULL OR pi.variant_id = oi.variation_id)
                         WHERE oi.order_id = ?
                         GROUP BY oi.id");
     $it->execute([$order_id]);
@@ -162,87 +225,47 @@ function send_admin_order_notification($pdo, $order_id) {
     $base_url = $_ENV['APP_URL'] ?? 'https://accessoriesbydija.uk';
 
     // Create HTML email body
-    $body = "<!DOCTYPE html>
+    $body = '<!DOCTYPE html>
 <html>
 <head>
-    <meta charset='UTF-8'>
+    <meta charset="UTF-8">
     <title>New Order Received</title>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .header { background-color: #f8f9fa; padding: 20px; border-bottom: 2px solid #dee2e6; }
-        .order-details { margin: 20px 0; }
-        .product { border: 1px solid #dee2e6; margin: 10px 0; padding: 15px; border-radius: 5px; }
-        .product-image { max-width: 100px; max-height: 100px; margin-right: 15px; float: left; }
-        .product-info { margin-left: 120px; }
-        .product-name { font-weight: bold; font-size: 16px; margin-bottom: 5px; }
-        .product-description { color: #666; font-size: 14px; margin-bottom: 10px; }
-        .product-details { font-size: 12px; color: #888; margin-bottom: 10px; }
-        .variant-info { background-color: #f8f9fa; padding: 8px; border-radius: 3px; margin-bottom: 10px; }
-        .price-info { font-weight: bold; color: #28a745; }
-        .clear { clear: both; }
-        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6; font-size: 12px; color: #666; }
-    </style>
 </head>
-<body>
-    <div class='header'>
-        <h2>New Order Received</h2>
-        <p>A new order has been placed and requires your attention.</p>
-    </div>
-
-    <div class='order-details'>
-        <h3>Order Information</h3>
-        <p><strong>Order ID:</strong> {$order_id}</p>
-        <p><strong>Order Number:</strong> {$order['order_number']}</p>
-        <p><strong>Customer:</strong> " . ($order['first_name'] ? htmlspecialchars($order['first_name'] . ' ' . $order['last_name']) : 'Guest') . "</p>
-        <p><strong>Email:</strong> {$order['email']}</p>
-        <p><strong>Total Amount:</strong> £" . number_format($order['total_amount'], 2) . "</p>
-        <p><strong>Payment Method:</strong> " . htmlspecialchars($order['payment_method'] ?? 'N/A') . "</p>
-        <p><strong>Order Date:</strong> " . date('Y-m-d H:i:s') . "</p>
-    </div>
-
-    <h3>Order Items</h3>";
-
-    foreach ($items as $item) {
-        $images = array_filter(explode(',', $item['images'] ?? ''));
-        $primary_image = !empty($images[0]) ? $base_url . '/' . $images[0] : 'https://via.placeholder.com/100x100?text=No+Image';
-
-        // Build variant information
-        $variant_info = [];
-        if (!empty($item['material_name'])) $variant_info[] = "Material: " . htmlspecialchars($item['material_name']);
-        if (!empty($item['color'])) $variant_info[] = "Color: " . htmlspecialchars($item['color']);
-        if (!empty($item['adornment'])) $variant_info[] = "Adornment: " . htmlspecialchars($item['adornment']);
-        if (!empty($item['size'])) $variant_info[] = "Size: " . htmlspecialchars($item['size']);
-        if (!empty($item['variation_tag'])) $variant_info[] = "Variant: " . htmlspecialchars($item['variation_tag']);
-
-        $body .= "<div class='product'>
-            <img src='{$primary_image}' alt='" . htmlspecialchars($item['product_name']) . "' class='product-image'>
-            <div class='product-info'>
-                <div class='product-name'>" . htmlspecialchars($item['product_name']) . "</div>
-                <div class='product-description'>" . htmlspecialchars($item['short_description'] ?? $item['description'] ?? 'No description available') . "</div>";
-
-        if (!empty($variant_info)) {
-            $body .= "<div class='variant-info'>" . implode(' | ', $variant_info) . "</div>";
-        }
-
-        $body .= "<div class='product-details'>
-                    <strong>SKU:</strong> " . htmlspecialchars($item['product_sku']) . "
-                </div>
-                <div class='price-info'>
-                    Quantity: {$item['quantity']} |
-                    Unit Price: £" . number_format($item['unit_price'], 2) . " |
-                    Total: £" . number_format($item['total_price'], 2) . "
-                </div>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #dc3545; color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">Dija Accessories</h1>
+            <h2 style="margin: 0;">New Order Received</h2>
+        </div>
+        <div style="padding: 20px;">
+            <div style="background-color: #f8f9fa; padding: 15px; margin: 20px 0; border-left: 4px solid #dc3545;">
+                <h3>Order Information:</h3>
+                <p><strong>Order ID:</strong> ' . $order_id . '</p>
+                <p><strong>Order Number:</strong> ' . $order['order_number'] . '</p>
+                <p><strong>Customer:</strong> ' . ($order['first_name'] ? htmlspecialchars($order['first_name'] . ' ' . $order['last_name']) : 'Guest') . '</p>
+                <p><strong>Email:</strong> ' . htmlspecialchars($order['email']) . '</p>
+                <p><strong>Total Amount:</strong> £' . number_format($order['total_amount'], 2) . '</p>
+                <p><strong>Payment Method:</strong> ' . ($order['payment_method'] ?? 'N/A') . '</p>
+                <p><strong>Order Date:</strong> ' . date('Y-m-d H:i:s') . '</p>
             </div>
-            <div class='clear'></div>
-        </div>";
+            <div style="border: 1px solid #ddd; padding: 15px; margin: 20px 0;">
+                <h3>Order Items:</h3>';
+    foreach ($items as $item) {
+        $body .= '<div style="border-bottom: 1px solid #eee; padding: 10px 0;">
+                    <strong>' . htmlspecialchars($item['product_name']) . '</strong> x ' . $item['quantity'] . ' @ £' . number_format($item['unit_price'], 2) . ' = £' . number_format($item['total_price'], 2) . '
+                  </div>';
     }
-
-    $body .= "<div class='footer'>
-        <p><strong>Please process this order promptly.</strong></p>
-        <p>This email was sent automatically from the Dija Accessories order system.</p>
+    $body .= '</div>
+            <p style="font-weight: bold; font-size: 18px; color: #dc3545;">Total: £' . number_format($order['total_amount'], 2) . '</p>
+            <p>Please process this order promptly.</p>
+            <p>This email was sent automatically from the Dija Accessories order system.</p>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px;">
+            <p>&copy; 2024 Dija Accessories. All rights reserved.</p>
+        </div>
     </div>
 </body>
-</html>";
+</html>';
 
     return send_email_smtp($admin_emails, $subject, $body, true);
 }
@@ -258,26 +281,47 @@ function send_shipping_notification_email($pdo, $order_id, $tracking_number = nu
     $to = $order['customer_email'] ?? null;
     if (!$to) return false; // no email to send to
 
-    $subject = "Your Order Has Shipped - Order #" . $order_id;
+    $subject = "Your Order Has Shipped - Order #" . $order['order_number'];
 
-    $body = "Hello " . ($order['first_name'] ? htmlspecialchars($order['first_name']) : 'Customer') . ",\n\n";
-    $body .= "Great news! Your order #" . $order_id . " has been shipped and is on its way to you.\n\n";
+    $body = '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Order Shipped</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #28a745; color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">Dija Accessories</h1>
+            <h2 style="margin: 0;">Your Order Has Shipped!</h2>
+        </div>
+        <div style="padding: 20px;">
+            <p>Hello ' . ($order['first_name'] ? htmlspecialchars($order['first_name']) : 'Customer') . ',</p>
+            <p>Great news! Your order <strong>#' . $order['order_number'] . '</strong> has been shipped and is on its way to you.</p>';
 
     if ($tracking_number && $carrier) {
-        $body .= "Tracking Information:\n";
-        $body .= "Carrier: " . htmlspecialchars($carrier) . "\n";
-        $body .= "Tracking Number: " . htmlspecialchars($tracking_number) . "\n\n";
-        $body .= "You can track your package at the carrier's website using the tracking number above.\n\n";
+        $body .= '<div style="background-color: #d4edda; border: 1px solid #c3e6cb; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                    <h3>Tracking Information:</h3>
+                    <p><strong>Carrier:</strong> ' . htmlspecialchars($carrier) . '</p>
+                    <p><strong>Tracking Number:</strong> ' . htmlspecialchars($tracking_number) . '</p>
+                    <p>You can track your package at the carrier\'s website using the tracking number above.</p>
+                  </div>';
     }
 
-    $body .= "Expected Delivery: 3-5 business days from shipping date\n\n";
-    $body .= "If you have any questions about your order, please don't hesitate to contact us.\n\n";
-    $body .= "Thank you for shopping with Dija Accessories!\n\n";
-    $body .= "Regards,\nThe Dija Accessories Team\n";
-    $body .= "support@accessoriesbydija.uk";
+    $body .= '<p><strong>Expected Delivery:</strong> 3-5 business days from shipping date</p>
+            <p>If you have any questions about your order, please don\'t hesitate to contact us.</p>
+            <p>Thank you for shopping with Dija Accessories!</p>
+            <p>Regards,<br>The Dija Accessories Team<br>support@accessoriesbydija.uk</p>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px;">
+            <p>&copy; 2024 Dija Accessories. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>';
 
-    // Use PHPMailer SMTP
-    $sent = send_email_smtp($to, $subject, $body);
+    // Use PHPMailer SMTP with HTML
+    $sent = send_email_smtp($to, $subject, $body, true);
 
     // Log to DB
     try {
@@ -301,18 +345,47 @@ function send_delivery_confirmation_email($pdo, $order_id) {
     $to = $order['customer_email'] ?? null;
     if (!$to) return false; // no email to send to
 
-    $subject = "Your Order Has Been Delivered - Order #" . $order_id;
+    $subject = "Your Order Has Been Delivered - Order #" . $order['order_number'];
 
-    $body = "Hello " . ($order['first_name'] ? htmlspecialchars($order['first_name']) : 'Customer') . ",\n\n";
-    $body .= "Your order #" . $order_id . " has been successfully delivered!\n\n";
-    $body .= "We hope you love your new jewelry pieces. If you have any questions or need assistance, please don't hesitate to contact us.\n\n";
-    $body .= "Thank you for choosing Dija Accessories for your jewelry needs.\n\n";
-    $body .= "We'd love to hear from you! Please consider leaving a review of your purchase.\n\n";
-    $body .= "Regards,\nThe Dija Accessories Team\n";
-    $body .= "support@accessoriesbydija.uk";
+    $body = '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Order Delivered</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #17a2b8; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .highlight { background-color: #d1ecf1; border: 1px solid #bee5eb; padding: 15px; margin: 20px 0; border-radius: 5px; }
+        .footer { background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Dija Accessories</h1>
+            <h2>Your Order Has Been Delivered!</h2>
+        </div>
+        <div class="content">
+            <p>Hello ' . ($order['first_name'] ? htmlspecialchars($order['first_name']) : 'Customer') . ',</p>
+            <p>Your order <strong>#' . $order['order_number'] . '</strong> has been successfully delivered!</p>
+            <div class="highlight">
+                <p>We hope you love your new jewelry pieces. If you have any questions or need assistance, please don\'t hesitate to contact us.</p>
+            </div>
+            <p>Thank you for choosing Dija Accessories for your jewelry needs.</p>
+            <p>We\'d love to hear from you! Please consider leaving a review of your purchase.</p>
+            <p>Regards,<br>The Dija Accessories Team<br>support@accessoriesbydija.uk</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2024 Dija Accessories. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>';
 
-    // Use PHPMailer SMTP
-    $sent = send_email_smtp($to, $subject, $body);
+    // Use PHPMailer SMTP with HTML
+    $sent = send_email_smtp($to, $subject, $body, true);
 
     // Log to DB
     try {
@@ -336,18 +409,39 @@ function send_cancelled_order_email($pdo, $order_id) {
     $to = $order['customer_email'] ?? null;
     if (!$to) return false; // no email to send to
 
-    $subject = "Order Cancelled - Order #" . $order_id;
+    $subject = "Order Cancelled - Order #" . $order['order_number'];
 
-    $body = "Hello " . ($order['first_name'] ? htmlspecialchars($order['first_name']) : 'Customer') . ",\n\n";
-    $body .= "We're writing to inform you that your order #" . $order_id . " has been cancelled.\n\n";
-    $body .= "If this cancellation was unexpected or if you have any questions, please don't hesitate to contact our support team.\n\n";
-    $body .= "If you would like to place a new order, you can do so at any time on our website.\n\n";
-    $body .= "We apologize for any inconvenience this may have caused.\n\n";
-    $body .= "Regards,\nThe Dija Accessories Team\n";
-    $body .= "support@accessoriesbydija.uk";
+    $body = '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Order Cancelled</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #6c757d; color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">Dija Accessories</h1>
+            <h2 style="margin: 0;">Order Cancelled</h2>
+        </div>
+        <div style="padding: 20px;">
+            <p>Hello ' . ($order['first_name'] ? htmlspecialchars($order['first_name']) : 'Customer') . ',</p>
+            <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                <p>We\'re writing to inform you that your order <strong>#' . $order['order_number'] . '</strong> has been cancelled.</p>
+            </div>
+            <p>If this cancellation was unexpected or if you have any questions, please don\'t hesitate to contact our support team.</p>
+            <p>If you would like to place a new order, you can do so at any time on our website.</p>
+            <p>We apologize for any inconvenience this may have caused.</p>
+            <p>Regards,<br>The Dija Accessories Team<br>support@accessoriesbydija.uk</p>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px;">
+            <p>&copy; 2024 Dija Accessories. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>';
 
-    // Use PHPMailer SMTP
-    $sent = send_email_smtp($to, $subject, $body);
+    // Use PHPMailer SMTP with HTML
+    $sent = send_email_smtp($to, $subject, $body, true);
 
     // Log to DB
     try {
@@ -371,21 +465,46 @@ function send_failed_payment_email($pdo, $order_id) {
     $to = $order['customer_email'] ?? null;
     if (!$to) return false; // no email to send to
 
-    $subject = "Payment Failed - Order #" . $order_id;
+    $subject = "Payment Failed - Order #" . $order['order_number'];
 
-    $body = "Hello " . ($order['first_name'] ? htmlspecialchars($order['first_name']) : 'Customer') . ",\n\n";
-    $body .= "We were unable to process the payment for your order #" . $order_id . ".\n\n";
-    $body .= "This could be due to:\n";
-    $body .= "- Insufficient funds in your account\n";
-    $body .= "- Card expiry or incorrect card details\n";
-    $body .= "- Bank security blocks\n\n";
-    $body .= "Please try placing your order again or contact your bank to resolve any issues.\n\n";
-    $body .= "If you need assistance, our support team is here to help.\n\n";
-    $body .= "Regards,\nThe Dija Accessories Team\n";
-    $body .= "support@accessoriesbydija.uk";
+    $body = '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Payment Failed</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #dc3545; color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">Dija Accessories</h1>
+            <h2 style="margin: 0;">Payment Failed</h2>
+        </div>
+        <div style="padding: 20px;">
+            <p>Hello ' . ($order['first_name'] ? htmlspecialchars($order['first_name']) : 'Customer') . ',</p>
+            <div style="background-color: #f8d7da; border: 1px solid #f5c6cb; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                <p>We were unable to process the payment for your order <strong>#' . $order['order_number'] . '</strong>.</p>
+            </div>
+            <div style="background-color: #f8f9fa; padding: 15px; margin: 20px 0; border-left: 4px solid #dc3545;">
+                <p><strong>This could be due to:</strong></p>
+                <ul>
+                    <li>Insufficient funds in your account</li>
+                    <li>Card expiry or incorrect card details</li>
+                    <li>Bank security blocks</li>
+                </ul>
+            </div>
+            <p>Please try placing your order again or contact your bank to resolve any issues.</p>
+            <p>If you need assistance, our support team is here to help.</p>
+            <p>Regards,<br>The Dija Accessories Team<br>support@accessoriesbydija.uk</p>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px;">
+            <p>&copy; 2024 Dija Accessories. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>';
 
-    // Use PHPMailer SMTP
-    $sent = send_email_smtp($to, $subject, $body);
+    // Use PHPMailer SMTP with HTML
+    $sent = send_email_smtp($to, $subject, $body, true);
 
     // Log to DB
     try {
@@ -409,16 +528,38 @@ function send_admin_refund_notification($pdo, $order_id, $amount, $reason) {
     $admin_emails = ['biodunoladayo@gmail.com', 'accessoriesbydija@gmail.com'];
     $subject = "Refund Processed - Order #" . $order_id;
 
-    $body = "A refund has been processed.\n\n";
-    $body .= "Order Details:\n";
-    $body .= "Order ID: " . $order_id . "\n";
-    $body .= "Order Number: " . $order['order_number'] . "\n";
-    $body .= "Customer: " . ($order['first_name'] ? htmlspecialchars($order['first_name'] . ' ' . $order['last_name']) : 'Guest') . "\n";
-    $body .= "Email: " . $order['email'] . "\n";
-    $body .= "Refund Amount: £" . number_format($amount, 2) . "\n";
-    $body .= "Reason: " . htmlspecialchars($reason) . "\n\n";
-    $body .= "Please note this refund in your records.\n";
+    $body = '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Refund Processed</title>
+</head>
+<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #ffc107; color: #212529; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">Dija Accessories</h1>
+            <h2 style="margin: 0;">Refund Processed</h2>
+        </div>
+        <div style="padding: 20px;">
+            <p>A refund has been processed.</p>
+            <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin: 20px 0; border-radius: 5px;">
+                <h3>Order Details:</h3>
+                <p><strong>Order ID:</strong> ' . $order_id . '</p>
+                <p><strong>Order Number:</strong> ' . $order['order_number'] . '</p>
+                <p><strong>Customer:</strong> ' . ($order['first_name'] ? htmlspecialchars($order['first_name'] . ' ' . $order['last_name']) : 'Guest') . '</p>
+                <p><strong>Email:</strong> ' . htmlspecialchars($order['email']) . '</p>
+                <p><strong>Refund Amount:</strong> <span style="font-weight: bold; font-size: 18px; color: #856404;">£' . number_format($amount, 2) . '</span></p>
+                <p><strong>Reason:</strong> ' . htmlspecialchars($reason) . '</p>
+            </div>
+            <p>Please note this refund in your records.</p>
+        </div>
+        <div style="background-color: #f8f9fa; padding: 20px; text-align: center; font-size: 12px;">
+            <p>&copy; 2024 Dija Accessories. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>';
 
-    return send_email_smtp($admin_emails, $subject, $body);
+    return send_email_smtp($admin_emails, $subject, $body, true);
 }
 ?>

@@ -1,0 +1,24 @@
+{
+  "name": "Dija Admin - Accessories By Dija",
+  "short_name": "Dija Admin",
+  "description": "Admin panel for Accessories By Dija - Manage products, orders, and customers",
+  "start_url": "/admin/index.php",
+  "display": "standalone",
+  "background_color": "#333333",
+  "theme_color": "#c487a5",
+  "scope": "/admin/",
+  "icons": [
+    {
+      "src": "/assets/images/admin-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/images/admin-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

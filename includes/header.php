@@ -33,7 +33,7 @@ require_once 'config/cache.php';
     <meta name="keywords" content="<?php echo $meta_tags['keywords']; ?>">
     <meta name="robots" content="<?php echo $meta_tags['robots']; ?>">
     <link rel="canonical" href="<?php echo $meta_tags['canonical']; ?>">
-    <link rel="icon" href="favicon.ico" type="image/x-icon">
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" type="image/x-icon">
     <link rel="apple-touch-icon" href="assets/images/logo.webp">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#C27BA0">

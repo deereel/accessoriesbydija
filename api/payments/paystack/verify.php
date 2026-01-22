@@ -361,6 +361,7 @@ try {
     // Best-effort: send confirmation email and record analytics event for payment
     try {
         // Send confirmation email (best-effort)
+        error_log("Paystack: Sending customer confirmation for order {$order['id']}");
         try {
             send_order_confirmation_email($pdo, $order['id']);
         } catch (Exception $e) {

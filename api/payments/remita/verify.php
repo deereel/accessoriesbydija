@@ -299,12 +299,19 @@ try {
     // TODO: Update inventory
     // TODO: Send confirmation email
 
-    // Best-effort: send confirmation email and record analytics event for payment
+    // Best-effort: send confirmation email, admin notification, and record analytics event for payment
     try {
         try {
             send_order_confirmation_email($pdo, $order['id']);
         } catch (Exception $e) {
             error_log('Remita: failed to send confirmation email for order ' . $order['id'] . ': ' . $e->getMessage());
+        }
+
+        // Send admin notification email now that payment is confirmed
+        try {
+            send_admin_order_notification($pdo, $order['id']);
+        } catch (Exception $e) {
+            error_log('Remita: failed to send admin notification for order ' . $order['id'] . ': ' . $e->getMessage());
         }
 
         $aeStmt = $pdo->prepare('INSERT INTO analytics_events (event_name, payload, user_id, ip_address, created_at) VALUES (?, ?, ?, ?, NOW())');

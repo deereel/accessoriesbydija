@@ -388,6 +388,20 @@ include '_layout_header.php';
                     </div>
                 </div>
 
+                <div class="form-group" id="cancellation_reason_group" style="display: <?php echo $order['status'] === 'cancelled' ? 'block' : 'none'; ?>;">
+                    <label for="cancellation_reason">Cancellation Reason</label>
+                    <select id="cancellation_reason" name="cancellation_reason">
+                        <option value="">Select reason...</option>
+                        <option value="Customer request" <?php echo $order['cancellation_reason'] === 'Customer request' ? 'selected' : ''; ?>>Customer request</option>
+                        <option value="Payment failed" <?php echo $order['cancellation_reason'] === 'Payment failed' ? 'selected' : ''; ?>>Payment failed</option>
+                        <option value="Item out of stock" <?php echo $order['cancellation_reason'] === 'Item out of stock' ? 'selected' : ''; ?>>Item out of stock</option>
+                        <option value="Shipping delay" <?php echo $order['cancellation_reason'] === 'Shipping delay' ? 'selected' : ''; ?>>Shipping delay</option>
+                        <option value="Duplicate order" <?php echo $order['cancellation_reason'] === 'Duplicate order' ? 'selected' : ''; ?>>Duplicate order</option>
+                        <option value="Fraudulent order" <?php echo $order['cancellation_reason'] === 'Fraudulent order' ? 'selected' : ''; ?>>Fraudulent order</option>
+                        <option value="Other" <?php echo $order['cancellation_reason'] === 'Other' ? 'selected' : ''; ?>>Other</option>
+                    </select>
+                </div>
+
                 <div class="form-group">
                     <label for="notes">Notes</label>
                     <textarea id="notes" name="notes" rows="4" placeholder="Internal notes / shipping notes..."><?php echo htmlspecialchars($order['notes'] ?: ''); ?></textarea>
@@ -551,6 +565,16 @@ include '_layout_header.php';
         const modal = document.getElementById('productModal');
         if (event.target === modal) {
             closeProductModal();
+        }
+    });
+
+    // Toggle cancellation reason field
+    document.getElementById('status').addEventListener('change', function() {
+        const cancellationGroup = document.getElementById('cancellation_reason_group');
+        if (this.value === 'cancelled') {
+            cancellationGroup.style.display = 'block';
+        } else {
+            cancellationGroup.style.display = 'none';
         }
     });
 </script>

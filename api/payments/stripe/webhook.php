@@ -462,6 +462,7 @@ function handleCheckoutSessionCompleted($event, $pdo) {
 
         // Best-effort: send confirmation email and record analytics event
         try {
+            error_log("Stripe: Sending customer confirmation for order {$order_id}");
             try {
                 send_order_confirmation_email($pdo, $order_id);
             } catch (Exception $e) {

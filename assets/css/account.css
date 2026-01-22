@@ -618,11 +618,11 @@
     }
 
     .account-sidebar {
-        order: 2;
+        order: 1;
     }
 
     .account-content {
-        order: 1;
+        order: 2;
     }
 
     .form-row {

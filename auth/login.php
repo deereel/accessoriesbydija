@@ -101,6 +101,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['customer_name'] = $customer['first_name'] . ' ' . $customer['last_name'];
         $_SESSION['customer_email'] = $customer['email'];
 
+        // Update last login
+        try {
+            $stmt = $pdo->prepare("UPDATE customers SET last_login = NOW() WHERE id = ?");
+            $stmt->execute([$customer['id']]);
+        } catch (PDOException $e) {
+            // Column might not exist - ignore
+        }
+
         // Determine redirect if provided by client (validate to prevent open redirects)
         $redirect = null;
         if (!empty($data['redirect'])) {

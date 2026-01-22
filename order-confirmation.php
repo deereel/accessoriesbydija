@@ -109,6 +109,16 @@ if (!$is_paid && $order['payment_method'] === 'stripe' && isset($_GET['session_i
                     $is_paid = true;
                     debug_log("Order confirmation: Stripe session verified and order {$order_id} updated to paid");
                     error_log("Order confirmation: Stripe session verified and order {$order_id} updated to paid");
+
+                    // Send order confirmation email
+                    try {
+                        require_once 'includes/email.php';
+                        send_order_confirmation_email($pdo, $order_id);
+                        debug_log("Order confirmation: Email sent for order {$order_id}");
+                        error_log("Order confirmation: Email sent for order {$order_id}");
+                    } catch (Exception $e) {
+                        error_log("Order confirmation: Failed to send confirmation email for order {$order_id}: " . $e->getMessage());
+                    }
                 } else {
                     debug_log("Order confirmation: Stripe session not paid, status: " . ($session['payment_status'] ?? 'null'));
                     error_log("Order confirmation: Stripe session not paid, status: " . ($session['payment_status'] ?? 'null'));

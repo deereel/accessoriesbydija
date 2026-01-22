@@ -590,14 +590,7 @@ try {
         // Commit transaction
         $pdo->commit();
 
-        // Send order confirmation email (best-effort)
-        try {
-            send_order_confirmation_email($pdo, $order_id);
-        } catch (Exception $e) {
-            error_log('Failed to send order confirmation email for order ' . $order_id . ': ' . $e->getMessage());
-        }
-
-        // Send admin notification email
+        // Send admin notification email immediately after order creation
         try {
             send_admin_order_notification($pdo, $order_id);
         } catch (Exception $e) {

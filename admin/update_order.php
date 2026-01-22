@@ -22,6 +22,7 @@ $order_id = isset($_POST['order_id']) ? (int)$_POST['order_id'] : 0;
 $status = isset($_POST['status']) ? trim($_POST['status']) : null;
 $payment_status = isset($_POST['payment_status']) ? trim($_POST['payment_status']) : null;
 $notes = isset($_POST['notes']) ? trim($_POST['notes']) : null;
+$cancellation_reason = isset($_POST['cancellation_reason']) ? trim($_POST['cancellation_reason']) : null;
 
 if ($order_id <= 0) {
     http_response_code(400);
@@ -89,6 +90,11 @@ try {
     if ($notes !== null) {
         $fields[] = "notes = ?";
         $params[] = $notes;
+    }
+
+    if ($cancellation_reason !== null) {
+        $fields[] = "cancellation_reason = ?";
+        $params[] = $cancellation_reason;
     }
 
     if (empty($fields)) {
