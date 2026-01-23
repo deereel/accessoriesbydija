@@ -1,10 +1,13 @@
-const CACHE_NAME = 'dija-admin-v1';
+const CACHE_NAME = 'dija-admin-v2';
 const urlsToCache = [
   '/admin/',
   '/admin/index.php',
   '/assets/css/all.min.css',
+  '/assets/images/admin-icon-192.png',
+  '/assets/images/admin-icon-512.png',
+  '/assets/images/apple-touch-icon.png',
   '/favicon.ico',
-  '/admin-manifest.json'
+  '/admin/manifest.json'
 ];
 
 // Install event - cache resources
@@ -13,6 +16,9 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME)
       .then(cache => {
         return cache.addAll(urlsToCache);
+      })
+      .then(() => {
+        self.skipWaiting();
       })
   );
 });
@@ -41,4 +47,5 @@ self.addEventListener('activate', event => {
       );
     })
   );
+  self.clients.claim();
 });

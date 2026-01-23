@@ -32,7 +32,7 @@ $active_nav = isset($active_nav) ? $active_nav : '';
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><?php echo htmlspecialchars($page_title); ?></title>
-  <link rel="manifest" href="/admin-manifest.json">
+  <link rel="manifest" href="/admin/manifest.json">
   <meta name="theme-color" content="#c487a5">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
   <style>
@@ -81,16 +81,23 @@ $active_nav = isset($active_nav) ? $active_nav : '';
     .scroll-top.show { display: flex; }
   </style>
 <script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/admin-sw.js', { scope: '/admin/' })
-      .then(registration => {
-        console.log('Admin Service Worker registered successfully:', registration);
-      })
-      .catch(error => {
-        console.log('Admin Service Worker registration failed:', error);
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    const unregisterPromises = registrations.map(registration => {
+      if (registration.scope === location.origin + '/') {
+        return registration.unregister();
+      }
+      return Promise.resolve();
+    });
+
+    Promise.all(unregisterPromises).then(() => {
+      navigator.serviceWorker.register('/admin/admin-sw.js', {
+        scope: '/admin/'
       });
-  }
-  </script>
+    });
+  });
+}
+</script>
 </head>
 <body>
 <div class="admin-layout">

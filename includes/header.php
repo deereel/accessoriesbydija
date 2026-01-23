@@ -34,7 +34,10 @@ require_once 'config/cache.php';
     <meta name="robots" content="<?php echo $meta_tags['robots']; ?>">
     <link rel="canonical" href="<?php echo $meta_tags['canonical']; ?>">
     <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" type="image/x-icon">
-    <link rel="apple-touch-icon" href="assets/images/logo.webp">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+    <link rel="apple-touch-icon" href="/assets/images/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#C27BA0">
     <meta name="author" content="Accessories By Dija">
@@ -463,14 +466,33 @@ require_once 'config/cache.php';
     <!-- Service Worker Registration for PWA -->
     <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-          .then(registration => {
-            console.log('Service Worker registered successfully:', registration);
-          })
-          .catch(error => {
-            console.log('Service Worker registration failed:', error);
-          });
+      window.addEventListener('load', async () => {
+        // Do not register the main service worker on admin pages
+        if (window.location.pathname.startsWith('/admin/')) {
+          return;
+        }
+
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          let mainSWRegistered = false;
+          for (let registration of registrations) {
+            // Unregister any service workers that are not the main one
+            if (!registration.scope.endsWith('/')) {
+              await registration.unregister();
+              console.log('Unregistered conflicting service worker:', registration);
+            } else {
+              mainSWRegistered = true;
+            }
+          }
+
+          if (!mainSWRegistered) {
+            console.log('Main service worker not found, proceeding with registration.');
+            const registration = await navigator.serviceWorker.register('/app/sw.js', { scope: '/' });
+            console.log('Main Service Worker registered successfully:', registration);
+          }
+        } catch (error) {
+          console.error('Main Service Worker registration failed:', error);
+        }
       });
     }
     </script>

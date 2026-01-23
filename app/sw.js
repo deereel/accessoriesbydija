@@ -1,4 +1,4 @@
-const CACHE_NAME = 'accessories-by-dija-v2';
+const CACHE_NAME = 'accessories-by-dija-v3';
 const urlsToCache = [
   '/',
   '/index.php',
@@ -7,6 +7,9 @@ const urlsToCache = [
   '/assets/css/hero.css',
   '/assets/css/footer.css',
   '/assets/images/logo.webp',
+  '/assets/images/android-chrome-192x192.png',
+  '/assets/images/android-chrome-512x512.png',
+  '/assets/images/apple-touch-icon.png',
   '/favicon.ico',
   '/manifest.json'
 ];
@@ -18,11 +21,18 @@ self.addEventListener('install', event => {
       .then(cache => {
         return cache.addAll(urlsToCache);
       })
+      .then(() => {
+        self.skipWaiting();
+      })
   );
 });
 
 // Fetch event - serve from cache if available, otherwise fetch from network
 self.addEventListener('fetch', event => {
+  // Skip admin routes to allow admin PWA to handle them
+  if (event.request.url.includes('/admin/')) {
+    return fetch(event.request);
+  }
   event.respondWith(
     caches.match(event.request)
       .then(response => {
@@ -45,4 +55,5 @@ self.addEventListener('activate', event => {
       );
     })
   );
+  self.clients.claim();
 });
