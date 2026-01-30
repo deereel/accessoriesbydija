@@ -11,7 +11,7 @@ if ($_SESSION['admin_role'] !== 'superadmin') {
 $page_title = 'User Management';
 $active_nav = 'users';
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 $error = null;
 $success_message = null;

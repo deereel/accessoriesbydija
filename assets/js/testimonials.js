@@ -8,7 +8,7 @@ async function loadTestimonials() {
     if (!container) return; // No testimonials section on this page
     
     try {
-        const response = await fetch('api/testimonials.php');
+        const response = await fetch('/api/testimonials.php');
         const data = await response.json();
         
         if (data.success && data.testimonials.length > 0) {

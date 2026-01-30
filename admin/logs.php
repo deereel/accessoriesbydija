@@ -13,7 +13,7 @@ if (!isset($_SESSION['admin_role']) || $_SESSION['admin_role'] !== 'superadmin')
 $page_title = 'Log Viewer';
 $active_nav = 'logs';
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 ?>
 
 <?php include '_layout_header.php'; ?>

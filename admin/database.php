@@ -8,7 +8,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
 $page_title = 'Database Management';
 $active_nav = 'database';
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 $error = null;
 $flash_message = $_SESSION['flash_message'] ?? null;

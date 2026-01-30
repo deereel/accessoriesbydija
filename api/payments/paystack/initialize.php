@@ -43,8 +43,8 @@ if ($rate['count'] >= 5) {
 $rate['count']++;
 
 // Load environment variables from .env file
-require_once __DIR__ . '/../../../config/env.php';
-require_once __DIR__ . '/../../../config/database.php';
+require_once __DIR__ . '/../../../app/config/env.php';
+require_once __DIR__ . '/../../../app/config/database.php';
 
 // Get order ID from query parameter
 $order_id = $_GET['order_id'] ?? null;

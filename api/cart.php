@@ -4,7 +4,7 @@
 session_start();
 header('Content-Type: application/json');
 
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../app/config/database.php';
 
 // Helper: respond
 function json($data) {
@@ -112,9 +112,8 @@ try {
 				$check->execute([$customer_id, $pid]);
 				$row = $check->fetch(PDO::FETCH_ASSOC);
 				if ($row) {
-					$newQty = $row['quantity'] + $qty;
 					$upd = $pdo->prepare('UPDATE cart SET quantity = ?, updated_at = NOW() WHERE id = ?');
-					$upd->execute([$newQty, $row['id']]);
+					$upd->execute([$qty, $row['id']]);
 				} else {
 					$ins = $pdo->prepare('INSERT INTO cart (customer_id, product_id, quantity) VALUES (?, ?, ?)');
 					$ins->execute([$customer_id, $pid, $qty]);

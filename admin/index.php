@@ -3,7 +3,7 @@ session_start();
 
 // Database-driven admin authentication
 if (!isset($_SESSION['admin_logged_in']) && isset($_POST['username'])) {
-    require_once __DIR__ . '/../config/database.php';
+    require_once __DIR__ . '/../app/config/database.php';
     
     $username = $_POST['username'];
     $password = $_POST['password'];
@@ -93,7 +93,7 @@ $_SESSION['admin_captcha'] = $captcha_code;
 <?php exit; endif; ?>
 
 <?php
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../app/config/database.php';
 
 $page_title = 'Dashboard';
 $active_nav = 'dashboard';

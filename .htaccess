@@ -1,18 +1,18 @@
 RewriteEngine On
 
 # Custom error pages
-ErrorDocument 404 /404.php
-ErrorDocument 500 /500.php
+ErrorDocument 404 /app/404.php
+ErrorDocument 500 /app/500.php
 
 # Force HTTPS
 RewriteCond %{HTTPS} off
 RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
 # SEO-friendly URLs
-RewriteRule ^category/([^/]+)/?$ category.php?cat=$1 [L,QSA]
-RewriteRule ^category/([^/]+)/([^/]+)/?$ category.php?cat=$1&sub=$2 [L,QSA]
-RewriteRule ^product/([^/]+)/?$ product.php?slug=$1 [L,QSA]
-RewriteRule ^search/([^/]+)/?$ search.php?q=$1 [L,QSA]
+RewriteRule ^category/([^/]+)/?$ /app/category.php?cat=$1 [L,QSA]
+RewriteRule ^category/([^/]+)/([^/]+)/?$ /app/category.php?cat=$1&sub=$2 [L,QSA]
+RewriteRule ^product/([^/]+)/?$ /app/product.php?slug=$1 [L,QSA]
+RewriteRule ^search/([^/]+)/?$ /app/search.php?q=$1 [L,QSA]
 
 # Security headers
 Header always set X-Content-Type-Options nosniff
@@ -69,3 +69,12 @@ Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains
 <IfModule mod_headers.c>
     Header append Vary Accept env=REDIRECT_accept
 </IfModule>
+
+# PWA routing: redirect user pages to /app/ internally, except excluded paths
+RewriteCond %{REQUEST_URI} !^/admin/
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteCond %{REQUEST_URI} !^/assets/
+RewriteCond %{REQUEST_URI} !^/favicon
+RewriteCond %{REQUEST_URI} !^/app/
+RewriteCond %{REQUEST_URI} !^/admin/
+RewriteRule ^(.*)$ /app/$1 [L]

@@ -13,7 +13,7 @@ if (!in_array($_SESSION['admin_role'], ['admin', 'superadmin'])) {
 $page_title = 'Settings';
 $active_nav = 'settings';
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 ?>
 
 <?php include '_layout_header.php'; ?>

@@ -8,7 +8,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
 $page_title = 'Sales Reports';
 $active_nav = 'reports';
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 try {
     // --- Get data for filter dropdowns ---

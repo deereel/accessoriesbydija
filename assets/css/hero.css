@@ -162,18 +162,7 @@
     transform: scale(1.2);
 }
 
-/* Placeholder backgrounds for slides */
-.slide[data-bg="assets/images/hero-1.jpg"] {
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-}
-
-.slide[data-bg="assets/images/hero-2.jpg"] {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.slide[data-bg="assets/images/hero-3.jpg"] {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
+/* Placeholder backgrounds removed - images loaded via JS */
 
 /* Mobile Responsiveness */
 @media (max-width: 768px) {

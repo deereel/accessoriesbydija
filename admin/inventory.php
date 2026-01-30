@@ -8,7 +8,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
 $page_title = 'Inventory Management';
 $active_nav = 'inventory';
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 // --- Data Fetching & Filtering ---
 

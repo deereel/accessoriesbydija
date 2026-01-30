@@ -19,9 +19,9 @@ session_start();
 header('Content-Type: application/json');
 
 // Load environment variables from .env file
-require_once __DIR__ . '/../../../config/env.php';
-require_once __DIR__ . '/../../../config/database.php';
-require_once __DIR__ . '/../../../includes/email.php';
+require_once __DIR__ . '/../../../app/config/env.php';
+require_once __DIR__ . '/../../../app/config/database.php';
+require_once __DIR__ . '/../../../app/includes/email.php';
 
 // TODO: Get credentials from environment
 $REMITA_MERCHANT_ID = getenv('REMITA_MERCHANT_ID') ?: '';

@@ -1,8 +1,15 @@
 // Hero Slider JavaScript
-let currentSlideIndex = 0;
+let heroSlideIndex = 0;
 const slides = document.querySelectorAll('.slide');
 const dots = document.querySelectorAll('.dot');
 const totalSlides = slides.length;
+
+// Set background images from data-bg
+slides.forEach(slide => {
+    if (slide.dataset.bg) {
+        slide.style.backgroundImage = `url(${slide.dataset.bg})`;
+    }
+});
 
 // Auto-slide functionality
 let slideInterval = setInterval(nextSlide, 5000);

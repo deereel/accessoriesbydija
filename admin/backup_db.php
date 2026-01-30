@@ -5,7 +5,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
     exit('Access denied.');
 }
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 // --- Database Backup Utility ---
 $backups_dir = __DIR__ . '/backups';

@@ -1,5 +1,5 @@
 <?php
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 try {
     // Add tag column to product_images table

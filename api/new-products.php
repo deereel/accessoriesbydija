@@ -2,7 +2,7 @@
 header('Content-Type: application/json');
 
 try {
-    require_once __DIR__ . '/../config/database.php';
+    require_once __DIR__ . '/../app/config/database.php';
     
     $stmt = $pdo->prepare("
         SELECT p.id, p.name, p.slug, p.price, pi.image_url

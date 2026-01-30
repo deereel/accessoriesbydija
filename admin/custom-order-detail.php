@@ -8,7 +8,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
 $page_title = 'Custom Order Details';
 $active_nav = 'orders';
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 if (!isset($_GET['id'])) {
     header('Location: custom-orders.php');

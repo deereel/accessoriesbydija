@@ -26,8 +26,8 @@ session_start();
 header('Content-Type: application/json');
 
 // Load environment variables from .env file
-require_once __DIR__ . '/../../../config/env.php';
-require_once __DIR__ . '/../../../config/database.php';
+require_once __DIR__ . '/../../../app/config/env.php';
+require_once __DIR__ . '/../../../app/config/database.php';
 
 // TODO: Use Composer autoloader if installed
 // require __DIR__ . '/../../../vendor/autoload.php';

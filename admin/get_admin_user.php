@@ -7,7 +7,7 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_role'] !== 'superad
     exit;
 }
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 $response = ['success' => false];
 $user_id = $_GET['id'] ?? 0;

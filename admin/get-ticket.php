@@ -2,7 +2,7 @@
 session_start();
 header('Content-Type: application/json');
 if (!isset($_SESSION['admin_logged_in'])) { echo json_encode(['success'=>false,'message'=>'Unauthorized']); exit; }
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../app/config/database.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 if (!$id) { echo json_encode(['success'=>false,'message'=>'Missing id']); exit; }

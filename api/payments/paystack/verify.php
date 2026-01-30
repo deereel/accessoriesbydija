@@ -18,9 +18,9 @@ session_start();
 header('Content-Type: application/json');
 
 // Load environment variables from .env file
-require_once __DIR__ . '/../../../config/env.php';
-require_once __DIR__ . '/../../../config/database.php';
-require_once __DIR__ . '/../../../includes/email.php';
+require_once __DIR__ . '/../../../app/config/env.php';
+require_once __DIR__ . '/../../../app/config/database.php';
+require_once __DIR__ . '/../../../app/includes/email.php';
 
 // TODO: Configure these from environment
 $PAYSTACK_SECRET_KEY = getenv('PAYSTACK_SECRET_KEY') ?: 'sk_test_your_secret_key_here';

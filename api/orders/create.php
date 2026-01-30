@@ -2,10 +2,10 @@
 header('Content-Type: application/json');
 session_start();
 
-require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../config/security.php';
-require_once __DIR__ . '/../../includes/shipping-calculator.php';
-require_once __DIR__ . '/../../includes/email.php';
+require_once __DIR__ . '/../../app/config/database.php';
+require_once __DIR__ . '/../../app/config/security.php';
+require_once __DIR__ . '/../../app/includes/shipping-calculator.php';
+require_once __DIR__ . '/../../app/includes/email.php';
 
 /**
  * POST /api/orders/create.php

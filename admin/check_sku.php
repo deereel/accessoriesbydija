@@ -6,7 +6,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
     exit;
 }
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 $input = json_decode(file_get_contents('php://input'), true);
 $base = $input['base'] ?? '';

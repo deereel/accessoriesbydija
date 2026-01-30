@@ -5,7 +5,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
     echo json_encode(['success' => false]); exit;
 }
 
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../app/config/database.php';
 
 try {
     // Get 8 most recent products

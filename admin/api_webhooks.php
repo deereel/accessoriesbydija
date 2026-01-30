@@ -13,7 +13,7 @@ if (!isset($_SESSION['admin_role']) || $_SESSION['admin_role'] !== 'superadmin')
 $page_title = 'API & Webhook Management';
 $active_nav = 'settings'; // Keep 'settings' active since this is part of settings
 
-require_once '../config/database.php'; // Assuming database connection might be needed
+require_once '../app/config/database.php'; // Assuming database connection might be needed
 
 ?>
 

@@ -8,7 +8,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
 $page_title = 'Customer Profile';
 $active_nav = 'customers';
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 $customer_id = intval($_GET['id'] ?? 0);
 if (!$customer_id) {

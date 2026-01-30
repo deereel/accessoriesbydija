@@ -1,5 +1,6 @@
 <?php
-require_once '../config/database.php';
+require_once '../app/config/database.php';
+require_once '../app/config/cache.php';
 
 if (session_status() == PHP_SESSION_NONE) {
     session_start();
@@ -87,6 +88,15 @@ if (isset($_POST['toggle_feature'])) {
     try {
         $stmt = $pdo->prepare("UPDATE products SET is_featured = 1 - is_featured WHERE id = ?");
         $stmt->execute([$product_id]);
+
+        // Get product slug for cache clearing
+        $slug_stmt = $pdo->prepare("SELECT slug FROM products WHERE id = ?");
+        $slug_stmt->execute([$product_id]);
+        $slug = $slug_stmt->fetchColumn();
+
+        // Clear product cache
+        cache_delete('product_' . $slug);
+
         $_SESSION['flash_message'] = "Product featured status updated.";
     } catch (Exception $e) {
         $_SESSION['flash_message'] = $e->getMessage();
@@ -101,6 +111,15 @@ if (isset($_POST['toggle_active'])) {
     try {
         $stmt = $pdo->prepare("UPDATE products SET is_active = 1 - is_active WHERE id = ?");
         $stmt->execute([$product_id]);
+
+        // Get product slug for cache clearing
+        $slug_stmt = $pdo->prepare("SELECT slug FROM products WHERE id = ?");
+        $slug_stmt->execute([$product_id]);
+        $slug = $slug_stmt->fetchColumn();
+
+        // Clear product cache
+        cache_delete('product_' . $slug);
+
         $_SESSION['flash_message'] = "Product active status updated.";
     } catch (Exception $e) {
         $_SESSION['flash_message'] = $e->getMessage();
@@ -111,7 +130,6 @@ if (isset($_POST['toggle_active'])) {
 
 $page_title = "Products Management";
 $active_nav = "products";
-include '_layout_header.php';
 
 if (isset($_SESSION['flash_message'])) {
     echo '<div class="card" style="background: #d4edda; color: #155724;"><div class="card-body">' . $_SESSION['flash_message'] . '</div></div>';
@@ -120,9 +138,31 @@ if (isset($_SESSION['flash_message'])) {
 
 // Handle form submission
 if ($_POST) {
-    $action = $_POST['action'] ?? '';
-    
+    $is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest';
+
+    // For AJAX requests, ensure we return JSON
+    if ($is_ajax) {
+        header('Content-Type: application/json');
+    }
+
+    try {
+        $action = $_POST['action'] ?? '';
+
     if ($action === 'add_product') {
+        // Check if product name already exists
+        $stmt = $pdo->prepare("SELECT id FROM products WHERE name = ?");
+        $stmt->execute([$_POST['product_name']]);
+        if ($stmt->fetch()) {
+            if ($is_ajax) {
+                echo json_encode(['success' => false, 'message' => 'A product with this name already exists. Please choose a different name.']);
+                exit(0); // Force exit
+            } else {
+                $_SESSION['flash_message'] = 'A product with this name already exists. Please choose a different name.';
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit;
+            }
+        }
+
         $pdo->beginTransaction();
         try {
             $slug = strtolower(str_replace(' ', '-', $_POST['product_name']));
@@ -130,6 +170,10 @@ if ($_POST) {
             $stmt = $pdo->prepare("INSERT INTO products (name, slug, short_description, description, sku, price, stock_quantity, gender, category_id, weight, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
             $stmt->execute([$_POST['product_name'], $slug, $_POST['short_description'], $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], trim($_POST['gender']), $_POST['category_id'], $weight]);
             $product_id = $pdo->lastInsertId();
+
+            // Insert into product_categories
+            $stmt = $pdo->prepare("INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)");
+            $stmt->execute([$product_id, $_POST['category_id']]);
             
             // Add variations
             if (isset($_POST['variations'])) {
@@ -143,9 +187,11 @@ if ($_POST) {
                     // Add sizes for this variation
                     if (isset($variation['sizes'])) {
                         foreach ($variation['sizes'] as $size) {
-                            $size_price_adjustment = !empty($size['price_adjustment']) ? $size['price_adjustment'] : null;
-                            $stmt = $pdo->prepare("INSERT INTO variation_sizes (variation_id, size, stock_quantity, price_adjustment) VALUES (?, ?, ?, ?)");
-                            $stmt->execute([$variation_id, $size['size'], $size['stock'], $size_price_adjustment]);
+                            if (!empty($size['size'])) {
+                                $size_price_adjustment = !empty($size['price_adjustment']) ? $size['price_adjustment'] : null;
+                                $stmt = $pdo->prepare("INSERT INTO variation_sizes (variation_id, size, stock_quantity, price_adjustment) VALUES (?, ?, ?, ?)");
+                                $stmt->execute([$variation_id, $size['size'], $size['stock'], $size_price_adjustment]);
+                            }
                         }
                     }
                 }
@@ -184,10 +230,24 @@ if ($_POST) {
             }
             
             $pdo->commit();
-            $success = "Product added successfully!";
+            if ($is_ajax) {
+                echo json_encode(['success' => true, 'message' => 'Product added successfully!']);
+                exit(0); // Force exit
+            } else {
+                $_SESSION['flash_message'] = 'Product added successfully!';
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit;
+            }
         } catch (Exception $e) {
             $pdo->rollBack();
-            $_SESSION['flash_message'] = $e->getMessage();
+            if ($is_ajax) {
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+                exit;
+            } else {
+                $_SESSION['flash_message'] = $e->getMessage();
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit;
+            }
         }
     }
     
@@ -201,6 +261,12 @@ if ($_POST) {
             // Update product
             $stmt = $pdo->prepare("UPDATE products SET name = ?, slug = ?, short_description = ?, description = ?, sku = ?, price = ?, stock_quantity = ?, gender = ?, category_id = ?, weight = ? WHERE id = ?");
             $stmt->execute([$_POST['product_name'], $slug, $_POST['short_description'], $_POST['description'], $_POST['sku'], $_POST['price'], $_POST['stock'], trim($_POST['gender']), $_POST['category_id'], $weight, $product_id]);
+
+            // Update product_categories
+            $stmt = $pdo->prepare("DELETE FROM product_categories WHERE product_id = ?");
+            $stmt->execute([$product_id]);
+            $stmt = $pdo->prepare("INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)");
+            $stmt->execute([$product_id, $_POST['category_id']]);
             
             // Delete existing variations and sizes
             $stmt = $pdo->prepare("DELETE FROM variation_sizes WHERE variation_id IN (SELECT id FROM product_variations WHERE product_id = ?)");
@@ -309,11 +375,42 @@ if ($_POST) {
                         }
                     }
                 }
-            }            $pdo->commit();
-            $success = "Product updated successfully!";
+            }
+
+            $pdo->commit();
+
+            // Clear product cache
+            cache_delete('product_' . $slug);
+
+            if ($is_ajax) {
+                echo json_encode(['success' => true, 'message' => 'Product updated successfully!']);
+                exit(0); // Force exit
+            } else {
+                $_SESSION['flash_message'] = 'Product updated successfully!';
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit;
+            }
         } catch (Exception $e) {
             $pdo->rollBack();
-            $_SESSION['flash_message'] = $e->getMessage();
+            if ($is_ajax) {
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+                exit(0); // Force exit
+            } else {
+                $_SESSION['flash_message'] = $e->getMessage();
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit;
+            }
+        }
+    }
+
+    } catch (Exception $e) {
+        if ($is_ajax) {
+            echo json_encode(['success' => false, 'message' => 'An error occurred: ' . $e->getMessage()]);
+            exit(0); // Force exit
+        } else {
+            $_SESSION['flash_message'] = 'An error occurred: ' . $e->getMessage();
+            header('Location: ' . $_SERVER['PHP_SELF']);
+            exit;
         }
     }
 }
@@ -331,6 +428,7 @@ $stmt = $pdo->query("SELECT * FROM categories ORDER BY name");
 $categories = $stmt->fetchAll();
 ?>
 
+<?php include '_layout_header.php'; ?>
 
 <style>
     .controls { background: var(--card); padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
@@ -423,9 +521,10 @@ $categories = $stmt->fetchAll();
                 <button class="tab-btn" onclick="switchTab('images')">Images</button>
             </div>
             
-            <form method="POST" enctype="multipart/form-data">
+            <form method="POST" enctype="multipart/form-data" onsubmit="return submitProductForm(event)" id="productForm">
                 <input type="hidden" name="action" value="add_product">
                 <input type="hidden" name="deleted_images" id="deleted_images" value="">
+                <div id="form-message" style="display: none; margin-bottom: 15px; padding: 10px; border-radius: 4px;"></div>
                 
                 <div id="basic-tab" class="tab-content active">                    <div class="form-group">
                         <label>Product Name</label>
@@ -525,7 +624,7 @@ $categories = $stmt->fetchAll();
                 <div style="text-align: right; margin-top: 20px; padding: 20px; border-top: 1px solid #ddd; background: white;">
                     <div id="stockError" class="error" style="display: none; text-align: left; margin-bottom: 10px;"></div>
                     <button type="button" class="btn" onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn btn-success" onclick="return validateStock()">Save Product</button>
+                    <button type="submit" class="btn btn-success">Save Product</button>
                 </div>
             </form>
         </div>
@@ -649,11 +748,19 @@ function addImageField() {
         function generateSKU() {
             const productName = document.querySelector('input[name="product_name"]').value;
             if (!productName) return;
-            
+
+            // For editing existing products, only generate new SKU if name actually changed
+            if (window.originalProductName && window.originalProductName.trim() === productName.trim()) {
+                // Name hasn't changed, don't regenerate SKU
+                generateVariationTags();
+                updateImageTagOptions();
+                return;
+            }
+
             // Generate SKU from first letters of each word
             const words = productName.trim().split(/\s+/);
             const letters = words.map(word => word.charAt(0).toUpperCase()).join('');
-            
+
             // Check for existing SKUs and increment
             fetch('check_sku.php', {
                 method: 'POST',
@@ -694,26 +801,60 @@ function addImageField() {
             // Reset form for adding new product
             document.querySelector('#productModal form').reset();
             document.querySelector('input[name="action"]').value = 'add_product';
-            
+
             // Remove product ID if exists
             const productIdInput = document.querySelector('input[name="product_id"]');
             if (productIdInput) {
                 productIdInput.remove();
             }
-            
+
             // Update modal title
             document.querySelector('#productModal h2').textContent = 'Add Product';
-            
+
             // Reset variations to default
             const variationsContainer = document.getElementById('variations-container');
             variationsContainer.innerHTML = '';
             addVariationToForm({}, 0);
             variationCount = 1;
+
+            // Reset images to default
+            const imagesContainer = document.getElementById('images-container');
+            imagesContainer.innerHTML = `
+                <div class="image-item">
+                    <button type="button" class="remove-image" onclick="removeImage(this)">&times;</button>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Image File</label>
+                            <input type="file" name="images[0][file]" accept="image/*">
+                        </div>
+                        <div class="form-group">
+                            <label>Tag (Optional)</label>
+                            <select name="images[0][tag]">
+                                <option value="">General Product Image</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Alt Text</label>
+                            <input type="text" name="images[0][alt_text]" placeholder="Image description">
+                        </div>
+                        <div class="form-group">
+                            <label>Primary Image</label>
+                            <input type="checkbox" name="images[0][is_primary]" value="1" class="primary-image-checkbox" onclick="handlePrimaryImageChange(this)">
+                        </div>
+                    </div>
+                </div>
+            `;
             imageCount = 1;
-            
+            updateImageTagOptions();
+
             // Reset to first tab
             switchTab('basic');
-            
+
+            // Clear original name for new products
+            window.originalProductName = '';
+
             document.getElementById('productModal').style.display = 'block';
         }
         
@@ -730,18 +871,32 @@ function addImageField() {
         
         function addSize(button) {
             const sizesContainer = button.closest('.sizes-container');
-            const sizeCount = sizesContainer.querySelectorAll('.size-item').length - 1; // Exclude the add button row
+            const sizeItems = sizesContainer.querySelectorAll('.size-item');
             const variationIndex = button.closest('.variation-item').querySelector('select').name.match(/\[(\d+)\]/)[1];
+
+            // Find the highest existing size index
+            let maxIndex = -1;
+            sizeItems.forEach(item => {
+                const input = item.querySelector('input[name*="[size]"]');
+                if (input && input.name) {
+                    const match = input.name.match(/\[sizes\]\[(\d+)\]/);
+                    if (match) {
+                        maxIndex = Math.max(maxIndex, parseInt(match[1]));
+                    }
+                }
+            });
+
+            const nextIndex = maxIndex + 1;
 
             const newSize = document.createElement('div');
             newSize.className = 'size-item';
             newSize.innerHTML = `
-                <label for="size-${variationIndex}-${sizeCount}">Size</label>
-                <input type="text" id="size-${variationIndex}-${sizeCount}" name="variations[${variationIndex}][sizes][${sizeCount}][size]" placeholder="Size" style="width: 150px;">
-                <label for="stock-${variationIndex}-${sizeCount}">Stock</label>
-                <input type="number" id="stock-${variationIndex}-${sizeCount}" name="variations[${variationIndex}][sizes][${sizeCount}][stock]" placeholder="Stock" style="width: 100px;">
-                <label for="price-${variationIndex}-${sizeCount}">Price Adjustment</label>
-                <input type="number" id="price-${variationIndex}-${sizeCount}" name="variations[${variationIndex}][sizes][${sizeCount}][price_adjustment]" placeholder="New Price" step="0.01" style="width: 120px;">
+                <label for="size-${variationIndex}-${nextIndex}">Size</label>
+                <input type="text" id="size-${variationIndex}-${nextIndex}" name="variations[${variationIndex}][sizes][${nextIndex}][size]" placeholder="Size" style="width: 150px;" required>
+                <label for="stock-${variationIndex}-${nextIndex}">Stock</label>
+                <input type="number" id="stock-${variationIndex}-${nextIndex}" name="variations[${variationIndex}][sizes][${nextIndex}][stock]" placeholder="Stock" style="width: 100px;">
+                <label for="price-${variationIndex}-${nextIndex}">Price Adjustment</label>
+                <input type="number" id="price-${variationIndex}-${nextIndex}" name="variations[${variationIndex}][sizes][${nextIndex}][price_adjustment]" placeholder="New Price" step="0.01" style="width: 120px;">
                 <button type="button" onclick="removeSize(this)" class="btn btn-danger">Remove</button>
             `;
 
@@ -778,6 +933,9 @@ function addImageField() {
                     document.querySelector('select[name="gender"]').value = product.gender || 'Unisex';
                     document.querySelector('select[name="category_id"]').value = product.category_id || '';
                     document.querySelector('input[name="weight"]').value = product.weight || '';
+
+                    // Store original name for SKU generation logic
+                    window.originalProductName = product.name || '';
                     
                     // Update form action for editing
                     const form = document.querySelector('#productModal form');
@@ -914,24 +1072,26 @@ function addImageField() {
                             variation.sizes.map((size, sizeIndex) => `
                                 <div class="size-item">
                                     <label for="size-${index}-${sizeIndex}">Size</label>
-                                    <input type="text" id="size-${index}-${sizeIndex}" name="variations[${index}][sizes][${sizeIndex}][size]" value="${size.size || ''}" placeholder="Size" style="width: 150px;">
+                                    <input type="text" id="size-${index}-${sizeIndex}" name="variations[${index}][sizes][${sizeIndex}][size]" value="${size.size || ''}" placeholder="Size" style="width: 150px;" required>
                                     <label for="stock-${index}-${sizeIndex}">Stock</label>
                                     <input type="number" id="stock-${index}-${sizeIndex}" name="variations[${index}][sizes][${sizeIndex}][stock]" value="${size.stock_quantity || ''}" placeholder="Stock" style="width: 100px;">
                                     <label for="price-${index}-${sizeIndex}">Price Adjustment</label>
                                     <input type="number" id="price-${index}-${sizeIndex}" name="variations[${index}][sizes][${sizeIndex}][price_adjustment]" value="${size.price_adjustment || 0}" placeholder="New Price" step="0.01" style="width: 120px;">
                                     <button type="button" onclick="removeSize(this)" class="btn btn-danger">Remove</button>
                                 </div>
-                            `).join('') : ''
+                            `).join('') : `
+                                <div class="size-item">
+                                    <label for="size-${index}-0">Size</label>
+                                    <input type="text" id="size-${index}-0" name="variations[${index}][sizes][0][size]" placeholder="Size" style="width: 150px;" required>
+                                    <label for="stock-${index}-0">Stock</label>
+                                    <input type="number" id="stock-${index}-0" name="variations[${index}][sizes][0][stock]" placeholder="Stock" style="width: 100px;">
+                                    <label for="price-${index}-0">Price Adjustment</label>
+                                    <input type="number" id="price-${index}-0" name="variations[${index}][sizes][0][price_adjustment]" placeholder="New Price" step="0.01" style="width: 120px;">
+                                    <button type="button" onclick="removeSize(this)" class="btn btn-danger">Remove</button>
+                                </div>
+                            `
                         }
-                        <div class="size-item">
-                            <label for="size-${index}-${variation.sizes ? variation.sizes.length : 0}">Size</label>
-                            <input type="text" id="size-${index}-${variation.sizes ? variation.sizes.length : 0}" name="variations[${index}][sizes][${variation.sizes ? variation.sizes.length : 0}][size]" placeholder="Size (e.g., S, M, L, 6, 7, 8)" style="width: 150px;">
-                            <label for="stock-${index}-${variation.sizes ? variation.sizes.length : 0}">Stock</label>
-                            <input type="number" id="stock-${index}-${variation.sizes ? variation.sizes.length : 0}" name="variations[${index}][sizes][${variation.sizes ? variation.sizes.length : 0}][stock]" placeholder="Stock" style="width: 100px;">
-                            <label for="price-${index}-${variation.sizes ? variation.sizes.length : 0}">Price Adjustment</label>
-                            <input type="number" id="price-${index}-${variation.sizes ? variation.sizes.length : 0}" name="variations[${index}][sizes][${variation.sizes ? variation.sizes.length : 0}][price_adjustment]" placeholder="New Price" step="0.01" style="width: 120px;">
-                            <button type="button" onclick="removeSize(this)" class="btn btn-danger">Remove</button>
-                        </div>
+                        <!-- Placeholder row removed to avoid nameless inputs that aren't submitted -->
                         <div style="margin-top: 10px;">
                             <button type="button" onclick="addSize(this)" class="btn">+ Size</button>
                         </div>
@@ -942,40 +1102,148 @@ function addImageField() {
         }
         
         
+        function submitProductForm(event) {
+            event.preventDefault();
+
+            // Validate stock first
+            if (!validateStock()) {
+                return false;
+            }
+
+            const form = event.target;
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            const action = form.querySelector('input[name="action"]').value;
+
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.textContent = action === 'add_product' ? 'Adding...' : 'Updating...';
+
+            // Clear any previous messages
+            const messageDiv = document.getElementById('form-message');
+            messageDiv.style.display = 'none';
+
+            // Submit form via AJAX
+            const formData = new FormData(form);
+
+            fetch('', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: formData
+            })
+            // read response as text first so we can handle HTML error pages
+            .then(response => response.text())
+            .then(text => {
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (e) {
+                    console.error('Invalid JSON response from server:', text);
+                    // show server response (HTML or plain text) in the form message for debugging
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.background = '#f8d7da';
+                    messageDiv.style.color = '#721c24';
+                    messageDiv.style.border = '1px solid #f5c6cb';
+                    // truncate long responses
+                    messageDiv.textContent = text.length > 1000 ? text.slice(0, 1000) + '... (truncated)' : text;
+                    throw new Error('Invalid JSON response');
+                }
+
+                if (data.success) {
+                    // Success - show message and close modal
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.background = '#d4edda';
+                    messageDiv.style.color = '#155724';
+                    messageDiv.style.border = '1px solid #c3e6cb';
+                    messageDiv.textContent = data.message;
+
+                    // Close modal after a short delay
+                    setTimeout(() => {
+                        closeModal();
+                        location.reload(); // Refresh the page to show the changes
+                    }, 1500);
+                } else {
+                    // Error - show message in modal
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.background = '#f8d7da';
+                    messageDiv.style.color = '#721c24';
+                    messageDiv.style.border = '1px solid #f5c6cb';
+                    messageDiv.textContent = data.message;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                if (!messageDiv.style.display || messageDiv.style.display === 'none') {
+                    messageDiv.style.display = 'block';
+                    messageDiv.style.background = '#f8d7da';
+                    messageDiv.style.color = '#721c24';
+                    messageDiv.style.border = '1px solid #f5c6cb';
+                    messageDiv.textContent = 'An unexpected error occurred. Please try again.';
+                }
+            })
+            .finally(() => {
+                // Restore button state
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            });
+
+            return false;
+        }
+
         function validateStock() {
             const baseStock = parseInt(document.querySelector('input[name="stock"]').value) || 0;
             const variations = document.querySelectorAll('.variation-item');
             let totalVariationStock = 0;
             const errors = [];
-            
+
             variations.forEach((variation, vIndex) => {
-                const variationStock = parseInt(variation.querySelector('input[name*="[stock]"]').value) || 0;
-                const sizes = variation.querySelectorAll('.size-item input[name*="[stock]"]');
+                // Find the variation-level stock input (name ending with [stock] but not containing [sizes])
+                const variationStockInput = variation.querySelector('input[name$="[stock]"]:not([name*="[sizes]"])');
+                const variationStock = parseInt(variationStockInput ? variationStockInput.value : 0, 10) || 0;
+
+                const sizeItems = variation.querySelectorAll('.size-item:not([data-placeholder])');
                 let totalSizeStock = 0;
-                
-                sizes.forEach(sizeInput => {
-                    if (sizeInput.value) {
-                        totalSizeStock += parseInt(sizeInput.value) || 0;
+
+                // Debugging: list detected size inputs and values
+                const sizeDebug = [];
+
+                sizeItems.forEach(sizeItem => {
+                    const sizeInput = sizeItem.querySelector('input[name*="[size]"]');
+                    const stockInput = sizeItem.querySelector('input[name*="[stock]"]');
+                    const stockValRaw = stockInput ? (stockInput.value || '').toString().trim() : '';
+                    const stockVal = stockValRaw === '' ? null : parseInt(stockValRaw, 10);
+
+                    if (stockVal !== null && !isNaN(stockVal)) {
+                        if (!sizeInput || sizeInput.value.trim() === '') {
+                            errors.push(`Variation ${vIndex + 1}: Size is required when stock is specified`);
+                        } else {
+                            totalSizeStock += stockVal;
+                            sizeDebug.push({ size: sizeInput.value.trim(), stock: stockVal });
+                        }
                     }
                 });
-                
-                if (sizes.length > 0 && totalSizeStock !== variationStock) {
+
+                console.log(`Variation ${vIndex + 1} - variationStock: ${variationStock}, sizes:`, sizeDebug);
+
+                if (sizeItems.length > 0 && totalSizeStock !== variationStock) {
                     errors.push(`Variation ${vIndex + 1}: Size stocks (${totalSizeStock}) don't match variation stock (${variationStock})`);
                 }
-                
+
                 totalVariationStock += variationStock;
             });
-            
+
             if (totalVariationStock !== baseStock) {
                 errors.push(`Total variation stocks (${totalVariationStock}) don't match base stock (${baseStock})`);
             }
-            
+
             if (errors.length > 0) {
                 document.getElementById('stockError').innerHTML = errors.join('<br>');
                 document.getElementById('stockError').style.display = 'block';
                 return false;
             }
-            
+
             document.getElementById('stockError').style.display = 'none';
             return true;
         }

@@ -8,7 +8,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
 $page_title = 'Customers Management';
 $active_nav = 'customers';
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 // Fetch customers
 $stmt = $pdo->query("SELECT id, first_name, last_name, email, phone, created_at FROM customers ORDER BY created_at DESC LIMIT 100");

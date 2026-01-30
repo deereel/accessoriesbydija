@@ -4,7 +4,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
     header('HTTP/1.0 403 Forbidden');
     exit('Unauthorized');
 }
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../app/config/database.php';
 
 // Build query with filters
 $where = ['1=1'];

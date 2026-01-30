@@ -8,7 +8,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
 $page_title = 'Testimonials Management';
 $active_nav = 'testimonials';
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 if ($_POST) {
     $action = $_POST['action'] ?? '';

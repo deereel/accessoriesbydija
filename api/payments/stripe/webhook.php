@@ -26,9 +26,9 @@ function debug_log($message) {
 }
 
 // Load environment variables from .env file
-require_once __DIR__ . '/../../../config/env.php';
-require_once __DIR__ . '/../../../config/database.php';
-require_once __DIR__ . '/../../../includes/email.php';
+require_once __DIR__ . '/../../../app/config/env.php';
+require_once __DIR__ . '/../../../app/config/database.php';
+require_once __DIR__ . '/../../../app/includes/email.php';
 
 debug_log("Stripe webhook: Request received - Method: " . $_SERVER['REQUEST_METHOD'] . ", Path: " . $_SERVER['REQUEST_URI'] . ", Host: " . ($_SERVER['HTTP_HOST'] ?? 'unknown'));
 error_log("Stripe webhook: Request received - Method: " . $_SERVER['REQUEST_METHOD'] . ", Path: " . $_SERVER['REQUEST_URI'] . ", Host: " . ($_SERVER['HTTP_HOST'] ?? 'unknown'));

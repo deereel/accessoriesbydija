@@ -5,7 +5,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
     exit('Unauthorized');
 }
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 if ($_POST && isset($_POST['product_id'])) {
     try {

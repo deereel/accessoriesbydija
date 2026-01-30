@@ -6,7 +6,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
     exit;
 }
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 $product_id = $_GET['id'] ?? '';
 if (!$product_id) {

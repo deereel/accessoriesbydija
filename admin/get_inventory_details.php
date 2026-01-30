@@ -8,7 +8,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
 }
 
 header('Content-Type: application/json');
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 $product_id = isset($_GET['product_id']) ? (int)$_GET['product_id'] : 0;
 

@@ -8,7 +8,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
 $page_title = 'Custom Orders Management';
 $active_nav = 'orders';
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 // Build query based on filters
 $where = [];

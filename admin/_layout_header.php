@@ -1,6 +1,6 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) { session_start(); }
-require_once '../config/security.php';
+require_once '../app/config/security.php';
 if (!isset($_SESSION['admin_logged_in'])) {
     header('Location: index.php');
     exit;
@@ -131,7 +131,9 @@ if ('serviceWorker' in navigator) {
   <div class="content">
     <header class="admin-header">
       <h1><?php echo htmlspecialchars($page_title); ?></h1>
-      <a href="/admin/index.php?logout=1" class="btn logout">Logout</a>
+      <div>
+        <a href="/admin/index.php?logout=1" class="btn logout">Logout</a>
+      </div>
     </header>
     <main class="main">
     <button class="scroll-top" id="adminScrollTopBtn" aria-label="Scroll to top">↑</button>

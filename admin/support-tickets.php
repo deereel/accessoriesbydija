@@ -6,7 +6,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
 
 $page_title = 'Support Tickets';
 $active_nav = 'support_tickets';
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../app/config/database.php';
 
 // Get filter values from URL
 $filter_status = $_GET['status'] ?? '';

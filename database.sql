@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS product_images (
     variant_id INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-    FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE SET NULL
+    FOREIGN KEY (variant_id) REFERENCES product_variations(id) ON DELETE SET NULL
 );
 
 -- Materials table
@@ -127,15 +127,20 @@ CREATE TABLE IF NOT EXISTS product_adornments (
     FOREIGN KEY (adornment_id) REFERENCES adornments(id) ON DELETE CASCADE
 );
 
--- Product variants
-CREATE TABLE IF NOT EXISTS product_variants (
+-- Product variations
+CREATE TABLE IF NOT EXISTS product_variations (
     id INT PRIMARY KEY AUTO_INCREMENT,
     product_id INT NOT NULL,
-    sku VARCHAR(255) NOT NULL UNIQUE,
-    price_override DECIMAL(10,2),
-    size_override VARCHAR(255),
-    main_variant BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+    material_id INT,
+    tag VARCHAR(255),
+    color VARCHAR(255),
+    adornment VARCHAR(255),
+    price_adjustment DECIMAL(10,2),
+    stock_quantity INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    FOREIGN KEY (material_id) REFERENCES materials(id) ON DELETE SET NULL
 );
 
 -- Variant tags
@@ -152,7 +157,7 @@ CREATE TABLE IF NOT EXISTS variant_tags (
 CREATE TABLE IF NOT EXISTS variant_stock (
     variant_id INT PRIMARY KEY,
     stock_quantity INT NOT NULL,
-    FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE CASCADE
+    FOREIGN KEY (variant_id) REFERENCES product_variations(id) ON DELETE CASCADE
 );
 
 -- Add size_override column to product_variants if it doesn't exist
@@ -229,9 +234,16 @@ CREATE TABLE IF NOT EXISTS order_items (
     quantity INT NOT NULL,
     unit_price DECIMAL(10,2) NOT NULL,
     total_price DECIMAL(10,2) NOT NULL,
+    material_name VARCHAR(255),
+    color VARCHAR(255),
+    adornment VARCHAR(255),
+    size VARCHAR(255),
+    variation_id INT,
+    variation_tag VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE RESTRICT,
+    FOREIGN KEY (variation_id) REFERENCES product_variations(id) ON DELETE SET NULL
 );
 
 -- Custom jewelry requests
@@ -497,6 +509,17 @@ INSERT IGNORE INTO products (name, slug, description, short_description, sku, pr
 ('Rose Gold Pendant', 'rose-gold-pendant', 'Delicate rose gold pendant with diamond accent', 'Beautiful rose gold heart pendant', 'RGP001', 189.00, 'Rose Gold', 'Diamond', 'women', TRUE),
 ('Platinum Wedding Band', 'platinum-wedding-band', 'Classic platinum wedding band for men', 'Timeless platinum band', 'PWB001', 350.00, 'Platinum', NULL, 'men', TRUE);
 
+-- Insert sample product images
+INSERT IGNORE INTO product_images (product_id, image_url, alt_text, sort_order, is_primary) VALUES
+(1, '/assets/images/products/114_1767505585_2.jpg', 'Diamond Solitaire Ring', 1, TRUE),
+(2, '/assets/images/products/118_1767468564_0.png', 'Pearl Drop Earrings', 1, TRUE),
+(3, '/assets/images/products/117_1767763066_4.jpg', 'Gold Chain Necklace', 1, TRUE),
+(4, '/assets/images/products/119_1767472791_0.jpg', 'Silver Charm Bracelet', 1, TRUE),
+(5, '/assets/images/products/135_1768830941_0.png', 'Emerald Tennis Bracelet', 1, TRUE),
+(6, '/assets/images/products/137_1769259626_0.jpeg', 'Mens Signet Ring', 1, TRUE),
+(7, '/assets/images/products/136_1768913653_0.jpg', 'Rose Gold Pendant', 1, TRUE),
+(8, '/assets/images/products/138_1769260523_0.jpg', 'Platinum Wedding Band', 1, TRUE);
+
 -- Link products to categories
 INSERT IGNORE INTO product_categories (product_id, category_id) VALUES
 (1, 1), (1, 3), -- Diamond ring -> Women, Rings
@@ -639,23 +662,32 @@ INSERT IGNORE INTO site_settings (setting_key, setting_value, setting_type, desc
 ('enable_reviews', 'true', 'boolean', 'Enable product reviews'),
 ('maintenance_mode', 'false', 'boolean', 'Site maintenance mode');
 
--- Migration: Update product_variants table for new variant system
-ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS tag VARCHAR(255) NULL;
-ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS price_adjustment DECIMAL(10,2) NULL;
-ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS stock_quantity INT DEFAULT 0;
-ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
+-- Migration: Update product_variations table for new variant system
+ALTER TABLE product_variations ADD COLUMN IF NOT EXISTS tag VARCHAR(255) NULL;
+ALTER TABLE product_variations ADD COLUMN IF NOT EXISTS price_adjustment DECIMAL(10,2) NULL;
+ALTER TABLE product_variations ADD COLUMN IF NOT EXISTS stock_quantity INT DEFAULT 0;
+ALTER TABLE product_variations ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE product_variations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
 
 -- Migration: Update product_colors for variant-level colors
 ALTER TABLE product_colors ADD COLUMN IF NOT EXISTS variant_id INT NULL;
 ALTER TABLE product_colors DROP FOREIGN KEY IF EXISTS product_colors_ibfk_1;
-ALTER TABLE product_colors ADD CONSTRAINT fk_product_colors_variant FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE CASCADE;
+ALTER TABLE product_colors ADD CONSTRAINT fk_product_colors_variant FOREIGN KEY (variant_id) REFERENCES product_variations(id) ON DELETE CASCADE;
 
 -- Migration: Update product_adornments for variant-level adornments
 ALTER TABLE product_adornments ADD COLUMN IF NOT EXISTS variant_id INT NULL;
 ALTER TABLE product_adornments DROP FOREIGN KEY IF EXISTS product_adornments_ibfk_1;
-ALTER TABLE product_adornments ADD CONSTRAINT fk_product_adornments_variant FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE CASCADE;
+ALTER TABLE product_adornments ADD CONSTRAINT fk_product_adornments_variant FOREIGN KEY (variant_id) REFERENCES product_variations(id) ON DELETE CASCADE;
 
 -- Migration: Update product_images variant reference
 ALTER TABLE product_images DROP FOREIGN KEY IF EXISTS product_images_ibfk_2;
-ALTER TABLE product_images ADD CONSTRAINT fk_product_images_variant FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE SET NULL;
+ALTER TABLE product_images ADD CONSTRAINT fk_product_images_variant FOREIGN KEY (variant_id) REFERENCES product_variations(id) ON DELETE SET NULL;
+
+-- Migration: Add variation columns to order_items table
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS material_name VARCHAR(255) NULL;
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS color VARCHAR(255) NULL;
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS adornment VARCHAR(255) NULL;
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS size VARCHAR(255) NULL;
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS variation_id INT NULL;
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS variation_tag VARCHAR(255) NULL;
+ALTER TABLE order_items ADD CONSTRAINT fk_order_items_variation FOREIGN KEY (variation_id) REFERENCES product_variations(id) ON DELETE SET NULL;

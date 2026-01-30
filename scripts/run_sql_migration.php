@@ -4,7 +4,7 @@ if (php_sapi_name() !== 'cli') {
     echo "Run from CLI: php run_sql_migration.php\n";
     exit(1);
 }
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../app/config/database.php';
 $sqlFile = __DIR__ . '/../sql/create_analytics_and_email_logs.sql';
 if (!file_exists($sqlFile)) {
     echo "SQL file not found: $sqlFile\n";

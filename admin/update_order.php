@@ -9,8 +9,8 @@ if (!isset($_SESSION['admin_logged_in'])) {
 }
 
 header('Content-Type: application/json');
-require_once '../config/database.php';
-require_once '../includes/email.php';
+require_once '../app/config/database.php';
+require_once '../app/includes/email.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);

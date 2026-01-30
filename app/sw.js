@@ -1,17 +1,27 @@
 const CACHE_NAME = 'accessories-by-dija-v3';
 const urlsToCache = [
-  '/',
-  '/index.php',
+  '/app/',
+  '/app/index.php',
   '/assets/css/all.min.css',
   '/assets/css/header.css',
   '/assets/css/hero.css',
   '/assets/css/footer.css',
+  '/assets/js/main.js',
+  '/assets/js/cart-handler.js',
+  '/assets/js/header.js',
+  '/assets/js/hero.js',
+  '/assets/js/category-section.js',
+  '/assets/js/collection-banners.js',
+  '/assets/js/currency.js',
+  '/assets/js/featured-products.js',
+  '/assets/js/custom-cta.js',
+  '/assets/js/testimonials.js',
   '/assets/images/logo.webp',
   '/assets/images/android-chrome-192x192.png',
   '/assets/images/android-chrome-512x512.png',
   '/assets/images/apple-touch-icon.png',
   '/favicon.ico',
-  '/manifest.json'
+  '/app/manifest.json'
 ];
 
 // Install event - cache resources
@@ -29,10 +39,6 @@ self.addEventListener('install', event => {
 
 // Fetch event - serve from cache if available, otherwise fetch from network
 self.addEventListener('fetch', event => {
-  // Skip admin routes to allow admin PWA to handle them
-  if (event.request.url.includes('/admin/')) {
-    return fetch(event.request);
-  }
   event.respondWith(
     caches.match(event.request)
       .then(response => {

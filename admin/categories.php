@@ -8,7 +8,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
 $page_title = 'Categories Management';
 $active_nav = 'categories';
 
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 // Handle category operations
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

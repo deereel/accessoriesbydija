@@ -9,7 +9,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
 }
 
 header('Content-Type: application/json');
-require_once '../config/database.php';
+require_once '../app/config/database.php';
 
 if (!isset($_GET['id'])) {
     http_response_code(400);

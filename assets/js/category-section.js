@@ -45,6 +45,14 @@ function toggleCategory(category) {
 
 // Initialize category section
 document.addEventListener('DOMContentLoaded', function() {
+    // Add click handlers for main category buttons
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const category = this.getAttribute('data-category');
+            toggleCategory(category);
+        });
+    });
+
     // Add click handlers for subcategory cards
     document.querySelectorAll('.subcategory-card').forEach(card => {
         card.addEventListener('click', function() {

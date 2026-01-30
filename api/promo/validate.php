@@ -2,8 +2,8 @@
 header('Content-Type: application/json');
 session_start();
 
-require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../config/security.php';
+require_once __DIR__ . '/../../app/config/database.php';
+require_once __DIR__ . '/../../app/config/security.php';
 
 /**
  * POST /api/promo/validate.php
