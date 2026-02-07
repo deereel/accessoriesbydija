@@ -30,7 +30,10 @@ $active_nav = isset($active_nav) ? $active_nav : '';
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="mobile-web-app-capable" content="yes">
   <title><?php echo htmlspecialchars($page_title); ?></title>
   <link rel="manifest" href="/admin/manifest.json">
   <meta name="theme-color" content="#c487a5">
@@ -51,6 +54,30 @@ $active_nav = isset($active_nav) ? $active_nav : '';
     .content { flex:1; display:flex; flex-direction:column; }
     .admin-header { background:#222; color:#fff; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; }
     .admin-header h1 { font-size:18px; margin:0; }
+    .mobile-menu-btn { display:none; background:none; border:none; color:#fff; font-size:24px; cursor:pointer; padding:8px; }
+    .mobile-overlay { display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:99; }
+    
+    @media (max-width: 768px) {
+      .admin-layout { flex-direction:column; }
+      .sidebar { 
+        position:fixed; 
+        left:-260px; 
+        top:0; 
+        bottom:0; 
+        width:260px; 
+        z-index:100; 
+        transition:left 0.3s ease; 
+        padding-top:60px;
+      }
+      .sidebar.active { left:0; }
+      .mobile-menu-btn { display:block; }
+      .mobile-overlay.active { display:block; }
+      .content { margin-left:0; }
+      .admin-header { padding:12px; }
+      .admin-header h1 { font-size:16px; }
+      .main { padding:12px; }
+      .form-row { grid-template-columns:1fr; }
+    }
     .btn { padding:8px 12px; background:var(--accent); color:#fff; border:none; border-radius:6px; cursor:pointer; display:inline-block; }
     .btn.logout { background:#dc3545; }
     .main { padding:20px; }
@@ -81,25 +108,45 @@ $active_nav = isset($active_nav) ? $active_nav : '';
     .scroll-top.show { display: flex; }
   </style>
 <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(registrations => {
-    const unregisterPromises = registrations.map(registration => {
-      if (registration.scope === location.origin + '/') {
-        return registration.unregister();
-      }
-      return Promise.resolve();
-    });
+// Mobile menu functionality
+function toggleMobileMenu() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.querySelector('.mobile-overlay');
+  sidebar.classList.toggle('active');
+  overlay.classList.toggle('active');
+}
 
-    Promise.all(unregisterPromises).then(() => {
-      navigator.serviceWorker.register('/admin/admin-sw.js', {
-        scope: '/admin/'
+function closeMobileMenu() {
+  const sidebar = document.querySelector('.sidebar');
+  const overlay = document.querySelector('.mobile-overlay');
+  sidebar.classList.remove('active');
+  overlay.classList.remove('active');
+}
+
+if ('serviceWorker' in navigator) {
+  (async function(){
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      const unregisterPromises = registrations.map(registration => {
+        if (registration.scope === location.origin + '/') {
+          return registration.unregister();
+        }
+        return Promise.resolve();
       });
-    });
-  });
+      await Promise.all(unregisterPromises);
+
+      const registration = await navigator.serviceWorker.register('/admin/admin-sw.js', { scope: '/admin/' });
+      try { await registration.update(); console.log('Admin service worker update checked'); } catch(e) { console.warn('Admin sw update check failed', e); }
+      console.log('Admin service worker registered:', registration);
+    } catch (e) {
+      console.warn('Service worker registration error:', e);
+    }
+  })();
 }
 </script>
 </head>
 <body>
+<div class="mobile-overlay" onclick="closeMobileMenu()"></div>
 <div class="admin-layout">
   <aside class="sidebar">
     <h2>Dija Admin</h2>
@@ -130,6 +177,7 @@ if ('serviceWorker' in navigator) {
   </aside>
   <div class="content">
     <header class="admin-header">
+      <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
       <h1><?php echo htmlspecialchars($page_title); ?></h1>
       <div>
         <a href="/admin/index.php?logout=1" class="btn logout">Logout</a>

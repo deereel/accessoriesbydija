@@ -1,7 +1,7 @@
 <?php
 session_start();
 header('Content-Type: application/json');
-require_once '../../config/database.php';
+require_once '../../app/config/database.php';
 
 if (!isset($_SESSION['customer_id'])) {
     echo json_encode(['success' => false, 'message' => 'Not authenticated']);
@@ -17,6 +17,13 @@ if (!$order_id && !$order_number) {
 }
 
 try {
+    // Check if orders table exists
+    $tableCheck = $pdo->query("SHOW TABLES LIKE 'orders'")->rowCount();
+    if ($tableCheck == 0) {
+        echo json_encode(['success' => false, 'message' => 'No orders found']);
+        exit;
+    }
+    
     if ($order_id && is_numeric($order_id)) {
         $stmt = $pdo->prepare("SELECT *, DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS created_at_iso, DATE_FORMAT(created_at, '%d %b %Y') AS created_at_human FROM orders WHERE id = ? AND customer_id = ? LIMIT 1");
         $stmt->execute([$order_id, $_SESSION['customer_id']]);
@@ -34,7 +41,7 @@ try {
 
     // Fetch items
     $itemsStmt = $pdo->prepare("SELECT oi.*, p.name, p.sku FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id WHERE oi.order_id = ?");
-    $itemsStmt->execute([$order_id]);
+    $itemsStmt->execute([$order['id']]);
     $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode(['success' => true, 'order' => $order, 'items' => $items]);
@@ -42,3 +49,4 @@ try {
     error_log('api/account/get_order.php DB error: ' . $e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Database error']);
 }
+?>

@@ -2,8 +2,8 @@
 // Process abandoned carts and send reminder emails
 // Run this script via cron job, e.g., every hour: 0 * * * * php /path/to/process_abandoned_carts.php
 
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../includes/email.php'; // Assuming email functionality exists
+require_once __DIR__ . '/../app/config/database.php';
+require_once __DIR__ . '/../app/includes/email.php'; // Assuming email functionality exists
 
 // Configuration
 $abandon_threshold_hours = 24;

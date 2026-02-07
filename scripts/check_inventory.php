@@ -4,9 +4,9 @@
  * Run via cron: 0 *\/6 * * * php /path/to/scripts/check_inventory.php
  */
 
-require_once __DIR__ . '/../config/env.php';
-require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../includes/email.php';
+require_once __DIR__ . '/../app/config/env.php';
+require_once __DIR__ . '/../app/config/database.php';
+require_once __DIR__ . '/../app/includes/email.php';
 
 $low_stock_threshold = $_ENV['LOW_STOCK_THRESHOLD'] ?? 5; // Alert when stock <= threshold
 

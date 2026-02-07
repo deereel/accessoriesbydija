@@ -536,7 +536,25 @@ main {
 }
 
 /* Responsive Design */
-@media (max-width: 768px) {
+@media screen and (max-width: 768px) {
+    html {
+        font-size: 14px;
+    }
+    
+    body {
+        font-size: 14px;
+        line-height: 1.5;
+    }
+    
+    .container {
+        padding: 0 15px;
+        max-width: 100%;
+    }
+    
+    .nav-container {
+        padding: 0 15px;
+    }
+    
     .nav-menu {
         display: none;
         position: absolute;
@@ -565,38 +583,80 @@ main {
         grid-template-columns: 1fr;
         text-align: center;
         padding: 2rem 1rem;
+        min-height: 50vh;
     }
 
     .hero-content h1 {
-        font-size: 2rem;
+        font-size: 1.8rem;
+        line-height: 1.3;
+    }
+    
+    .hero-content p {
+        font-size: 1rem;
     }
 
     .hero-buttons {
         justify-content: center;
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+    
+    .btn {
+        padding: 0.8rem 1.5rem;
+        font-size: 14px;
     }
 
     .hero-features {
         justify-content: center;
-        gap: 1rem;
+        gap: 0.8rem;
+        font-size: 0.8rem;
     }
 
     .custom-features {
-        gap: 1rem;
+        gap: 0.8rem;
+        font-size: 0.9rem;
     }
 
     .category-grid,
     .product-grid,
     .testimonial-grid {
         grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .category-card,
+    .testimonial-card {
+        margin: 0 10px;
     }
 
     .featured-categories h2,
     .featured-products h2,
     .testimonials h2 {
-        font-size: 2rem;
+        font-size: 1.8rem;
+        margin-bottom: 2rem;
     }
 
     .custom-cta h2 {
-        font-size: 2rem;
+        font-size: 1.8rem;
+    }
+    
+    .cta-content p {
+        font-size: 1rem;
+    }
+    
+    .footer-container {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        padding: 0 15px;
+    }
+    
+    .newsletter-form {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .newsletter-form input,
+    .newsletter-form button {
+        border-radius: 4px;
     }
 }

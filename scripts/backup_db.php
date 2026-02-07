@@ -4,8 +4,8 @@
  * Run via cron: 0 2 * * * php /path/to/scripts/backup_db.php
  */
 
-require_once __DIR__ . '/../config/env.php';
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../app/config/env.php';
+require_once __DIR__ . '/../app/config/database.php';
 
 $backup_dir = __DIR__ . '/../backups/';
 if (!is_dir($backup_dir)) {

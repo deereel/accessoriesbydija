@@ -1,6 +1,6 @@
 <?php
 // Test script for abandoned cart system
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../app/config/database.php';
 
 echo "<h1>Abandoned Cart System Test</h1>";
 

@@ -48,7 +48,11 @@ include 'includes/header.php';
               if ($result) {
                 while ($row = $result->fetch(PDO::FETCH_ASSOC)) {
                   $emoji = $emoji_list[$index % count($emoji_list)];
-                  $image_html = $row['image_url'] ? '<img src="' . htmlspecialchars($row['image_url']) . '" style="width:100%; height:100%; object-fit:cover;" alt="' . htmlspecialchars($row['name']) . '">' : '<span>' . $emoji . '</span>';
+                  $image_url = $row['image_url'];
+              if ($image_url && strpos($image_url, '/') !== 0) {
+                  $image_url = '/' . $image_url;
+              }
+              $image_html = $image_url ? '<img src="' . htmlspecialchars($image_url) . '" style="width:100%; height:100%; object-fit:cover;" alt="' . htmlspecialchars($row['name']) . '" onerror="this.src=\'/assets/images/placeholder.jpg\'; this.onerror=null;">' : '<span>' . $emoji . '</span>';
 
                   echo '<div class="arrival-card" data-product-id="' . $row['id'] . '" data-price="' . $row['price'] . '" data-product-name="' . htmlspecialchars($row['name']) . '" data-image="' . htmlspecialchars($row['image_url'] ?? '') . '">
                     <a href="product.php?slug=' . htmlspecialchars($row['slug']) . '" class="arrival-image">

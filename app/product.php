@@ -304,6 +304,42 @@ if (!empty($reviews)) {
 .product-options { margin-bottom: 2rem; }
 .option-group { margin-bottom: 1.5rem; }
 .option-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; }
+
+/* Guidance Text Styles - Uses Site Theme Colors (#C27BA0) */
+.selection-guidance {
+    background: linear-gradient(135deg, #C27BA0 0%, #a66889 100%);
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    text-align: center;
+    animation: pulse 2s infinite;
+    box-shadow: 0 4px 15px rgba(194, 123, 160, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+.selection-guidance i {
+    font-size: 1.1rem;
+}
+@keyframes pulse {
+    0% { transform: scale(1); box-shadow: 0 4px 15px rgba(194, 123, 160, 0.4); }
+    50% { transform: scale(1.02); box-shadow: 0 6px 20px rgba(194, 123, 160, 0.6); }
+    100% { transform: scale(1); box-shadow: 0 4px 15px rgba(194, 123, 160, 0.4); }
+}
+.selection-guidance.hidden {
+    display: none !important;
+}
+.selection-guidance.visible {
+    display: flex !important;
+    animation: fadeInSlideUp 0.4s ease;
+}
+@keyframes fadeInSlideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 .option-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
 .option-btn { padding: 8px 16px; border: 2px solid #ddd; background: white; cursor: pointer; border-radius: 4px; transition: all 0.3s; }
 .option-btn:hover { border-color: #C27BA0; }
@@ -430,6 +466,9 @@ if (!empty($reviews)) {
             <div class="product-options">
                 <div class="option-group">
                     <label>Material:</label>
+                    <div class="selection-guidance" id="materialGuidance">
+                        <i class="fas fa-hand-pointer"></i> Please select a material below to proceed
+                    </div>
                     <div class="option-buttons" id="materialOptions">
                         <?php foreach ($materials as $material):
                         ?>
@@ -442,11 +481,17 @@ if (!empty($reviews)) {
                 
                 <div class="option-group" id="variationGroup" style="display: none;">
                     <label>Variation:</label>
+                    <div class="selection-guidance" id="variationGuidance">
+                        <i class="fas fa-hand-pointer"></i> Please select a variant below to proceed
+                    </div>
                     <div class="option-buttons" id="variationOptions"></div>
                 </div>
                 
                 <div class="option-group" id="sizeGroup" style="display: none;">
                     <label>Size:</label>
+                    <div class="selection-guidance" id="sizeGuidance">
+                        <i class="fas fa-hand-pointer"></i> Please select a size below to proceed
+                    </div>
                     <div class="option-buttons" id="sizeOptions"></div>
                 </div>
             </div>

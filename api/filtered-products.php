@@ -1,5 +1,9 @@
 <?php
 header('Content-Type: application/json');
+// Prevent caching
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
 require_once __DIR__ . '/../app/config/database.php';
 
 // Get filter parameters from URL
@@ -159,6 +163,17 @@ try {
     // Format products for JSON response
     $formatted_products = [];
     foreach ($products as $product) {
+        $main_image = $product['main_image'];
+        $hover_image = $product['hover_image'];
+        
+        // Ensure image URLs are absolute paths (start with /)
+        if ($main_image && strpos($main_image, '/') !== 0) {
+            $main_image = '/' . $main_image;
+        }
+        if ($hover_image && strpos($hover_image, '/') !== 0) {
+            $hover_image = '/' . $hover_image;
+        }
+        
         $formatted_products[] = [
             'id' => $product['id'],
             'name' => htmlspecialchars($product['name']),
@@ -167,8 +182,8 @@ try {
             'short_description' => htmlspecialchars(substr($product['short_description'] ?: $product['description'] ?: '', 0, 50)),
             'weight' => $product['weight'],
             'stock_quantity' => (int)$product['stock_quantity'],
-            'main_image' => $product['main_image'],
-            'hover_image' => $product['hover_image']
+            'main_image' => $main_image,
+            'hover_image' => $hover_image
         ];
     }
 

@@ -1,0 +1,340 @@
+{
+    "issue_20260205_swiper_not_changing": {
+        "value": {
+            "issue": "Hero slider swiper not changing slides on index page",
+            "root_cause": "Undefined variable currentSlideIndex - code was using currentSlideIndex but declared heroSlideIndex",
+            "file": "assets/js/hero.js",
+            "fix": "Replaced all currentSlideIndex references with heroSlideIndex",
+            "lines_affected": [
+                28,
+                34,
+                39
+            ],
+            "status": "fixed",
+            "fixed_at": "2026-02-07 12:42:47"
+        },
+        "tags": [
+            "issues",
+            "swiper",
+            "fixes"
+        ],
+        "updated": 1770468167
+    },
+    "issue_20260205_account_api_db_path": {
+        "value": {
+            "issue": "Account orders and addresses pages showing database access errors",
+            "root_cause": "API files in api/account/ were requiring wrong path ../../config/database.php but config is at app/config/database.php",
+            "files": [
+                "api/account/get_orders.php",
+                "api/account/get_addresses.php",
+                "api/account/get_order.php",
+                "api/account/save_address.php",
+                "api/account/delete_address.php",
+                "api/account/delete_account.php",
+                "api/account/change_password.php",
+                "api/account/update_profile.php"
+            ],
+            "fix": "Changed require path from ../../config/database.php to ../../app/config/database.php",
+            "status": "fixed",
+            "fixed_at": "2026-02-07 12:42:47"
+        },
+        "tags": [
+            "issues",
+            "database",
+            "fixes"
+        ],
+        "updated": 1770468167
+    },
+    "issue_20260205_account_spacing": {
+        "value": {
+            "issue": "Delete account warning text and button had no spacing",
+            "file": "app/account.php",
+            "fix": "Added margin-bottom: 1rem to warning paragraph",
+            "line_affected": 267,
+            "status": "fixed",
+            "fixed_at": "2026-02-07 12:42:47"
+        },
+        "tags": [
+            "issues",
+            "ui",
+            "fixes"
+        ],
+        "updated": 1770468167
+    },
+    "issue_20260205_checkout_country_dropdown": {
+        "value": {
+            "issue": "Checkout page address form country field was a text input instead of dropdown",
+            "file": "app/checkout.php",
+            "fix": "Added countries array and changed country input to select dropdown with all countries",
+            "status": "fixed",
+            "fixed_at": "2026-02-07 12:42:47"
+        },
+        "tags": [
+            "issues",
+            "ui",
+            "improvement"
+        ],
+        "updated": 1770468167
+    },
+    "issue_20260205_product_material_guidance": {
+        "value": {
+            "issue": "Users not understanding they need to select material on product page",
+            "file": "app/product.php, assets/js/product-details.js",
+            "fix": "Added glowing animated guidance text that moves with each selection step (material -> variation -> size) using site theme color #C27BA0",
+            "features": [
+                "Material selection shows guidance text below buttons",
+                "After material selected, guidance moves to variation section",
+                "After variation selected, guidance moves to size section",
+                "After size selected, guidance is hidden",
+                "All guidance uses site theme colors (#C27BA0)"
+            ],
+            "status": "fixed",
+            "fixed_at": "2026-02-07 12:42:47"
+        },
+        "tags": [
+            "issues",
+            "ui",
+            "improvement"
+        ],
+        "updated": 1770468167
+    },
+    "issue_20260205_mobile_search": {
+        "value": {
+            "issue": "Search icon not visible in mobile view and search suggestions not loading",
+            "file": "app/includes/header.php, api/search.php, api/newsletter.php, api/get-filter-options.php, api/featured-products.php, api/addresses.php, api/ai-optimization.php, api/health.php, api/custom-request.php",
+            "fix": "Added mobile search icon button that opens the search modal popup. Fixed database path in multiple API files from ../config/database.php to ../app/config/database.php and ../includes/init.php to ../app/includes/init.php",
+            "features": [
+                "Mobile search icon visible on screens <= 768px",
+                "Clicking icon opens centered modal with search input",
+                "Real-time search suggestions from API",
+                "Enter key triggers full search",
+                "Close button and click outside to close"
+            ],
+            "status": "fixed",
+            "fixed_at": "2026-02-07 12:42:47"
+        },
+        "tags": [
+            "issues",
+            "mobile",
+            "search",
+            "ui"
+        ],
+        "updated": 1770468167
+    },
+    "project_context": {
+        "value": {
+            "name": "Accessories By Dija",
+            "type": "E-commerce jewelry store",
+            "tech_stack": [
+                "PHP",
+                "PDO",
+                "Swiper.js",
+                "MySQL"
+            ],
+            "features": [
+                "Hero slider",
+                "Collection banners",
+                "Testimonials slider",
+                "Featured products",
+                "Custom jewelry requests",
+                "User account management"
+            ],
+            "initialized_at": "2026-02-05 00:00:00"
+        },
+        "tags": [
+            "project",
+            "context"
+        ],
+        "updated": 1770468167
+    },
+    "db_path_verification_20260205": {
+        "value": {
+            "files_verified": [
+                {
+                    "file": "app/includes/email.php",
+                    "path": "__DIR__ . '/../config/env.php'",
+                    "resolves_to": "app/config/env.php",
+                    "status": "correct"
+                },
+                {
+                    "file": "app/includes/logger.php",
+                    "path": "__DIR__ . '/../config/environment.php'",
+                    "resolves_to": "app/config/environment.php",
+                    "status": "correct"
+                }
+            ],
+            "verified_at": "2026-02-07 12:42:47",
+            "note": "All __DIR__ relative paths are correct - they properly resolve to app/config/"
+        },
+        "tags": [
+            "database",
+            "paths",
+            "verification"
+        ],
+        "updated": 1770468167
+    },
+    "issue_20260205_pwa_images_caching": {
+        "value": {
+            "issue": "PWA product images not displaying - relative image paths not working in PWA context",
+            "root_cause": "Image URLs stored in database as relative paths (assets/images/products/...) dont resolve correctly in PWA context",
+            "files": [
+                "app/sw.js",
+                "api/filtered-products.php",
+                "api/featured-products.php",
+                "app/new-arrivals.php"
+            ],
+            "fix": "Updated sw.js to cache /assets/images/products/ path. Added absolute path fix in api/filtered-products.php, api/featured-products.php and new-arrivals.php to prefix images with / if missing. Changed cache version from v9 to v10.",
+            "status": "fixed",
+            "fixed_at": "2026-02-07 12:42:47"
+        },
+        "tags": [
+            "pwa",
+            "images",
+            "caching",
+            "fixes"
+        ],
+        "updated": 1770468167
+    },
+    "issue_20260205_pwa_filtering": {
+        "value": {
+            "issue": "Products page filtering/sorting requires page refresh to work",
+            "root_cause": "updateUrlAndProducts used window.location.pathname which loses query params, causing URL to reset on filter change",
+            "file": "app/products.php",
+            "fix": "Changed URL handling to use URLSearchParams properly. Now builds URL with window.location.search, clears params, then adds filter and sort params. Ensures query params are preserved during filtering.",
+            "status": "fixed",
+            "fixed_at": "2026-02-07 12:42:47"
+        },
+        "tags": [
+            "pwa",
+            "filtering",
+            "javascript",
+            "fixes"
+        ],
+        "updated": 1770468167
+    },
+    "recent_changes": {
+        "value": [
+            {
+                "date": "2026-02-07 12:42:47",
+                "type": "bugfix",
+                "description": "Fixed hero.js swiper not changing slides - undefined variable issue",
+                "files": [
+                    "assets/js/hero.js"
+                ]
+            },
+            {
+                "date": "2026-02-07 12:42:47",
+                "type": "bugfix",
+                "description": "Fixed account API database connection paths - wrong require path",
+                "files": [
+                    "api/account/*.php"
+                ]
+            },
+            {
+                "date": "2026-02-07 12:42:47",
+                "type": "improvement",
+                "description": "Added spacing between delete account warning text and button",
+                "files": [
+                    "app/account.php"
+                ]
+            },
+            {
+                "date": "2026-02-07 12:42:47",
+                "type": "improvement",
+                "description": "Changed checkout country field from text input to dropdown with all countries",
+                "files": [
+                    "app/checkout.php"
+                ]
+            },
+            {
+                "date": "2026-02-07 12:42:47",
+                "type": "improvement",
+                "description": "Updated guidance text to move with selection (material -> variation -> size) using site theme colors",
+                "files": [
+                    "app/product.php",
+                    "assets/js/product-details.js"
+                ]
+            },
+            {
+                "date": "2026-02-07 12:42:47",
+                "type": "improvement",
+                "description": "Added mobile search icon that opens centered modal with search suggestions. Fixed database paths in api/newsletter.php, api/get-filter-options.php, api/featured-products.php, api/addresses.php, api/ai-optimization.php, api/health.php, api/custom-request.php from ../config/ to ../app/config/",
+                "files": [
+                    "app/includes/header.php",
+                    "api/*.php"
+                ]
+            },
+            {
+                "date": "2026-02-07 12:42:47",
+                "type": "bugfix",
+                "description": "Fixed PWA product images not displaying in PWA - updated service worker cache version to v11 and improved image caching patterns. Fixed filtering/sorting requiring refresh by properly handling URL parameters with new URL object creation.",
+                "files": [
+                    "app/sw.js"
+                ]
+            },
+            {
+                "date": "2026-02-07 12:42:47",
+                "type": "bugfix",
+                "description": "Fixed PWA filtering/sorting requiring refresh - properly preserve query params in URL using URLSearchParams",
+                "files": [
+                    "app/products.php"
+                ]
+            },
+            {
+                "date": "2026-02-07 12:42:47",
+                "type": "bugfix",
+                "description": "Fixed product images not displaying in PWA - added absolute path fix (leading /) for images in api/filtered-products.php, api/featured-products.php and new-arrivals.php",
+                "files": [
+                    "api/filtered-products.php",
+                    "api/featured-products.php",
+                    "app/new-arrivals.php"
+                ]
+            },
+            {
+                "date": "2026-02-07 12:42:47",
+                "type": "bugfix",
+                "description": "Fixed product slug page thumbnail click not changing main image - event handler was using e.target.matches which failed when clicking on thumbnail img element",
+                "files": [
+                    "assets/js/product-details.js"
+                ]
+            },
+            {
+                "date": "2026-02-07 12:42:47",
+                "type": "bugfix",
+                "description": "Fixed admin PWA - updated admin-sw.js to v5 with improved image caching for /assets/images/products/, /uploads/, and all images. Added placeholder fallback for missing images. Network-first for APIs.",
+                "files": [
+                    "admin/admin-sw.js"
+                ]
+            },
+            {
+                "date": "2026-02-07 12:42:47",
+                "type": "improvement",
+                "description": "Fixed PWA orientation - changed manifest.json orientation from portrait to any to allow both portrait and landscape modes",
+                "files": [
+                    "app/manifest.json"
+                ]
+            },
+            {
+                "date": "2026-02-07 12:42:47",
+                "type": "improvement",
+                "description": "Fixed admin PWA display - changed manifest.json display from browser to standalone, added maskable icons, updated orientation to any for better mobile support",
+                "files": [
+                    "admin/manifest.json"
+                ]
+            },
+            {
+                "date": "2026-02-07 12:42:47",
+                "type": "bugfix",
+                "description": "Fixed featured products not updating when featured in admin - removed conditional skip in featured-products.js that would skip API fetch if server-rendered products had images. Now always fetches fresh data with cache-buster timestamp.",
+                "files": [
+                    "assets/js/featured-products.js"
+                ]
+            }
+        ],
+        "tags": [
+            "changes",
+            "tracking"
+        ],
+        "updated": 1770468167
+    }
+}

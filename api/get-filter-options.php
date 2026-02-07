@@ -1,5 +1,5 @@
 <?php
-require_once '../config/database.php';
+require_once __DIR__ . '/../app/config/database.php';
 
 $material = $_GET['material'] ?? '';
 $variant = $_GET['variant'] ?? '';

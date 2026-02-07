@@ -17,7 +17,7 @@ if ($admin_key !== $expected_key) {
     exit;
 }
 
-require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../app/config/database.php';
 
 try {
     $tables = ['inventory_transactions', 'inventory_logs'];

@@ -10,9 +10,9 @@
 session_start();
 header('Content-Type: application/json');
 
-require_once __DIR__ . '/../../config/env.php';
-require_once __DIR__ . '/../../config/database.php';
-require_once __DIR__ . '/../../includes/email.php';
+require_once __DIR__ . '/../../app/config/env.php';
+require_once __DIR__ . '/../../app/config/database.php';
+require_once __DIR__ . '/../../app/includes/email.php';
 
 // Check if user is admin
 if (!isset($_SESSION['admin_id'])) {

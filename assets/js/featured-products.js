@@ -9,17 +9,9 @@ async function loadFeaturedProducts() {
     const container = document.getElementById('featured-products');
     if (!container) return; // Not on a page with featured products
 
-    // If products are already rendered by the server, just initialize wishlist buttons
-    if (container.children.length > 0 && !container.querySelector('.loading-spinner')) {
-        initializeWishlistButtons();
-        return;
-    }
-
     try {
-        // Show loading spinner
-        container.innerHTML = '<div class="loading-spinner">Loading featured products...</div>';
-        
-        const response = await fetch('api/featured-products.php');
+        // Always fetch fresh featured products - add cache-buster timestamp
+        const response = await fetch('/api/featured-products.php?_=' + Date.now());
         const data = await response.json();
         
         if (data.success && data.products.length > 0) {
@@ -42,7 +34,7 @@ async function updateStockBadges() {
     const productIds = Array.from(productCards).map(card => card.getAttribute('data-product-id'));
     
     try {
-        const response = await fetch('api/check-stock-levels.php', {
+        const response = await fetch('/api/check-stock-levels.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -201,7 +193,7 @@ function toggleWishlist(productId, btn = null) {
     const icon = button.querySelector('i');
 
     // Check if user is logged in
-    fetch('api/wishlist.php?product_id=' + productId)
+    fetch('/api/wishlist.php?product_id=' + productId)
         .then(response => response.json())
         .then(data => {
             if (!data.success) {
@@ -212,7 +204,7 @@ function toggleWishlist(productId, btn = null) {
 
             const isInWishlist = data.in_wishlist;
             const method = isInWishlist ? 'DELETE' : 'POST';
-            const url = isInWishlist ? 'api/wishlist.php?product_id=' + productId : 'api/wishlist.php';
+            const url = isInWishlist ? '/api/wishlist.php?product_id=' + productId : '/api/wishlist.php';
 
             fetch(url, {
                 method: method,
@@ -257,7 +249,7 @@ function initializeWishlistButtons() {
     wishlistBtns.forEach(btn => {
         const productId = btn.getAttribute('data-product-id') || btn.getAttribute('onclick')?.match(/toggleWishlist\((\d+)/)?.[1];
         if (productId) {
-            fetch('api/wishlist.php?product_id=' + productId)
+            fetch('/api/wishlist.php?product_id=' + productId)
                 .then(response => response.json())
                 .then(data => {
                     if (data.success && data.in_wishlist) {

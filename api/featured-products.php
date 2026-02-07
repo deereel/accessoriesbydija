@@ -1,6 +1,6 @@
 <?php
 header('Content-Type: application/json');
-include '../config/database.php';
+include __DIR__ . '/../app/config/database.php';
 
 try {
     // Get featured products with shuffle every 2 days
@@ -20,6 +20,13 @@ try {
     ");
     $stmt->execute([$shuffle_seed]);
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Ensure image URLs are absolute paths (start with /)
+    foreach ($products as &$product) {
+        if (!empty($product['image_url']) && strpos($product['image_url'], '/') !== 0) {
+            $product['image_url'] = '/' . $product['image_url'];
+        }
+    }
     
     echo json_encode(['success' => true, 'products' => $products]);
 } catch (Exception $e) {

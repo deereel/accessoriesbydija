@@ -9,7 +9,85 @@ require_once APP_PATH . '/config/cache.php';
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="no">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="mobile-web-app-capable" content="no">
+    <!-- Force mobile viewport on all mobile devices - prevents cached desktop view -->
+    <script>
+    (function() {
+        // Check if device is mobile based on screen width
+        var isMobile = window.innerWidth <= 1024;
+        
+        // If on mobile but viewport is not set to device-width, fix it
+        if (isMobile) {
+            var viewport = document.querySelector('meta[name="viewport"]');
+            if (viewport) {
+                viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover');
+            }
+        }
+        
+        // Listen for resize events to ensure viewport stays correct
+        window.addEventListener('resize', function() {
+            var viewport = document.querySelector('meta[name="viewport"]');
+            if (window.innerWidth <= 1024) {
+                if (viewport) {
+                    viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover');
+                }
+            }
+        });
+    })();
+    </script>
+    <style>
+    /* Mobile viewport enforcement - ensures mobile styles apply regardless of cached CSS */
+    @media screen and (max-width: 1024px) {
+        html {
+            font-size: 14px !important;
+        }
+        
+        body {
+            width: 100% !important;
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+        }
+        
+        .container, .featured-grid-4x2, .featured-grid {
+            width: 100% !important;
+            max-width: 100vw !important;
+            padding-left: 15px !important;
+            padding-right: 15px !important;
+        }
+        
+        .header-top {
+            padding: 10px 15px !important;
+        }
+        
+        .main-nav {
+            padding: 0 15px !important;
+        }
+        
+        /* Force hamburger menu visibility on mobile */
+        .hamburger {
+            display: flex !important;
+        }
+        
+        /* Hide desktop nav items on mobile */
+        .nav-menu {
+            display: none !important;
+        }
+    }
+    
+    /* Small mobile devices */
+    @media screen and (max-width: 480px) {
+        html {
+            font-size: 13px !important;
+        }
+        
+        .featured-grid-4x2 {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
+    }
+    </style>
     <?php
     // Prepare page data for SEO functions
     $base_url = isset($BASE_URL) ? $BASE_URL : 'https://' . $_SERVER['HTTP_HOST'];
@@ -84,6 +162,45 @@ require_once APP_PATH . '/config/cache.php';
     };
     </script>
     <style>
+    /* Mobile-first responsive fixes */
+    html {
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+        font-size: 16px;
+    }
+    
+    body {
+        overflow-x: hidden;
+        max-width: 100vw;
+        min-width: 320px;
+    }
+    
+    /* Force mobile viewport behavior on all mobile devices */
+    @media screen and (max-width: 1024px) {
+        html {
+            font-size: 14px;
+        }
+        
+        * {
+            max-width: 100%;
+        }
+        
+        .container, .featured-grid-4x2, .featured-grid {
+            width: 100% !important;
+            max-width: 100vw !important;
+            padding-left: 15px !important;
+            padding-right: 15px !important;
+        }
+        
+        .header-top {
+            padding: 10px 15px !important;
+        }
+        
+        .main-nav {
+            padding: 0 15px !important;
+        }
+    }
+    
     /* Scroll-to-top button (global) */
     .scroll-top {
         position: fixed;
@@ -207,6 +324,142 @@ require_once APP_PATH . '/config/cache.php';
         color: #666;
         font-style: italic;
     }
+    
+    /* Search Modal for Mobile */
+    .search-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 9999;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 20vh;
+    }
+    
+    .search-modal.active {
+        display: flex;
+    }
+    
+    .search-modal-content {
+        background: white;
+        width: 90%;
+        max-width: 500px;
+        border-radius: 12px;
+        padding: 20px;
+        position: relative;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        animation: searchModalSlide 0.3s ease;
+    }
+    
+    @keyframes searchModalSlide {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    .search-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .search-modal-header h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        color: #333;
+    }
+    
+    .search-modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #666;
+        padding: 5px;
+        line-height: 1;
+    }
+    
+    .search-modal-close:hover {
+        color: #333;
+    }
+    
+    .search-modal-input-wrapper {
+        position: relative;
+    }
+    
+    .search-modal-input {
+        width: 100%;
+        padding: 15px 50px 15px 20px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 1rem;
+        outline: none;
+        transition: border-color 0.3s;
+    }
+    
+    .search-modal-input:focus {
+        border-color: #C27BA0;
+    }
+    
+    .search-modal-search-btn {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        font-size: 1.3rem;
+        cursor: pointer;
+        color: #C27BA0;
+        padding: 5px 10px;
+    }
+    
+    .search-modal-search-btn:hover {
+        color: #a66889;
+    }
+    
+    .search-modal-suggestions {
+        margin-top: 15px;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    @media (max-width: 768px) {
+        .search-container {
+            display: none;
+        }
+        
+        /* Mobile Search Icon */
+        .mobile-search-icon {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.3rem;
+            color: #333;
+            padding: 0;
+            margin-right: 10px;
+            transition: color 0.3s;
+        }
+        
+        .mobile-search-icon:hover {
+            color: #C27BA0;
+        }
+    }
     </style>
 </head>
 <body class="<?php echo isset($body_class) ? $body_class : ''; ?>">
@@ -214,7 +467,7 @@ require_once APP_PATH . '/config/cache.php';
         <div class="header-top">
             <div class="search-container">
                 <input type="text" placeholder="Type to start searching…" id="search-input">
-                <span class="search-icon">&#128269;</span>
+                <span class="search-icon" id="search-icon-trigger">&#128269;</span>
             </div>
             <div class="logo">
                 <a href="index.php">
@@ -229,6 +482,10 @@ require_once APP_PATH . '/config/cache.php';
                     &#128722;
                     <span class="cart-count">0</span>
                 </a>
+                <!-- Mobile Search Icon -->
+                <button class="mobile-search-icon" id="mobile-search-icon" aria-label="Search">
+                    &#128269;
+                </button>
                 <div class="hamburger" id="hamburger">
                     <span></span>
                     <span></span>
@@ -325,6 +582,21 @@ require_once APP_PATH . '/config/cache.php';
         </div>
     </header>
     
+    <!-- Search Modal for Mobile -->
+    <div class="search-modal" id="search-modal">
+        <div class="search-modal-content">
+            <div class="search-modal-header">
+                <h3>Search</h3>
+                <button class="search-modal-close" id="search-modal-close">&times;</button>
+            </div>
+            <div class="search-modal-input-wrapper">
+                <input type="text" class="search-modal-input" id="search-modal-input" placeholder="Type to search...">
+                <button class="search-modal-search-btn" id="search-modal-search-btn">&#128269;</button>
+            </div>
+            <div class="search-modal-suggestions" id="search-modal-suggestions"></div>
+        </div>
+    </div>
+    
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Hamburger menu
@@ -347,21 +619,117 @@ require_once APP_PATH . '/config/cache.php';
             });
         }
         
-        // Search icon click handler
-        const searchIcon = document.querySelector('.search-container .search-icon');
-        const searchInput = document.querySelector('.search-container input');
-
-        if (searchIcon && searchInput) {
-            searchIcon.addEventListener('click', function() {
-                if (window.innerWidth <= 768) {
-                    searchInput.style.display = searchInput.style.display === 'block' ? 'none' : 'block';
-                    if (searchInput.style.display === 'block') {
-                        searchInput.focus();
-                    }
+        // Search modal functionality for mobile
+        const searchModal = document.getElementById('search-modal');
+        const searchModalInput = document.getElementById('search-modal-input');
+        const searchModalClose = document.getElementById('search-modal-close');
+        const searchModalSearchBtn = document.getElementById('search-modal-search-btn');
+        const searchModalSuggestions = document.getElementById('search-modal-suggestions');
+        const mobileSearchIcon = document.getElementById('mobile-search-icon');
+        
+        // Open search modal from header search icon
+        const searchIconTrigger = document.getElementById('search-icon-trigger');
+        if (searchIconTrigger) {
+            searchIconTrigger.addEventListener('click', function() {
+                searchModal.classList.add('active');
+                searchModalInput.focus();
+            });
+        }
+        
+        // Open search modal from mobile search icon
+        if (mobileSearchIcon) {
+            mobileSearchIcon.addEventListener('click', function() {
+                searchModal.classList.add('active');
+                searchModalInput.focus();
+            });
+        }
+        
+        // Close modal
+        if (searchModalClose) {
+            searchModalClose.addEventListener('click', function() {
+                searchModal.classList.remove('active');
+            });
+        }
+        
+        // Close when clicking outside
+        if (searchModal) {
+            searchModal.addEventListener('click', function(e) {
+                if (e.target === searchModal) {
+                    searchModal.classList.remove('active');
                 }
             });
         }
         
+        // Search on button click
+        if (searchModalSearchBtn) {
+            searchModalSearchBtn.addEventListener('click', function() {
+                performSearch(searchModalInput.value);
+            });
+        }
+        
+        // Search on Enter key
+        if (searchModalInput) {
+            searchModalInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performSearch(searchModalInput.value);
+                }
+            });
+        }
+        
+        function performSearch(query) {
+            query = query.trim();
+            if (query.length > 0) {
+                window.location.href = '/app/search.php?q=' + encodeURIComponent(query);
+            }
+        }
+        
+        // Search suggestions for modal
+        if (searchModalInput) {
+            let searchTimeout;
+            searchModalInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                const query = this.value.trim();
+                
+                if (query.length < 2) {
+                    searchModalSuggestions.innerHTML = '';
+                    return;
+                }
+                
+                searchTimeout = setTimeout(function() {
+                    fetchSearchSuggestions(query);
+                }, 300);
+            });
+        }
+        
+        function fetchSearchSuggestions(query) {
+            fetch('/api/search.php?q=' + encodeURIComponent(query))
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.products && data.products.length > 0) {
+                        let html = '<div class="suggestions-header">Suggestions</div>';
+                        data.products.slice(0, 5).forEach(item => {
+                            html += '<a href="' + item.url + '" class="suggestion-item">';
+                            if (item.image_url) {
+                                html += '<div class="suggestion-image"><img src="' + item.image_url + '" alt="' + item.name + '"></div>';
+                            } else {
+                                html += '<div class="suggestion-image no-image">' + item.name.substring(0, 2).toUpperCase() + '</div>';
+                            }
+                            html += '<div class="suggestion-info">';
+                            html += '<div class="suggestion-name">' + item.name + '</div>';
+                            if (item.price) {
+                                html += '<div class="suggestion-price">£' + item.price.toFixed(2) + '</div>';
+                            }
+                            html += '</div></a>';
+                        });
+                        searchModalSuggestions.innerHTML = html;
+                    } else {
+                        searchModalSuggestions.innerHTML = '<div class="no-suggestions">No products found</div>';
+                    }
+                })
+                .catch(() => {
+                    searchModalSuggestions.innerHTML = '<div class="no-suggestions">Error loading suggestions</div>';
+                });
+        }
         // Close mobile nav when clicking outside
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.main-nav') && !e.target.closest('#hamburger')) {
@@ -463,31 +831,25 @@ require_once APP_PATH . '/config/cache.php';
     <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', async () => {
-        // Do not register the main service worker on admin pages
         if (window.location.pathname.startsWith('/admin/')) {
           return;
         }
 
         try {
+          // Force clear all caches on every page load
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+          
+          // Unregister old service workers
           const registrations = await navigator.serviceWorker.getRegistrations();
-          let mainSWRegistered = false;
-          for (let registration of registrations) {
-            // Unregister any service workers that are not the main one
-            if (!registration.scope.endsWith('/')) {
-              await registration.unregister();
-              console.log('Unregistered conflicting service worker:', registration);
-            } else {
-              mainSWRegistered = true;
-            }
-          }
-
-          if (!mainSWRegistered) {
-            console.log('Main service worker not found, proceeding with registration.');
-            const registration = await navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' });
-            console.log('Main Service Worker registered successfully:', registration);
-          }
+          await Promise.all(registrations.map(reg => reg.unregister()));
+          
+          // Register fresh service worker
+          const registration = await navigator.serviceWorker.register('/app/sw.js', { scope: '/app/' });
+          await registration.update();
+          console.log('Service Worker registered with fresh cache');
         } catch (error) {
-          console.error('Main Service Worker registration failed:', error);
+          console.error('Service Worker error:', error);
         }
       });
     }

@@ -4,7 +4,7 @@
 session_start();
 header('Content-Type: application/json');
 
-require_once '../config/database.php';
+require_once __DIR__ . '/../app/config/database.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
 

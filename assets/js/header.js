@@ -181,7 +181,7 @@ function initSearch() {
             return;
         }
 
-        fetch(`api/search.php?q=${encodeURIComponent(query)}`)
+        fetch(`/api/search.php?q=${encodeURIComponent(query)}`)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {

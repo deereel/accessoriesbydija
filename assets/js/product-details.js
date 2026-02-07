@@ -13,8 +13,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let selectedSizeData = {};
     let maxStock = 0;
 
-    // Variations are fetched on material selection
-
     // Mouse tracking magnification
     const mainImageContainer = document.getElementById('mainImage');
     if (mainImageContainer) {
@@ -70,6 +68,18 @@ document.addEventListener('DOMContentLoaded', function() {
             selectedMaterialName = materialBtn.textContent;
         }
 
+        // Hide material guidance, show variation guidance
+        const materialGuidance = document.getElementById('materialGuidance');
+        const variationGuidance = document.getElementById('variationGuidance');
+        if (materialGuidance) {
+            materialGuidance.classList.remove('visible');
+            materialGuidance.classList.add('hidden');
+        }
+        if (variationGuidance) {
+            variationGuidance.classList.remove('hidden');
+            variationGuidance.classList.add('visible');
+        }
+        
         document.querySelectorAll('#materialOptions .option-btn').forEach(btn => {
             btn.classList.remove('selected');
             if (btn.dataset.materialId == materialId) {
@@ -105,6 +115,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 updateAddToCartButton();
             });
     }
+    
     function selectVariation(variationId, priceAdjustment, variationData) {
         console.log('Selected variation:', variationId, variationData);
         selectedVariation = variationId;
@@ -139,81 +150,62 @@ document.addEventListener('DOMContentLoaded', function() {
         const stock = variationData.stock_quantity || 0;
         document.getElementById('stockInfo').textContent = `${stock} in stock`;
 
+        // Hide variation guidance, show size guidance
+        const variationGuidance = document.getElementById('variationGuidance');
+        const sizeGuidance = document.getElementById('sizeGuidance');
+        if (variationGuidance) {
+            variationGuidance.classList.remove('visible');
+            variationGuidance.classList.add('hidden');
+        }
+        if (sizeGuidance) {
+            sizeGuidance.classList.remove('hidden');
+            sizeGuidance.classList.add('visible');
+        }
+        
         const finalPrice = parseFloat(priceAdjustment) || basePrice;
 
         document.getElementById('finalPrice').innerHTML = `£${finalPrice.toFixed(2)}`;
-
         document.getElementById('finalPrice').style.display = 'block';
-
         document.getElementById('basePrice').style.display = 'none';
-
-
 
         console.log('Fetching sizes for variation ID:', variationId);
 
         fetch(`get_sizes.php?variation_id=${variationId}`)
-
             .then(response => response.json())
-
             .then(sizes => {
-
                 console.log('Sizes received:', sizes);
-
                 const sizeGroup = document.getElementById('sizeGroup');
-
                 const sizeOptions = document.getElementById('sizeOptions');
 
-
-
-
-
                 if (sizes.length > 0) {
-
                     sizeOptions.innerHTML = '';
-
                     sizes.forEach(size => {
-
                         const btn = document.createElement('button');
-
                         btn.type = 'button';
-
                         btn.className = 'option-btn';
-
                         btn.dataset.action = 'select-size';
-
                         btn.dataset.sizeData = JSON.stringify(size);
-
                         btn.textContent = size.size;
 
                         if (size.stock_quantity <= 0) {
-
                             btn.disabled = true;
-
                             btn.textContent += ' (Out of Stock)';
-
                         }
 
                         sizeOptions.appendChild(btn);
-
                     });
-
                     sizeGroup.style.display = 'block';
-
                 } else {
-
                     sizeGroup.style.display = 'none';
-
                 }
                 updateComponentSummary();
                 updateAddToCartButton();
-
             })
-
             .catch(error => {
-
                 console.error('Error fetching sizes:', error);
-
-            });}
+            });
+    }
+    
     function selectSize(sizeId, priceAdjustment, stock, sizeData) {
         console.log('Selected size:', sizeId, sizeData);
         selectedSize = sizeId;
@@ -232,6 +224,13 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('finalPrice').innerHTML = `£${finalPrice.toFixed(2)}`;
         document.getElementById('stockInfo').textContent = `${stock} in stock`;
 
+        // Hide size guidance when size is selected
+        const sizeGuidance = document.getElementById('sizeGuidance');
+        if (sizeGuidance) {
+            sizeGuidance.classList.remove('visible');
+            sizeGuidance.classList.add('hidden');
+        }
+        
         const quantityInput = document.getElementById('quantityInput');
         quantityInput.max = stock;
         if (parseInt(quantityInput.value) > stock) {
@@ -323,11 +322,10 @@ document.addEventListener('DOMContentLoaded', function() {
             } else if (sizeGroup.style.display !== 'none' && !selectedSize) {
                 btn.textContent = 'Select Preferred Size';
             } else {
-                btn.textContent = 'Select Your Preferred Material to Proceed'; // fallback
+                btn.textContent = 'Select Your Preferred Material to Proceed';
             }
         }
     }
-
 
     function addToCartFromProduct() {
         if (!window.cartHandler) {
@@ -360,24 +358,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
         console.log('Final selections - Material:', selectedMaterial, 'Variation:', selectedVariation, 'Size:', selectedSize);
         console.log('Sending productData to cart:', productData);
-        window.cartHandler.addToCart(productData);}
+        window.cartHandler.addToCart(productData);
+    }
 
     function toggleWishlist(productId, btn) {
         // Check if user is logged in
-        fetch('../api/wishlist.php?product_id=' + productId)
+        fetch('/api/wishlist.php?product_id=' + productId)
             .then(response => response.json())
             .then(data => {
                 if (!data.success) {
-                    // Not logged in, redirect to login
-                    window.location.href = '../login.php?redirect=' + encodeURIComponent(window.location.href);
+                    window.location.href = 'login.php?redirect=' + encodeURIComponent(window.location.href);
                     return;
                 }
 
                 const isInWishlist = data.in_wishlist;
                 const method = isInWishlist ? 'DELETE' : 'POST';
-                const url = isInWishlist ? 'api/wishlist.php?product_id=' + productId : 'api/wishlist.php';
+                const url = isInWishlist ? '/api/wishlist.php?product_id=' + productId : '/api/wishlist.php';
 
-                fetch('../' + url, {
+                fetch(url, {
                     method: method,
                     headers: {
                         'Content-Type': 'application/json',
@@ -460,7 +458,7 @@ document.addEventListener('DOMContentLoaded', function() {
         submitBtn.disabled = true;
         submitBtn.textContent = 'Submitting...';
 
-        fetch('../api/submit-review.php', {
+        fetch('/api/submit-review.php', {
             method: 'POST',
             body: formData
         })
@@ -469,7 +467,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 alert('Thank you for your review! It will be published after approval.');
                 form.reset();
-                toggleReviewForm(); // Hide the form after submission
+                toggleReviewForm();
             } else {
                 alert('Error submitting review: ' + (data.error || 'Unknown error'));
             }
@@ -490,7 +488,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const wishlistBtn = document.querySelector('[data-action="toggle-wishlist"]');
     if (wishlistBtn) {
         const productId = wishlistBtn.dataset.productId;
-        fetch('../api/wishlist.php?product_id=' + productId)
+        fetch('/api/wishlist.php?product_id=' + productId)
             .then(response => response.json())
             .then(data => {
                 if (data.success && data.in_wishlist) {
@@ -524,8 +522,9 @@ document.addEventListener('DOMContentLoaded', function() {
             toggleAccordion(e.target);
         } else if (e.target.matches('[data-action="toggle-review-form"]')) {
             toggleReviewForm();
-        } else if (e.target.matches('[data-action="change-image"]')) {
-            changeImage(e.target);
+        } else if (e.target.closest('[data-action="change-image"]')) {
+            const thumbnail = e.target.closest('[data-action="change-image"]');
+            changeImage(thumbnail);
         }
     });
 });

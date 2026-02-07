@@ -264,7 +264,7 @@ $countries = [
                     <!-- Delete Account -->
                     <div class="settings-section danger-zone">
                         <h3>Danger Zone</h3>
-                        <p>Once you delete your account, there is no going back. Please be certain.</p>
+                        <p style="margin-bottom: 1rem;">Once you delete your account, there is no going back. Please be certain.</p>
                         <button class="btn-danger" id="delete-account-btn">Delete Account</button>
                     </div>
                 </div>

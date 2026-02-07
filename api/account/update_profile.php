@@ -1,7 +1,7 @@
 <?php
 session_start();
 header('Content-Type: application/json');
-require_once '../../config/database.php';
+require_once '../../app/config/database.php';
 
 if (!isset($_SESSION['customer_id'])) {
     echo json_encode(['success' => false, 'message' => 'Not authenticated']);

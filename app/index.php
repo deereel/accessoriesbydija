@@ -177,7 +177,7 @@ echo '<script type="application/ld+json">' . json_encode($faq_schema) . '</scrip
                     </div>
                     <div class="subcategory-card" onclick="location.href='category.php?cat=women&sub=bracelets'">
                         <div class="subcategory-image">
-                            <img src="/assets/images/subcategories/f-bracelet.webp" alt="Bracelets" loading="lazy">
+                            <img src="/assets/images/subcategories/f-bracelet.webp" alt="Female Bracelets" loading="lazy" onerror="this.src='/assets/images/placeholder.webp'; this.onerror=null;">
                         </div>
                         <h4>Bracelets</h4>
                         <p>Tennis, charm & chain bracelets</p>
@@ -198,7 +198,7 @@ echo '<script type="application/ld+json">' . json_encode($faq_schema) . '</scrip
                     </div>
                     <div class="subcategory-card" onclick="location.href='category.php?cat=women&sub=necklaces'">
                         <div class="subcategory-image">
-                            <img src="/assets/images/subcategories/f-necklace.webp" alt="Necklaces" loading="lazy">
+                            <img src="/assets/images/subcategories/f-necklace.webp" alt="Necklaces" loading="lazy" onerror="this.src='/assets/images/placeholder.webp'; this.onerror=null;">
                         </div>
                         <h4>Necklaces</h4>
                         <p>Pendants, chains & chokers</p>
@@ -233,7 +233,7 @@ echo '<script type="application/ld+json">' . json_encode($faq_schema) . '</scrip
                     </div>
                     <div class="subcategory-card" onclick="location.href='category.php?cat=women&sub=watches'">
                         <div class="subcategory-image">
-                            <img src="/assets/images/subcategories/f-watch.webp" alt="Watches" loading="lazy">
+                            <img src="/assets/images/subcategories/f-watch.webp" alt="Watches" loading="lazy" onerror="this.src='/assets/images/placeholder.webp'; this.onerror=null;">
                         </div>
                         <h4>Watches</h4>
                         <p>Elegant timepieces</p>
@@ -271,7 +271,7 @@ echo '<script type="application/ld+json">' . json_encode($faq_schema) . '</scrip
                     </div>
                     <div class="subcategory-card" onclick="location.href='category.php?cat=men&sub=necklaces'">
                         <div class="subcategory-image">
-                            <img src="/assets/images/subcategories/m-necklace.webp" alt="Necklaces" loading="lazy">
+                            <img src="/assets/images/subcategories/m-necklace.webp" alt="Necklaces" loading="lazy" onerror="this.src='/assets/images/placeholder.webp'; this.onerror=null;">
                         </div>
                         <h4>Necklaces</h4>
                         <p>Pendants & dog tags</p>
@@ -380,6 +380,12 @@ echo '<script type="application/ld+json">' . json_encode($faq_schema) . '</scrip
                             $price = (float)($product['price'] ?? 0);
                             $desc = trim($product['description'] ?? '');
                             $shortDesc = strlen($desc) > 80 ? substr($desc, 0, 80) . '…' : $desc;
+                            
+                            // Ensure image URL is absolute path
+                            $imageUrl = $product['image_url'];
+                            if ($imageUrl && strpos($imageUrl, '/') !== 0) {
+                                $imageUrl = '/' . $imageUrl;
+                            }
                             ?>
                             <div class="featured-card" data-product-id="<?php echo $product['id']; ?>" data-price="<?php echo $price; ?>" data-name="<?php echo htmlspecialchars($product['name']); ?>">
                                 <button class="wishlist-btn" data-product-id="<?php echo $product['id']; ?>" onclick="toggleWishlist(<?php echo $product['id']; ?>)" aria-label="Add to wishlist">
@@ -387,8 +393,8 @@ echo '<script type="application/ld+json">' . json_encode($faq_schema) . '</scrip
                                 </button>
                                 <div class="featured-image">
                                     <a href="product.php?slug=<?php echo $product['slug']; ?>" aria-label="View <?php echo htmlspecialchars($product['name']); ?>">
-                                        <?php if ($product['image_url']): ?>
-                                            <img src="<?php echo htmlspecialchars($product['image_url']); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" loading="lazy">
+                                        <?php if ($imageUrl): ?>
+                                            <img src="<?php echo htmlspecialchars($imageUrl); ?>" alt="<?php echo htmlspecialchars($product['name']); ?>" loading="lazy" onerror="this.src='/assets/images/placeholder.jpg'; this.onerror=null;">
                                         <?php else: ?>
                                             <div class="featured-placeholder"><?php echo htmlspecialchars(strtoupper(substr($product['name'], 0, 2))); ?></div>
                                         <?php endif; ?>

@@ -1,6 +1,6 @@
 <?php
 // Health check endpoint for monitoring
-require_once '../includes/init.php';
+require_once __DIR__ . '/../app/includes/init.php';
 
 header('Content-Type: application/json');
 

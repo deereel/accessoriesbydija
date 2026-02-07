@@ -22,7 +22,7 @@ if ($admin_key !== $expected_key) {
     exit;
 }
 
-require_once __DIR__ . '/../../config/database.php';
+require_once __DIR__ . '/../../app/config/database.php';
 
 try {
     // Array of CREATE TABLE statements for inventory tables

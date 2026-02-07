@@ -82,7 +82,7 @@ function loadTabContent(tabId) {
 async function loadDashboardData() {
     try {
         // Load stats
-        const ordersResponse = await fetch('api/account/get_orders.php');
+        const ordersResponse = await fetch('/api/account/get_orders.php');
         const ordersData = await ordersResponse.json();
         
         if (ordersData.success) {
@@ -93,7 +93,7 @@ async function loadDashboardData() {
             displayRecentOrders(recentOrders);
         }
         
-        const addressesResponse = await fetch('api/account/get_addresses.php');
+        const addressesResponse = await fetch('/api/account/get_addresses.php');
         const addressesData = await addressesResponse.json();
         
         if (addressesData.success) {
@@ -140,7 +140,7 @@ async function loadOrders() {
     const container = document.getElementById('orders-list');
     
     try {
-        const response = await fetch('api/account/get_orders.php');
+        const response = await fetch('/api/account/get_orders.php');
         const data = await response.json();
         
         if (data.success) {
@@ -193,7 +193,7 @@ async function openOrderModal(orderId) {
     modal.classList.add('active');
 
     try {
-        const response = await fetch(`api/account/get_order.php?order_id=${orderId}`);
+        const response = await fetch(`/api/account/get_order.php?order_id=${orderId}`);
         const data = await response.json();
         if (!data.success) {
             body.innerHTML = `<p class="text-muted">${data.message}</p>`;
@@ -243,7 +243,7 @@ async function loadAddresses() {
     const container = document.getElementById('addresses-list');
 
     try {
-        const response = await fetch('api/account/get_addresses.php');
+        const response = await fetch('/api/account/get_addresses.php');
         const data = await response.json();
 
         if (data.success) {
@@ -281,7 +281,7 @@ async function loadWishlist() {
     const container = document.getElementById('wishlist-list');
 
     try {
-        const response = await fetch('api/wishlist.php');
+        const response = await fetch('/api/wishlist.php');
         const data = await response.json();
 
         if (data.success) {
@@ -321,7 +321,7 @@ async function removeFromWishlist(productId) {
     }
 
     try {
-        const response = await fetch(`api/wishlist.php?product_id=${productId}`, {
+        const response = await fetch(`/api/wishlist.php?product_id=${productId}`, {
             method: 'DELETE'
         });
         const data = await response.json();
@@ -365,7 +365,7 @@ async function handleProfileUpdate(e) {
     };
     
     try {
-        const response = await fetch('api/account/update_profile.php', {
+        const response = await fetch('/api/account/update_profile.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
@@ -407,7 +407,7 @@ async function handlePasswordChange(e) {
     };
     
     try {
-        const response = await fetch('api/account/change_password.php', {
+        const response = await fetch('/api/account/change_password.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
@@ -456,7 +456,7 @@ function closeAddressModal() {
 
 async function loadAddressData(addressId) {
     try {
-        const response = await fetch(`api/account/get_addresses.php?id=${addressId}`);
+        const response = await fetch(`/api/account/get_addresses.php?id=${addressId}`);
         const data = await response.json();
         
         if (data.success && data.address) {
@@ -490,7 +490,7 @@ async function handleAddressSave(e) {
     data.csrf_token = document.getElementById('csrf_token').value;
 
     try {
-        const response = await fetch('api/account/save_address.php', {
+        const response = await fetch('/api/account/save_address.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
@@ -523,7 +523,7 @@ async function deleteAddress(addressId) {
     }
     
     try {
-        const response = await fetch('api/account/delete_address.php', {
+        const response = await fetch('/api/account/delete_address.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ address_id: addressId })
@@ -550,7 +550,7 @@ async function handleAccountDelete() {
     }
     
     try {
-        const response = await fetch('api/account/delete_account.php', {
+        const response = await fetch('/api/account/delete_account.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' }
         });

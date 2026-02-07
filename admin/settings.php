@@ -63,6 +63,11 @@ require_once '../app/config/database.php';
     <div class="card-header"><i class="fas fa-cogs"></i> Site Settings</div>
     <div class="card-body">
         <p>Manage administrative settings, users, and other site configurations from this hub.</p>
+        <?php if (isset($_SESSION['admin_role']) && in_array($_SESSION['admin_role'], ['admin','superadmin'])): ?>
+        <div style="margin-bottom:12px; color:#444; background:#fff; padding:10px; border-radius:8px; border:1px solid var(--border);">
+            <strong>Admin Note:</strong> Use the Service Worker tools to unregister or force-update service workers and clear caches when testing deployments or troubleshooting PWA/CSS issues. These actions affect cached site files and should be used carefully. <em>Service Worker controls are restricted to <strong>Superadmin</strong> users.</em>
+        </div>
+        <?php endif; ?>
         <div class="settings-grid">
             
             <!-- Promo Codes -->
@@ -110,11 +115,91 @@ require_once '../app/config/database.php';
                     <p>View application logs for debugging and monitoring.</p>
                     <a href="logs.php" class="btn">View Logs</a>
                 </div>
+
+                <!-- Service Worker Controls (Superadmin only) -->
+                <div class="setting-card" id="sw-control-card">
+                    <div class="icon"><i class="fas fa-wrench"></i></div>
+                    <h3>Service Worker Controls</h3>
+                    <p>Unregister, force-update, and clear caches for admin service worker. For testing & deployments.</p>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:8px;">
+                        <button id="sw-unregister-admin" class="btn">Unregister Admin SW</button>
+                        <button id="sw-force-update-admin" class="btn">Force Update Admin SW</button>
+                        <button id="sw-unregister-all" class="btn">Unregister All SWs</button>
+                        <button id="sw-clear-caches" class="btn">Clear SW Caches</button>
+                    </div>
+                    <div id="sw-control-log" style="margin-top:12px; background:#fff; border:1px solid var(--border); padding:8px; border-radius:6px; max-height:160px; overflow:auto; font-size:13px;"></div>
+                </div>
             <?php endif; ?>
 
         </div>
     </div>
 </div>
+
+<script>
+(function(){
+  function log(msg) {
+    const el = document.getElementById('sw-control-log');
+    const time = new Date().toLocaleTimeString();
+    if (!el) return console.log(msg);
+    el.textContent = `[${time}] ${msg}\n` + el.textContent;
+  }
+
+  async function unregisterAdmin() {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      const adminRegs = regs.filter(r => r.scope && r.scope.includes('/admin/'));
+      if (!adminRegs.length) { log('No admin service worker registrations found.'); return; }
+      for (const r of adminRegs) {
+        const ok = await r.unregister();
+        log('Unregistered admin SW at ' + r.scope + (ok ? ' (success)' : ' (failed)'));
+      }
+    } catch (e) { log('Error while unregistering admin SW: ' + e); }
+  }
+
+  async function forceUpdateAdmin() {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      const adminRegs = regs.filter(r => r.scope && r.scope.includes('/admin/'));
+      if (!adminRegs.length) { log('No admin service worker registrations found.'); return; }
+      for (const r of adminRegs) {
+        try { await r.update(); log('Update checked for admin SW at ' + r.scope); } catch(e){ log('Update failed for ' + r.scope + ': ' + e); }
+      }
+    } catch (e) { log('Error while updating admin SW: ' + e); }
+  }
+
+  async function unregisterAll() {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      if (!regs.length) { log('No service worker registrations found.'); return; }
+      for (const r of regs) {
+        const ok = await r.unregister();
+        log('Unregistered SW at ' + r.scope + (ok ? ' (success)' : ' (failed)'));
+      }
+    } catch (e) { log('Error while unregistering all SWs: ' + e); }
+  }
+
+  async function clearSWCaches() {
+    try {
+      const keys = await caches.keys();
+      if (!keys.length) { log('No cache keys found.'); return; }
+      const removed = [];
+      await Promise.all(keys.map(k => caches.delete(k).then(ok => { if (ok) removed.push(k); } )));
+      if (removed.length) log('Deleted caches: ' + removed.join(', '));
+      else log('No caches were deleted.');
+    } catch (e) { log('Error while clearing caches: ' + e); }
+  }
+
+  const btnUnreg = document.getElementById('sw-unregister-admin');
+  const btnUpdate = document.getElementById('sw-force-update-admin');
+  const btnUnregAll = document.getElementById('sw-unregister-all');
+  const btnClear = document.getElementById('sw-clear-caches');
+
+  btnUnreg && btnUnreg.addEventListener('click', function(){ if(confirm('Unregister admin SW?')) unregisterAdmin(); });
+  btnUpdate && btnUpdate.addEventListener('click', function(){ forceUpdateAdmin(); });
+  btnUnregAll && btnUnregAll.addEventListener('click', function(){ if(confirm('Unregister ALL service workers?')) unregisterAll(); });
+  btnClear && btnClear.addEventListener('click', function(){ if(confirm('Delete all caches? This may affect offline behavior.')) clearSWCaches(); });
+})();
+</script>
 
 <?php include '_layout_footer.php'; ?>
 

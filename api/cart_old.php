@@ -4,7 +4,7 @@
 session_start();
 header('Content-Type: application/json');
 
-require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../app/config/database.php';
 
 // Helper: respond
 function json($data) {

@@ -25,17 +25,17 @@ function showSlide(index) {
     slides[index].classList.add('active');
     if (dots[index]) dots[index].classList.add('active');
     
-    currentSlideIndex = index;
+    heroSlideIndex = index;
 }
 
 function nextSlide() {
     if (!slides.length) return;
-    const nextIndex = (currentSlideIndex + 1) % totalSlides;
+    const nextIndex = (heroSlideIndex + 1) % totalSlides;
     showSlide(nextIndex);
 }
 
 function prevSlide() {
-    const prevIndex = (currentSlideIndex - 1 + totalSlides) % totalSlides;
+    const prevIndex = (heroSlideIndex - 1 + totalSlides) % totalSlides;
     showSlide(prevIndex);
 }
 

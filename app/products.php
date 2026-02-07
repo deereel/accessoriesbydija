@@ -1,6 +1,11 @@
 <?php
 require_once 'config/database.php';
 
+// Prevent caching
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+
 // Set page variables
 $body_class = 'products-page';
 if ($is_new_filter) {
@@ -217,6 +222,18 @@ try {
     start_performance_timer('products_query');
     list($stmt, ) = monitored_db_query($pdo, $sql, $params);
     $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Fix image paths to be absolute
+    foreach ($products as &$product) {
+        if (!empty($product['main_image']) && strpos($product['main_image'], '/') !== 0) {
+            $product['main_image'] = '/' . $product['main_image'];
+        }
+        if (!empty($product['hover_image']) && strpos($product['hover_image'], '/') !== 0) {
+            $product['hover_image'] = '/' . $product['hover_image'];
+        }
+    }
+    unset($product);
+    
     end_performance_timer('products_query', [
         'product_count' => count($products),
         'filters_applied' => count(array_filter([
@@ -470,9 +487,9 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
                                      <!-- Product Image -->
                                      <a href="product.php?slug=<?= $product['slug'] ?>" class="product-image">
                                          <?php if ($product['main_image']): ?>
-                                             <img class="main-img" src="<?= htmlspecialchars($product['main_image']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
+                                             <img class="main-img" src="<?= htmlspecialchars($product['main_image']) ?>" alt="<?= htmlspecialchars($product['name']) ?>" onerror="this.src='/assets/images/placeholder.jpg'; this.onerror=null;">
                                              <?php if ($product['hover_image']): ?>
-                                                 <img class="hover-img" src="<?= htmlspecialchars($product['hover_image']) ?>" alt="<?= htmlspecialchars($product['name']) ?>">
+                                                 <img class="hover-img" src="<?= htmlspecialchars($product['hover_image']) ?>" alt="<?= htmlspecialchars($product['name']) ?>" onerror="this.src='/assets/images/placeholder.jpg'; this.onerror=null;">
                                              <?php endif; ?>
                                          <?php else: ?>
                                              <div class="main-img placeholder"><?= htmlspecialchars(substr($product['name'], 0, 3)) ?></div>
@@ -522,11 +539,16 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
 
 
 <script>
+console.log('[Init] Script starting');
 document.addEventListener('DOMContentLoaded', function () {
+    console.log('[Init] DOMContentLoaded fired');
     const filterCheckboxes = document.querySelectorAll('.filter-dropdown-content input[type="checkbox"]');
+    console.log('[Init] Found', filterCheckboxes.length, 'filter checkboxes');
     const sortSelect = document.getElementById('sort-select');
+    console.log('[Init] Sort select found:', !!sortSelect);
 
     filterCheckboxes.forEach(checkbox => {
+        console.log('[Init] Adding change listener to checkbox:', checkbox.name, checkbox.value);
         checkbox.addEventListener('change', function (e) {
             e.stopPropagation();
             updateUrlAndProducts();
@@ -538,35 +560,48 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function updateUrlAndProducts() {
+        console.log('[Filter] Updating URL and fetching products...');
+        
+        // Build URL with current filters and sort
         const url = new URL(window.location.href);
-        const params = new URLSearchParams();
-
+        
+        // Clear existing search params
+        const newUrl = new URL(window.location.origin + window.location.pathname);
+        
         // Add checked filter checkboxes
         filterCheckboxes.forEach(checkbox => {
             if (checkbox.checked) {
-                params.append(checkbox.name, checkbox.value);
+                newUrl.searchParams.append(checkbox.name, checkbox.value);
+                console.log('[Filter] Checked:', checkbox.name, checkbox.value);
             }
         });
 
         // Update sort parameter
         if (sortSelect.value) {
-            params.set('sort', sortSelect.value);
+            newUrl.searchParams.set('sort', sortSelect.value);
+            console.log('[Filter] Sort:', sortSelect.value);
         }
 
         // Update URL without reloading
-        const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
         window.history.pushState({}, '', newUrl);
+        console.log('[Filter] New URL:', newUrl.toString());
 
-        // Fetch filtered products
-        fetchFilteredProducts(params.toString());
+        // Fetch filtered products using the same params
+        fetchFilteredProducts(newUrl.search.substring(1));
     }
 
     function fetchFilteredProducts(queryString) {
-        const apiUrl = 'api/filtered-products.php?' + queryString;
+        // Use absolute path for API endpoint
+        const apiUrl = '/api/filtered-products.php?' + queryString + '&_=' + Date.now();
+        console.log('[API] Fetching:', apiUrl);
         
         fetch(apiUrl)
-            .then(response => response.json())
+            .then(response => {
+                console.log('[API] Response status:', response.status);
+                return response.json();
+            })
             .then(data => {
+                console.log('[API] Response data:', data);
                 if (data.success) {
                     updateProductGrid(data.products);
                     updateProductCount(data.count);
@@ -578,10 +613,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function updateProductGrid(products) {
+        console.log('[DOM] Updating product grid with', products ? products.length : 0, 'products');
         const productGrid = document.querySelector('.swiper-wrapper');
         
         if (!products || products.length === 0) {
+            console.log('[DOM] No products found, showing empty state');
             productGrid.innerHTML = '<div class="swiper-slide" style="display: flex; justify-content: center; align-items: center; min-height: 300px; width: 100%;"><p>No products found matching your criteria.</p></div>';
+            updateProductCount(0);
             return;
         }
 
@@ -598,13 +636,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
             chunk.forEach(product => {
                 html += '<div class="product-card" data-product-id="' + product.id + '" data-price="' + product.price + '" data-type="jewelry" data-name="' + product.name + '"' + (product.hover_image ? ' data-has-hover-image="true"' : '') + '>';
-                html += '<button class="wishlist-btn" data-product-id="' + product.id + '" onclick="toggleWishlist(' + product.id + ', this)"><i class="far fa-heart"></i></button>';
+                html += '<button class="wishlist-btn" data-product-id="' + product.id + '"><i class="far fa-heart"></i></button>';
                 html += '<a href="product.php?slug=' + product.slug + '" class="product-image">';
                 
                 if (product.main_image) {
-                    html += '<img class="main-img" src="' + product.main_image + '" alt="' + product.name + '">';
+                    html += '<img class="main-img" src="' + product.main_image + '" alt="' + product.name + '" onerror="this.src=\'/assets/images/placeholder.jpg\'; this.onerror=null;">';
                     if (product.hover_image) {
-                        html += '<img class="hover-img" src="' + product.hover_image + '" alt="' + product.name + '">';
+                        html += '<img class="hover-img" src="' + product.hover_image + '" alt="' + product.name + '" onerror="this.src=\'/assets/images/placeholder.jpg\'; this.onerror=null;">';
                     }
                 } else {
                     html += '<div class="main-img placeholder">' + product.name.substring(0, 3) + '</div>';
@@ -645,16 +683,42 @@ document.addEventListener('DOMContentLoaded', function () {
 
         productGrid.innerHTML = html;
 
-        // Update swiper after changing slides
-        swiper.update();
+        // Properly reinitialize swiper after dynamic content update
+        if (window.swiperInstance) {
+            window.swiperInstance.destroy(true, true);
+        }
+        
+        window.swiperInstance = new Swiper('.swiper', {
+            slidesPerView: 1,
+            spaceBetween: 0,
+            navigation: {
+                nextEl: '.swiper-button-next',
+                prevEl: '.swiper-button-prev',
+            },
+            pagination: {
+                el: '.swiper-pagination',
+                clickable: true,
+            },
+        });
 
-        // Reinitialize wishlist buttons
+        // Initialize wishlist buttons and add-to-cart for the new product grid
+        initializeWishlistButtons();
+        initializeAddToCartButtons();
+    }
+
+    function initializeWishlistButtons() {
+        console.log('[Wishlist] Initializing wishlist buttons');
         const wishlistBtns = document.querySelectorAll('.wishlist-btn[data-product-id]');
+        console.log('[Wishlist] Found', wishlistBtns.length, 'wishlist buttons');
         wishlistBtns.forEach(btn => {
+            // Remove any existing click listeners to avoid duplicates
+            btn.onclick = null;
+            
             const productId = btn.getAttribute('data-product-id');
-            fetch('api/wishlist.php?product_id=' + productId)
+            fetch('/api/wishlist.php?product_id=' + productId)
                 .then(response => response.json())
                 .then(data => {
+                    console.log('[Wishlist] API response for product', productId, data);
                     if (data.success && data.in_wishlist) {
                         btn.classList.add('active');
                         btn.querySelector('i').className = 'fas fa-heart';
@@ -662,9 +726,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 })
                 .catch(error => console.error('Error checking wishlist:', error));
         });
+    }
 
-        // Re-attach add to cart listeners
+    function initializeAddToCartButtons() {
         document.querySelectorAll('.add-to-cart').forEach(btn => {
+            btn.onclick = null; // Remove existing listeners
             btn.addEventListener('click', function() {
                 addToCart(this.getAttribute('data-product-id'));
             });
@@ -691,6 +757,13 @@ document.addEventListener('DOMContentLoaded', function () {
             clickable: true,
         },
     });
+    
+    // Store swiper instance globally for reinitialization
+    window.swiperInstance = swiper;
+
+    // Initialize components on page load
+    initializeWishlistButtons();
+    initializeAddToCartButtons();
 
     // Close filter dropdowns when clicking outside
     document.addEventListener('click', function(e) {
@@ -703,7 +776,7 @@ document.addEventListener('DOMContentLoaded', function () {
 // Wishlist functionality
 function toggleWishlist(productId, btn) {
     // Check if user is logged in
-    fetch('api/wishlist.php?product_id=' + productId)
+    fetch('/api/wishlist.php?product_id=' + productId)
         .then(response => response.json())
         .then(data => {
             if (!data.success) {
@@ -714,7 +787,7 @@ function toggleWishlist(productId, btn) {
 
             const isInWishlist = data.in_wishlist;
             const method = isInWishlist ? 'DELETE' : 'POST';
-            const url = isInWishlist ? 'api/wishlist.php?product_id=' + productId : 'api/wishlist.php';
+            const url = isInWishlist ? '/api/wishlist.php?product_id=' + productId : '/api/wishlist.php';
 
             fetch(url, {
                 method: method,
@@ -748,22 +821,7 @@ function toggleWishlist(productId, btn) {
         });
 }
 
-// Initialize wishlist button states
-document.addEventListener('DOMContentLoaded', function() {
-    const wishlistBtns = document.querySelectorAll('.wishlist-btn[data-product-id]');
-    wishlistBtns.forEach(btn => {
-        const productId = btn.getAttribute('data-product-id');
-        fetch('api/wishlist.php?product_id=' + productId)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.in_wishlist) {
-                    btn.classList.add('active');
-                    btn.querySelector('i').className = 'fas fa-heart';
-                }
-            })
-            .catch(error => console.error('Error checking wishlist:', error));
-    });
-});
+
 </script>
 
 <style>

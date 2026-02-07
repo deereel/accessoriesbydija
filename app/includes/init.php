@@ -23,6 +23,9 @@ require_once __DIR__ . '/monitoring.php';
 // Load caching
 require_once __DIR__ . '/cache.php';
 
+// Load memory bank
+require_once APP_PATH . '/memory/initialize.php';
+
 // Load database configuration
 require_once APP_PATH . '/config/database.php';
 

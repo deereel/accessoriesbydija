@@ -8,8 +8,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-require_once '../config/database.php';
-require_once '../auth/check_session.php';
+require_once __DIR__ . '/../app/config/database.php';
+require_once __DIR__ . '/../app/auth/check_session.php';
 
 // Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
