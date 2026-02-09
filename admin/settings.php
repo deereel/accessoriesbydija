@@ -63,14 +63,14 @@ require_once '../app/config/database.php';
     <div class="card-header"><i class="fas fa-cogs"></i> Site Settings</div>
     <div class="card-body">
         <p>Manage administrative settings, users, and other site configurations from this hub.</p>
-        <?php if (isset($_SESSION['admin_role']) && in_array($_SESSION['admin_role'], ['admin','superadmin'])): ?>
+        <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'superadmin'): ?>
         <div style="margin-bottom:12px; color:#444; background:#fff; padding:10px; border-radius:8px; border:1px solid var(--border);">
             <strong>Admin Note:</strong> Use the Service Worker tools to unregister or force-update service workers and clear caches when testing deployments or troubleshooting PWA/CSS issues. These actions affect cached site files and should be used carefully. <em>Service Worker controls are restricted to <strong>Superadmin</strong> users.</em>
         </div>
         <?php endif; ?>
         <div class="settings-grid">
             
-            <!-- Promo Codes -->
+            <!-- Promo Codes (Admin & Superadmin) -->
             <div class="setting-card">
                 <div class="icon"><i class="fas fa-ticket-alt"></i></div>
                 <h3>Promo Codes</h3>
@@ -79,7 +79,7 @@ require_once '../app/config/database.php';
             </div>
 
             <?php if (isset($_SESSION['admin_role']) && $_SESSION['admin_role'] === 'superadmin'): ?>
-                <!-- User Management -->
+                <!-- User Management (Superadmin only) -->
                 <div class="setting-card">
                     <div class="icon"><i class="fas fa-users-cog"></i></div>
                     <h3>User Management</h3>
@@ -87,20 +87,18 @@ require_once '../app/config/database.php';
                     <a href="users.php" class="btn">Manage Users</a>
                 </div>
 
-                <!-- Database Management -->
+                <!-- Database Management (Superadmin only) -->
                 <div class="setting-card" style="position:relative;">
-                    <?php if (($_SESSION['admin_role'] ?? '') === 'superadmin'): ?>
                     <div style="position:absolute; top:10px; right:10px;">
                         <button id="run-migrations-btn" title="Run database migrations" style="border:none; background:transparent; cursor:pointer; font-size:18px; color:var(--accent);">🔄</button>
                     </div>
-                    <?php endif; ?>
                     <div class="icon"><i class="fas fa-database"></i></div>
                     <h3>Database Tools</h3>
                     <p>View table data and create backups of the site database.</p>
                     <a href="database.php" class="btn">Manage Database</a>
                 </div>
 
-                <!-- API & Webhook Management -->
+                <!-- API & Webhook Management (Superadmin only) -->
                 <div class="setting-card">
                     <div class="icon"><i class="fas fa-plug"></i></div>
                     <h3>API & Webhook Management</h3>
@@ -108,7 +106,7 @@ require_once '../app/config/database.php';
                     <a href="api_webhooks.php" class="btn">Manage APIs & Webhooks</a>
                 </div>
    
-                <!-- Log Viewer -->
+                <!-- Log Viewer (Superadmin only) -->
                 <div class="setting-card">
                     <div class="icon"><i class="fas fa-file-alt"></i></div>
                     <h3>Log Viewer</h3>

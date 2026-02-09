@@ -5,6 +5,12 @@ if (!isset($_SESSION['admin_logged_in'])) {
     exit('Access denied.');
 }
 
+// Only allow POST requests for backup creation
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    header('HTTP/1.1 405 Method Not Allowed');
+    exit('Backup creation requires POST request. Please use the backup button in the admin panel.');
+}
+
 require_once '../app/config/database.php';
 
 // --- Database Backup Utility ---

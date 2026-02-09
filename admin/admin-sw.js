@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dija-admin-v5';
+const CACHE_NAME = 'dija-admin-v6';
 const urlsToCache = [
   '/admin/',
   '/admin/index.php',
@@ -19,7 +19,6 @@ const urlsToCache = [
   '/admin/logs.php',
   '/admin/promos.php',
   '/admin/custom-orders.php',
-  '/admin/backup_db.php',
   '/admin/run-migrations.php',
   '/assets/css/all.min.css',
   '/assets/css/style.css',
@@ -34,7 +33,7 @@ const urlsToCache = [
 
 // Install event - cache resources
 self.addEventListener('install', event => {
-  console.log('Admin Service Worker v5 installing...');
+  console.log('Admin Service Worker v6 installing...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
@@ -132,7 +131,7 @@ self.addEventListener('fetch', event => {
 
 // Activate event - clean up old caches
 self.addEventListener('activate', event => {
-  console.log('Service Worker v5 activating...');
+  console.log('Service Worker v6 activating...');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       console.log('Existing admin caches:', cacheNames);
@@ -145,7 +144,7 @@ self.addEventListener('activate', event => {
         })
       );
     }).then(() => {
-      console.log('Service Worker v5 activated and claiming clients');
+      console.log('Service Worker v6 activated and claiming clients');
       return self.clients.claim();
     })
   );

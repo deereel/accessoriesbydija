@@ -1,7 +1,6 @@
 {
-   "id": "/app/",
    "name": "Dija Accessories",
-   "short_name": "Dija Accessories",
+   "short_name": "Dija",
    "description": "Discover premium jewelry collection at Accessories By Dija. Rings, necklaces, earrings, bracelets, and custom jewelry for men and women.",
    "start_url": "/app/",
    "scope": "/app/",

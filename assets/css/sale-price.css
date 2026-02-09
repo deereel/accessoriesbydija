@@ -1,0 +1,73 @@
+/* Sale Price Styles */
+
+/* Sale badge */
+.sale-badge-tag {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #dc3545;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    z-index: 5;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Slashed price display */
+.product-price-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.product-price-original {
+    text-decoration: line-through;
+    color: #999;
+    font-size: 0.85rem;
+    font-weight: 400;
+}
+
+.product-price-sale {
+    color: #dc3545;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.product-price-regular {
+    color: #222;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* Stock badge colors for sale items */
+.stock-badge.sale-active {
+    margin-top: 6px;
+}
+
+/* Hover effect for sale items */
+.product-card.sale-item .product-image {
+    position: relative;
+}
+
+.product-card.sale-item:hover {
+    box-shadow: 0 6px 16px rgba(220, 53, 69, 0.15);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .product-price-original {
+        font-size: 0.75rem;
+    }
+    
+    .product-price-sale {
+        font-size: 1rem;
+    }
+    
+    .sale-badge-tag {
+        font-size: 10px;
+        padding: 3px 8px;
+    }
+}

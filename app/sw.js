@@ -1,4 +1,4 @@
-const CACHE_NAME = 'accessories-by-dija-v18';
+const CACHE_NAME = 'accessories-by-dija-v23';
 
 /**
  * ONLY cache static, non-dynamic assets
@@ -15,6 +15,7 @@ const urlsToCache = [
   '/assets/css/style.css',
   '/assets/css/hero.css',
   '/assets/css/footer.css',
+  '/assets/css/account.css',
 
   // Images & icons
   '/assets/images/logo.webp',
@@ -24,14 +25,17 @@ const urlsToCache = [
   '/favicon.ico',
 
   // Manifest
-  '/app/manifest.json'
+  '/app/manifest.json',
+
+  // PWA Install Script
+  '/app/includes/pwa-install.js'
 ];
 
 /* =========================
    INSTALL
 ========================= */
 self.addEventListener('install', event => {
-  console.log('Service Worker v18 installing...');
+  console.log('Service Worker v19 installing...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(urlsToCache))
@@ -39,16 +43,44 @@ self.addEventListener('install', event => {
   );
 });
 
-/* =========================
-   FETCH
-========================= */
+/* ============================
+   FETCH - Advanced Strategies
+   ============================= */
+
+// Pages that should NEVER be cached (authenticated/dynamic)
+const noCachePatterns = [
+    /\/account\.php/,
+    /\/login\.php/,
+    /\/signup\.php/,
+    /\/checkout\.php/,
+    /\/cart\.php/,
+    /\/order-confirmation\.php/,
+    /\/auth\//,
+    /\/api\//
+];
+
+function shouldNotCache(url) {
+    return noCachePatterns.some(pattern => pattern.test(url));
+}
+
 self.addEventListener('fetch', event => {
+  const url = event.request.url;
+
+  // Skip if should not be cached (authenticated pages)
+  if (shouldNotCache(url)) {
+    event.respondWith(
+      fetch(event.request).catch(() =>
+        new Response('', { status: 503, statusText: 'Service Unavailable' })
+      )
+    );
+    return;
+  }
 
   /* ---------- IMAGES (network-first, cached) ---------- */
   if (
     event.request.destination === 'image' ||
-    event.request.url.includes('/uploads/') ||
-    event.request.url.includes('/assets/images/')
+    url.includes('/uploads/') ||
+    url.includes('/assets/images/')
   ) {
     event.respondWith(
       fetch(event.request)
@@ -70,7 +102,7 @@ self.addEventListener('fetch', event => {
   }
 
   /* ---------- API (network-only) ---------- */
-  if (event.request.url.includes('/api/')) {
+  if (url.includes('/api/')) {
     event.respondWith(
       fetch(event.request, { cache: 'no-store' }).catch(() =>
         new Response(JSON.stringify({
@@ -85,7 +117,7 @@ self.addEventListener('fetch', event => {
   }
 
   /* ---------- PRODUCTS PAGE (network-first) ---------- */
-  if (event.request.url.includes('products.php')) {
+  if (url.includes('products.php')) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
     );
@@ -95,7 +127,7 @@ self.addEventListener('fetch', event => {
   /* ---------- JAVASCRIPT (network-first – CRITICAL) ---------- */
   if (
     event.request.destination === 'script' ||
-    event.request.url.endsWith('.js')
+    url.endsWith('.js')
   ) {
     event.respondWith(
       fetch(event.request).catch(() => caches.match(event.request))
@@ -103,14 +135,15 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  /* ---------- CSS (network-first) ---------- */
+  /* ---------- CSS (network-first, always update) ---------- */
   if (
     event.request.destination === 'style' ||
-    event.request.url.endsWith('.css')
+    url.endsWith('.css')
   ) {
     event.respondWith(
       fetch(event.request)
         .then(networkResponse => {
+          // Always cache/update CSS from network
           caches.open(CACHE_NAME).then(cache => {
             cache.put(event.request, networkResponse.clone());
           });
@@ -133,7 +166,7 @@ self.addEventListener('fetch', event => {
    ACTIVATE
 ========================= */
 self.addEventListener('activate', event => {
-  console.log('Service Worker v18 activating...');
+  console.log('Service Worker v19 activating...');
   event.waitUntil(
     caches.keys().then(cacheNames =>
       Promise.all(

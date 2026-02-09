@@ -1,5 +1,8 @@
 RewriteEngine On
 
+# Redirect /admin to /admin/ (trailing slash)
+RewriteRule ^admin$ /admin/ [R=301,L]
+
 # Custom error pages
 ErrorDocument 404 /app/404.php
 ErrorDocument 500 /app/500.php

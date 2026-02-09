@@ -854,5 +854,25 @@ require_once APP_PATH . '/config/cache.php';
       });
     }
     </script>
+    
+    <!-- PWA Install Prompt Handler -->
+    <script src="/app/includes/pwa-install.js"></script>
+    <script>
+    // Save scroll position before leaving page
+    window.addEventListener('beforeunload', function() {
+        sessionStorage.setItem('appScrollPosition', window.scrollY);
+    });
+
+    // Restore scroll position on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const savedScroll = sessionStorage.getItem('appScrollPosition');
+        if (savedScroll !== null) {
+            setTimeout(function() {
+                window.scrollTo(0, parseInt(savedScroll));
+                sessionStorage.removeItem('appScrollPosition');
+            }, 10);
+        }
+    });
+    </script>
 </body>
 </html>

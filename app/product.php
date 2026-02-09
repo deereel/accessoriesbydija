@@ -456,7 +456,31 @@ if (!empty($reviews)) {
         
         <div class="product-details">
             <h1><?php echo htmlspecialchars($product['name']); ?></h1>
+            <?php
+            // Check if product is on sale
+            $is_on_sale = !empty($product['is_on_sale']) && $product['is_on_sale'];
+            $sale_expired = false;
+            if ($is_on_sale && !empty($product['sale_end_date'])) {
+                $sale_expired = strtotime($product['sale_end_date']) < time();
+            }
+            $is_on_sale = $is_on_sale && !$sale_expired;
+            
+            if ($is_on_sale):
+                $original_price = $product['price'];
+                $sale_price = $product['sale_price'];
+                $discount_percent = $product['sale_percentage'] ?? 0;
+                if (!$discount_percent && $sale_price) {
+                    $discount_percent = round((($original_price - $sale_price) / $original_price) * 100);
+                }
+            ?>
+            <div class="product-price" id="basePrice" style="text-decoration: line-through; color: #999;">£<?php echo number_format($original_price, 2); ?></div>
+            <div style="font-size: 1.75rem; color: #dc3545; font-weight: 600; margin-bottom: 1rem;">
+                £<?php echo number_format($sale_price, 2); ?>
+                <span class="sale-badge-tag" style="position: static; margin-left: 10px; font-size: 12px;">-<?php echo $discount_percent; ?>%</span>
+            </div>
+            <?php else: ?>
             <div class="product-price" id="basePrice">£<?php echo number_format($product['price'], 2); ?></div>
+            <?php endif; ?>
             <div class="price-display" id="finalPrice" style="display: none;"></div>
 
             <div class="product-description">
@@ -731,12 +755,18 @@ if (!empty($reviews)) {
             <h2>Similar Products</h2>
             <div class="products-grid">
                 <?php foreach ($similar_products as $prod):
+                    $prod_is_on_sale = !empty($prod['is_on_sale']) && $prod['is_on_sale'] && (empty($prod['sale_end_date']) || strtotime($prod['sale_end_date']) > time());
+                    $prod_sale_price = $prod['sale_price'] ?? null;
                 ?>
                 <div class="product-card">
                     <a href="product.php?slug=<?= htmlspecialchars($prod['slug']) ?>">
                         <img src="/<?= htmlspecialchars($prod['image_url'] ?? 'assets/images/placeholder.jpg') ?>" alt="<?= htmlspecialchars($prod['name']) ?>">
                         <h3><?= htmlspecialchars($prod['name']) ?></h3>
+                        <?php if ($prod_is_on_sale && $prod_sale_price): ?>
+                        <p class="price" style="color: #dc3545;">£<?= number_format($prod_sale_price, 2) ?> <span style="text-decoration: line-through; color: #999; font-size: 0.9rem;">£<?= number_format($prod['price'], 2) ?></span></p>
+                        <?php else: ?>
                         <p class="price">£<?= number_format($prod['price'], 2) ?></p>
+                        <?php endif; ?>
                     </a>
                 </div>
                 <?php endforeach; ?>
@@ -753,12 +783,18 @@ if (!empty($reviews)) {
             <h2>Frequently Bought Together</h2>
             <div class="products-grid">
                 <?php foreach ($frequently_bought as $prod):
+                    $prod_is_on_sale = !empty($prod['is_on_sale']) && $prod['is_on_sale'] && (empty($prod['sale_end_date']) || strtotime($prod['sale_end_date']) > time());
+                    $prod_sale_price = $prod['sale_price'] ?? null;
                 ?>
                 <div class="product-card">
                     <a href="product.php?slug=<?= htmlspecialchars($prod['slug']) ?>">
                         <img src="/<?= htmlspecialchars($prod['image_url'] ?? 'assets/images/placeholder.jpg') ?>" alt="<?= htmlspecialchars($prod['name']) ?>">
                         <h3><?= htmlspecialchars($prod['name']) ?></h3>
+                        <?php if ($prod_is_on_sale && $prod_sale_price): ?>
+                        <p class="price" style="color: #dc3545;">£<?= number_format($prod_sale_price, 2) ?> <span style="text-decoration: line-through; color: #999; font-size: 0.9rem;">£<?= number_format($prod['price'], 2) ?></span></p>
+                        <?php else: ?>
                         <p class="price">£<?= number_format($prod['price'], 2) ?></p>
+                        <?php endif; ?>
                     </a>
                 </div>
                 <?php endforeach; ?>

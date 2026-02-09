@@ -11,14 +11,14 @@
                 39
             ],
             "status": "fixed",
-            "fixed_at": "2026-02-07 12:42:47"
+            "fixed_at": "2026-02-08 13:54:31"
         },
         "tags": [
             "issues",
             "swiper",
             "fixes"
         ],
-        "updated": 1770468167
+        "updated": 1770558871
     },
     "issue_20260205_account_api_db_path": {
         "value": {
@@ -36,14 +36,14 @@
             ],
             "fix": "Changed require path from ../../config/database.php to ../../app/config/database.php",
             "status": "fixed",
-            "fixed_at": "2026-02-07 12:42:47"
+            "fixed_at": "2026-02-08 13:54:31"
         },
         "tags": [
             "issues",
             "database",
             "fixes"
         ],
-        "updated": 1770468167
+        "updated": 1770558871
     },
     "issue_20260205_account_spacing": {
         "value": {
@@ -52,14 +52,14 @@
             "fix": "Added margin-bottom: 1rem to warning paragraph",
             "line_affected": 267,
             "status": "fixed",
-            "fixed_at": "2026-02-07 12:42:47"
+            "fixed_at": "2026-02-08 13:54:31"
         },
         "tags": [
             "issues",
             "ui",
             "fixes"
         ],
-        "updated": 1770468167
+        "updated": 1770558871
     },
     "issue_20260205_checkout_country_dropdown": {
         "value": {
@@ -67,14 +67,14 @@
             "file": "app/checkout.php",
             "fix": "Added countries array and changed country input to select dropdown with all countries",
             "status": "fixed",
-            "fixed_at": "2026-02-07 12:42:47"
+            "fixed_at": "2026-02-08 13:54:31"
         },
         "tags": [
             "issues",
             "ui",
             "improvement"
         ],
-        "updated": 1770468167
+        "updated": 1770558871
     },
     "issue_20260205_product_material_guidance": {
         "value": {
@@ -89,14 +89,14 @@
                 "All guidance uses site theme colors (#C27BA0)"
             ],
             "status": "fixed",
-            "fixed_at": "2026-02-07 12:42:47"
+            "fixed_at": "2026-02-08 13:54:31"
         },
         "tags": [
             "issues",
             "ui",
             "improvement"
         ],
-        "updated": 1770468167
+        "updated": 1770558871
     },
     "issue_20260205_mobile_search": {
         "value": {
@@ -111,7 +111,7 @@
                 "Close button and click outside to close"
             ],
             "status": "fixed",
-            "fixed_at": "2026-02-07 12:42:47"
+            "fixed_at": "2026-02-08 13:54:31"
         },
         "tags": [
             "issues",
@@ -119,7 +119,7 @@
             "search",
             "ui"
         ],
-        "updated": 1770468167
+        "updated": 1770558871
     },
     "project_context": {
         "value": {
@@ -145,7 +145,7 @@
             "project",
             "context"
         ],
-        "updated": 1770468167
+        "updated": 1770558871
     },
     "db_path_verification_20260205": {
         "value": {
@@ -163,7 +163,7 @@
                     "status": "correct"
                 }
             ],
-            "verified_at": "2026-02-07 12:42:47",
+            "verified_at": "2026-02-08 13:54:31",
             "note": "All __DIR__ relative paths are correct - they properly resolve to app/config/"
         },
         "tags": [
@@ -171,7 +171,7 @@
             "paths",
             "verification"
         ],
-        "updated": 1770468167
+        "updated": 1770558871
     },
     "issue_20260205_pwa_images_caching": {
         "value": {
@@ -185,7 +185,7 @@
             ],
             "fix": "Updated sw.js to cache /assets/images/products/ path. Added absolute path fix in api/filtered-products.php, api/featured-products.php and new-arrivals.php to prefix images with / if missing. Changed cache version from v9 to v10.",
             "status": "fixed",
-            "fixed_at": "2026-02-07 12:42:47"
+            "fixed_at": "2026-02-08 13:54:31"
         },
         "tags": [
             "pwa",
@@ -193,7 +193,7 @@
             "caching",
             "fixes"
         ],
-        "updated": 1770468167
+        "updated": 1770558871
     },
     "issue_20260205_pwa_filtering": {
         "value": {
@@ -202,7 +202,7 @@
             "file": "app/products.php",
             "fix": "Changed URL handling to use URLSearchParams properly. Now builds URL with window.location.search, clears params, then adds filter and sort params. Ensures query params are preserved during filtering.",
             "status": "fixed",
-            "fixed_at": "2026-02-07 12:42:47"
+            "fixed_at": "2026-02-08 13:54:31"
         },
         "tags": [
             "pwa",
@@ -210,12 +210,94 @@
             "javascript",
             "fixes"
         ],
-        "updated": 1770468167
+        "updated": 1770558871
+    },
+    "issue_20260207_wishlist_button_not_responding": {
+        "value": {
+            "issue": "Wishlist button not responding to clicks on products.php page",
+            "root_cause": "Click events being intercepted by Swiper slider - missing e.stopPropagation() and e.preventDefault() in click handler",
+            "file": "app/products.php",
+            "fix": "Added event bubbling control in initializeWishlistButtons() function with e.stopPropagation() and e.preventDefault(). Made toggleWishlist globally accessible via window.toggleWishlist. Added console logging for debugging.",
+            "status": "fixed",
+            "fixed_at": "2026-02-07 13:36:30"
+        },
+        "tags": [
+            "issues",
+            "wishlist",
+            "swiper",
+            "fixes"
+        ],
+        "updated": 1770474990
+    },
+    "issue_20260207_wishlist_not_colored_on_load": {
+        "value": {
+            "issue": "Products added to wishlist don't show colored icon on page load - only after refresh",
+            "root_cause": "PHP didn't mark wishlist buttons as active on initial render, and toggleWishlist function had syntax error (missing .then(response => response.json()))",
+            "file": "app/products.php",
+            "fix": [
+                "1. Added PHP code to fetch user's wishlist on page load: $user_wishlist = [] query to get all wishlist product IDs",
+                "2. Updated wishlist button HTML to conditionally add 'active' class based on whether product is in user's wishlist",
+                "3. Updated heart icon to use 'fas' (solid) for active, 'far' (regular) for inactive on initial render",
+                "4. Fixed toggleWishlist function - added missing .then(response => response.json()) after fetch"
+            ],
+            "status": "fixed",
+            "fixed_at": "2026-02-07 13:36:30"
+        },
+        "tags": [
+            "issues",
+            "wishlist",
+            "php",
+            "javascript",
+            "fixes"
+        ],
+        "updated": 1770474990
+    },
+    "issue_20260207_api_path_corrections": {
+        "value": {
+            "issue": "PWA and JavaScript API calls using incorrect paths (/app/api/) causing 404 errors",
+            "root_cause": "JavaScript API URLs were using relative paths or incorrect absolute paths like /app/api/ instead of /api/",
+            "files": [
+                "app/products.php",
+                "assets/js/product-details.js",
+                "assets/js/featured-products.js",
+                "assets/js/account.js",
+                "assets/js/new-nav.js",
+                "assets/js/header.js"
+            ],
+            "fix": "Changed all API paths from /app/api/ to /api/ and from relative paths to absolute paths",
+            "affected_api_endpoints": [
+                "/api/filtered-products.php",
+                "/api/wishlist.php",
+                "/api/featured-products.php",
+                "/api/check-stock-levels.php",
+                "/api/account/get_orders.php",
+                "/api/account/get_addresses.php",
+                "/api/account/get_order.php",
+                "/api/account/update_profile.php",
+                "/api/account/change_password.php",
+                "/api/account/save_address.php",
+                "/api/account/delete_address.php",
+                "/api/account/delete_account.php",
+                "/api/submit-review.php",
+                "/api/new-products.php",
+                "/api/search.php"
+            ],
+            "status": "fixed",
+            "fixed_at": "2026-02-07 13:36:30"
+        },
+        "tags": [
+            "issues",
+            "api",
+            "pwa",
+            "paths",
+            "fixes"
+        ],
+        "updated": 1770474990
     },
     "recent_changes": {
         "value": [
             {
-                "date": "2026-02-07 12:42:47",
+                "date": "2026-02-08 13:54:31",
                 "type": "bugfix",
                 "description": "Fixed hero.js swiper not changing slides - undefined variable issue",
                 "files": [
@@ -223,7 +305,7 @@
                 ]
             },
             {
-                "date": "2026-02-07 12:42:47",
+                "date": "2026-02-08 13:54:31",
                 "type": "bugfix",
                 "description": "Fixed account API database connection paths - wrong require path",
                 "files": [
@@ -231,7 +313,7 @@
                 ]
             },
             {
-                "date": "2026-02-07 12:42:47",
+                "date": "2026-02-08 13:54:31",
                 "type": "improvement",
                 "description": "Added spacing between delete account warning text and button",
                 "files": [
@@ -239,7 +321,7 @@
                 ]
             },
             {
-                "date": "2026-02-07 12:42:47",
+                "date": "2026-02-08 13:54:31",
                 "type": "improvement",
                 "description": "Changed checkout country field from text input to dropdown with all countries",
                 "files": [
@@ -247,7 +329,7 @@
                 ]
             },
             {
-                "date": "2026-02-07 12:42:47",
+                "date": "2026-02-08 13:54:31",
                 "type": "improvement",
                 "description": "Updated guidance text to move with selection (material -> variation -> size) using site theme colors",
                 "files": [
@@ -256,7 +338,7 @@
                 ]
             },
             {
-                "date": "2026-02-07 12:42:47",
+                "date": "2026-02-08 13:54:31",
                 "type": "improvement",
                 "description": "Added mobile search icon that opens centered modal with search suggestions. Fixed database paths in api/newsletter.php, api/get-filter-options.php, api/featured-products.php, api/addresses.php, api/ai-optimization.php, api/health.php, api/custom-request.php from ../config/ to ../app/config/",
                 "files": [
@@ -265,7 +347,7 @@
                 ]
             },
             {
-                "date": "2026-02-07 12:42:47",
+                "date": "2026-02-08 13:54:31",
                 "type": "bugfix",
                 "description": "Fixed PWA product images not displaying in PWA - updated service worker cache version to v11 and improved image caching patterns. Fixed filtering/sorting requiring refresh by properly handling URL parameters with new URL object creation.",
                 "files": [
@@ -273,7 +355,7 @@
                 ]
             },
             {
-                "date": "2026-02-07 12:42:47",
+                "date": "2026-02-08 13:54:31",
                 "type": "bugfix",
                 "description": "Fixed PWA filtering/sorting requiring refresh - properly preserve query params in URL using URLSearchParams",
                 "files": [
@@ -281,7 +363,7 @@
                 ]
             },
             {
-                "date": "2026-02-07 12:42:47",
+                "date": "2026-02-08 13:54:31",
                 "type": "bugfix",
                 "description": "Fixed product images not displaying in PWA - added absolute path fix (leading /) for images in api/filtered-products.php, api/featured-products.php and new-arrivals.php",
                 "files": [
@@ -291,7 +373,7 @@
                 ]
             },
             {
-                "date": "2026-02-07 12:42:47",
+                "date": "2026-02-08 13:54:31",
                 "type": "bugfix",
                 "description": "Fixed product slug page thumbnail click not changing main image - event handler was using e.target.matches which failed when clicking on thumbnail img element",
                 "files": [
@@ -299,7 +381,7 @@
                 ]
             },
             {
-                "date": "2026-02-07 12:42:47",
+                "date": "2026-02-08 13:54:31",
                 "type": "bugfix",
                 "description": "Fixed admin PWA - updated admin-sw.js to v5 with improved image caching for /assets/images/products/, /uploads/, and all images. Added placeholder fallback for missing images. Network-first for APIs.",
                 "files": [
@@ -307,7 +389,7 @@
                 ]
             },
             {
-                "date": "2026-02-07 12:42:47",
+                "date": "2026-02-08 13:54:31",
                 "type": "improvement",
                 "description": "Fixed PWA orientation - changed manifest.json orientation from portrait to any to allow both portrait and landscape modes",
                 "files": [
@@ -315,7 +397,7 @@
                 ]
             },
             {
-                "date": "2026-02-07 12:42:47",
+                "date": "2026-02-08 13:54:31",
                 "type": "improvement",
                 "description": "Fixed admin PWA display - changed manifest.json display from browser to standalone, added maskable icons, updated orientation to any for better mobile support",
                 "files": [
@@ -323,11 +405,25 @@
                 ]
             },
             {
-                "date": "2026-02-07 12:42:47",
+                "date": "2026-02-08 13:54:31",
                 "type": "bugfix",
                 "description": "Fixed featured products not updating when featured in admin - removed conditional skip in featured-products.js that would skip API fetch if server-rendered products had images. Now always fetches fresh data with cache-buster timestamp.",
                 "files": [
                     "assets/js/featured-products.js"
+                ]
+            },
+            {
+                "date": "2026-02-08 13:54:31",
+                "type": "feature",
+                "description": "Implemented product sale price feature - added sale prices tab to admin promo codes page. Admin can toggle sale for products and set percentage or fixed price reduction. Sale prices display on storefront with slashed price and discount badge.",
+                "files": [
+                    "app/memory/sale_price_migration.php",
+                    "api/sale-prices.php",
+                    "admin/promos.php",
+                    "assets/css/sale-price.css",
+                    "api/filtered-products.php",
+                    "app/products.php",
+                    "app/product.php"
                 ]
             }
         ],
@@ -335,6 +431,6 @@
             "changes",
             "tracking"
         ],
-        "updated": 1770468167
+        "updated": 1770558871
     }
 }

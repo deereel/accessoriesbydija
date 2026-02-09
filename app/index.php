@@ -560,12 +560,7 @@ echo '<script type="application/ld+json">' . json_encode($faq_schema) . '</scrip
         </div>
     </section>
 
-
-
-
-
     <!-- Testimonials Section -->
-     <!-- Testimonials Section -->
     <section class="testimonials-section">
         <div class="container">
             <h2>What Our Customers Say</h2>

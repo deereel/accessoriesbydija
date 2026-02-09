@@ -256,9 +256,22 @@ try {
         'params' => $params
     ]);
 }
+
+// Fetch user's wishlist for initial rendering
+$user_wishlist = [];
+if (isset($_SESSION['user_id'])) {
+    try {
+        $stmt_wishlist = $pdo->prepare("SELECT product_id FROM wishlists WHERE user_id = ?");
+        $stmt_wishlist->execute([$_SESSION['user_id']]);
+        $user_wishlist = $stmt_wishlist->fetchAll(PDO::FETCH_COLUMN);
+    } catch (Exception $e) {
+        $user_wishlist = [];
+    }
+}
 ?>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css">
+<link rel="stylesheet" href="/assets/css/sale-price.css">
 <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
 <style>
 /* Products Page Styles */
@@ -472,7 +485,20 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
                         <div class="swiper-slide" data-slide-index="<?= $index ?>">
                             <div class="product-grid">
                                 <?php foreach ($chunk as $product): ?>
-                                    <div class="product-card"
+                                    <?php
+                                    // Check if product is on sale
+                                    $isOnSale = !empty($product['is_on_sale']) && $product['is_on_sale'];
+                                    $saleExpired = false;
+                                    if ($isOnSale && !empty($product['sale_end_date'])) {
+                                        $saleExpired = strtotime($product['sale_end_date']) < time();
+                                    }
+                                    $isOnSale = $isOnSale && !$saleExpired;
+                                    $discountPercent = 0;
+                                    if ($isOnSale && $product['sale_price']) {
+                                        $discountPercent = $product['sale_percentage'] ?? round((($product['price'] - $product['sale_price']) / $product['price']) * 100);
+                                    }
+                                    ?>
+                                    <div class="product-card<?= $isOnSale ? ' sale-item' : '' ?>"
                                         data-product-id="<?= $product['id'] ?>"
                                         data-price="<?= $product['price'] ?>"
                                         data-type="jewelry"
@@ -480,12 +506,15 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
                                         <?= $product['hover_image'] ? 'data-has-hover-image="true"' : '' ?>>
 
                                      <!-- Wishlist Button -->
-                                     <button class="wishlist-btn" data-product-id="<?= $product['id'] ?>" onclick="toggleWishlist(<?= $product['id'] ?>, this)">
-                                         <i class="far fa-heart"></i>
+                                     <button class="wishlist-btn<?= in_array($product['id'], $user_wishlist) ? ' active' : '' ?>" data-product-id="<?= $product['id'] ?>" onclick="toggleWishlist(<?= $product['id'] ?>, this)">
+                                         <i class="<?= in_array($product['id'], $user_wishlist) ? 'fas' : 'far' ?> fa-heart"></i>
                                      </button>
 
                                      <!-- Product Image -->
                                      <a href="product.php?slug=<?= $product['slug'] ?>" class="product-image">
+                                         <?php if ($isOnSale && $discountPercent > 0): ?>
+                                         <span class="sale-badge-tag">-<?= $discountPercent ?>%</span>
+                                         <?php endif; ?>
                                          <?php if ($product['main_image']): ?>
                                              <img class="main-img" src="<?= htmlspecialchars($product['main_image']) ?>" alt="<?= htmlspecialchars($product['name']) ?>" onerror="this.src='/assets/images/placeholder.jpg'; this.onerror=null;">
                                              <?php if ($product['hover_image']): ?>
@@ -504,7 +533,14 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
                                          <p style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem;">⚖️ <?= htmlspecialchars($product['weight']) ?>g</p>
                                          <?php endif; ?>
                                          <div class="product-footer">
+                                             <?php if ($isOnSale): ?>
+                                             <div class="product-price-container">
+                                                 <span class="product-price-original">£<?= number_format($product['price'], 2) ?></span>
+                                                 <span class="product-price-sale">£<?= number_format($product['sale_price'], 2) ?></span>
+                                             </div>
+                                             <?php else: ?>
                                              <span class="product-price" data-price="<?= $product['price'] ?>">£<?= number_format($product['price'], 2) ?></span>
+                                             <?php endif; ?>
                                              <button class="cart-btn add-to-cart" data-product-id="<?= $product['id'] ?>" <?php if ($product['stock_quantity'] <= 0): ?>disabled<?php endif; ?>>Add to Cart</button>
                                          </div>
                                          <!-- Stock Status Badge -->
@@ -518,24 +554,23 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
                                              <?php endif; ?>
                                          </div>
                                      </div>
-                                 </div>
-                                 <?php endforeach; ?>
-                             </div>
-                         </div>
-                         <?php endforeach;
-                     }
-                     ?>
-                 </div>
-             </div>
-             <div class="swiper-navigation">
-                 <button class="swiper-button-prev" type="button"></button>
-                 <div class="swiper-pagination"></div>
-                 <button class="swiper-button-next" type="button"></button>
-             </div>
-        </div>
-    </div>
-</main>
-
+                                  </div>
+                                  <?php endforeach; ?>
+                              </div>
+                          </div>
+                          <?php endforeach;
+                      }
+                      ?>
+                  </div>
+              </div>
+              <div class="swiper-navigation">
+                  <button class="swiper-button-prev" type="button"></button>
+                  <div class="swiper-pagination"></div>
+                  <button class="swiper-button-next" type="button"></button>
+              </div>
+          </div>
+      </div>
+  </main>
 
 
 <script>
@@ -635,7 +670,20 @@ document.addEventListener('DOMContentLoaded', function () {
             html += '<div class="product-grid">';
 
             chunk.forEach(product => {
-                html += '<div class="product-card" data-product-id="' + product.id + '" data-price="' + product.price + '" data-type="jewelry" data-name="' + product.name + '"' + (product.hover_image ? ' data-has-hover-image="true"' : '') + '>';
+                const isOnSale = product.is_on_sale && product.sale_price && product.sale_price < product.price;
+                const discountPercent = isOnSale ? (product.sale_percentage || Math.round((product.price - product.sale_price) / product.price * 100)) : 0;
+                
+                let saleBadge = '';
+                let priceHtml = '';
+                
+                if (isOnSale) {
+                    saleBadge = '<span class="sale-badge-tag">-' + discountPercent + '%</span>';
+                    priceHtml = '<div class="product-price-container"><span class="product-price-original">£' + product.price.toFixed(2) + '</span><span class="product-price-sale">£' + product.sale_price.toFixed(2) + '</span></div>';
+                } else {
+                    priceHtml = '<span class="product-price" data-price="' + product.price + '">£' + product.price.toFixed(2) + '</span>';
+                }
+                
+                html += '<div class="product-card' + (isOnSale ? ' sale-item' : '') + '" data-product-id="' + product.id + '" data-price="' + product.price + '" data-type="jewelry" data-name="' + product.name + '"' + (product.hover_image ? ' data-has-hover-image="true"' : '') + '>';
                 html += '<button class="wishlist-btn" data-product-id="' + product.id + '"><i class="far fa-heart"></i></button>';
                 html += '<a href="product.php?slug=' + product.slug + '" class="product-image">';
                 
@@ -648,6 +696,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     html += '<div class="main-img placeholder">' + product.name.substring(0, 3) + '</div>';
                 }
                 
+                html += saleBadge;
                 html += '</a>';
                 html += '<div class="product-info">';
                 html += '<h3><a href="product.php?slug=' + product.slug + '" style="text-decoration:none;color:inherit;">' + product.name + '</a></h3>';
@@ -658,7 +707,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
                 
                 html += '<div class="product-footer">';
-                html += '<span class="product-price" data-price="' + product.price + '">£' + product.price.toFixed(2) + '</span>';
+                html += priceHtml;
                 const disabledAttr = product.stock_quantity <= 0 ? 'disabled' : '';
                 html += '<button class="cart-btn add-to-cart" data-product-id="' + product.id + '" ' + disabledAttr + '>Add to Cart</button>';
                 html += '</div>';
@@ -714,6 +763,14 @@ document.addEventListener('DOMContentLoaded', function () {
             // Remove any existing click listeners to avoid duplicates
             btn.onclick = null;
             
+            // Add click listener with event bubbling control
+            btn.addEventListener('click', function(e) {
+                console.log('[Wishlist] Button clicked, productId:', this.dataset.productId);
+                e.stopPropagation(); // Prevent Swiper from capturing the click
+                e.preventDefault(); // Prevent any default behavior
+                toggleWishlist(parseInt(this.dataset.productId), this);
+            });
+            
             const productId = btn.getAttribute('data-product-id');
             fetch('/api/wishlist.php?product_id=' + productId)
                 .then(response => response.json())
@@ -756,10 +813,25 @@ document.addEventListener('DOMContentLoaded', function () {
             el: '.swiper-pagination',
             clickable: true,
         },
+        on: {
+            slideChange: function() {
+                sessionStorage.setItem('productsSwiperIndex', this.activeIndex);
+            }
+        }
     });
     
     // Store swiper instance globally for reinitialization
     window.swiperInstance = swiper;
+
+    // Restore slide position from sessionStorage
+    const savedSlideIndex = sessionStorage.getItem('productsSwiperIndex');
+    if (savedSlideIndex !== null && savedSlideIndex > 0) {
+        setTimeout(() => {
+            if (window.swiperInstance && window.swiperInstance.slides.length > savedSlideIndex) {
+                window.swiperInstance.slideTo(parseInt(savedSlideIndex));
+            }
+        }, 100);
+    }
 
     // Initialize components on page load
     initializeWishlistButtons();
@@ -771,11 +843,20 @@ document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('.filter-dropdown-content').forEach(content => content.style.display = 'none');
         }
     });
+
+    // Save swiper index before leaving page
+    window.addEventListener('beforeunload', function() {
+        if (window.swiperInstance) {
+            sessionStorage.setItem('productsSwiperIndex', window.swiperInstance.activeIndex);
+        }
+    });
 });
 
 // Wishlist functionality
-function toggleWishlist(productId, btn) {
-    // Check if user is logged in
+window.toggleWishlist = function(productId, btn) {
+    console.log('[Wishlist] toggleWishlist called with productId:', productId);
+    
+    // First check current status
     fetch('/api/wishlist.php?product_id=' + productId)
         .then(response => response.json())
         .then(data => {

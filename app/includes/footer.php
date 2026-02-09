@@ -72,18 +72,18 @@
             <p>&copy; 2024 Dija Accessories. All rights reserved.</p>
         </div>
     </footer>
-    <script src="assets/js/main.js"></script>
-    <script src="assets/js/cart-handler.js"></script>
-    <script src="assets/js/header.js"></script>
-    <script src="assets/js/hero.js"></script>
-    <script src="assets/js/category-section.js"></script>
-    <script src="assets/js/collection-banners.js"></script>
-    <script src="assets/js/currency.js"></script>
-    <script src="assets/js/featured-products.js"></script>
-    <script src="assets/js/custom-cta.js"></script>
+    <script src="/assets/js/main.js"></script>
+    <script src="/assets/js/cart-handler.js"></script>
+    <script src="/assets/js/header.js"></script>
+    <script src="/assets/js/hero.js"></script>
+    <script src="/assets/js/category-section.js"></script>
+    <script src="/assets/js/collection-banners.js"></script>
+    <script src="/assets/js/currency.js"></script>
+    <script src="/assets/js/featured-products.js"></script>
+    <script src="/assets/js/custom-cta.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.css">
     <script src="https://cdn.jsdelivr.net/npm/swiper@10/swiper-bundle.min.js"></script>
-    <script src="assets/js/testimonials.js"></script>
+    <script src="/assets/js/testimonials.js"></script>
     <script>
     // Currency conversion for price ranges
     document.addEventListener('DOMContentLoaded', function() {

@@ -395,7 +395,7 @@ $countries = [
     </div>
 </div>
 
-<link rel="stylesheet" href="assets/css/account.css">
-<script src="assets/js/account.js"></script>
+<link rel="stylesheet" href="/assets/css/account.css">
+<script src="/assets/js/account.js"></script>
 
 <?php include 'includes/footer.php'; ?>

@@ -76,11 +76,20 @@ try {
     .alert-message { padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid; }
     .alert-success { background: #d4edda; color: #155724; border-color: #c3e6cb; }
     .alert-error { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+    
+    /* Backup table styles */
+    .backup-checkbox { width: 20px; text-align: center; }
+    .backup-row.selected { background-color: #fff3cd; }
+    #delete-selected-btn { background: #dc3545; display: none; }
+    #delete-selected-btn:hover { background: #c82333; }
+    .bulk-actions { display: none; align-items: center; gap: 10px; margin-bottom: 10px; padding: 10px; background: #f8f9fa; border-radius: 6px; }
+    .bulk-actions.visible { display: flex; }
+    .select-all-wrapper { display: flex; align-items: center; gap: 8px; font-weight: 500; }
 </style>
 
 <!-- Backup Management -->
 <div class="card">
-    <div class="card-header"><i class="fas fa-shield-alt"></i> Backup &amp; Restore</div>
+    <div class="card-header"><i class="fas fa-shield-alt"></i> Backup & Restore</div>
     <div class="card-body">
          <div class="alert" style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ffeeba;">
             <strong>Warning:</strong> The backup & restore functionality is powerful. Always store backups in a secure, off-site location.
@@ -94,14 +103,40 @@ try {
             <a href="backup_db.php" class="btn btn-success"><i class="fas fa-plus"></i> Create New Backup</a>
         </div>
 
+        <!-- Bulk Actions Bar -->
+        <div class="bulk-actions" id="bulk-actions">
+            <div class="select-all-wrapper">
+                <input type="checkbox" id="select-all-backups" onchange="toggleSelectAllBackups()">
+                <label for="select-all-backups">Select All</label>
+            </div>
+            <span id="selected-count">0 selected</span>
+            <button type="button" id="delete-selected-btn" class="btn" onclick="deleteSelectedBackups()">
+                <i class="fas fa-trash"></i> Delete Selected
+            </button>
+        </div>
+
         <?php if (empty($backups) && !$error): ?>
              <p style="text-align: center; color: #666; padding: 20px;">No backups found. Click "Create New Backup" to start. <br><small>If you see this after creating a backup, ensure you have run the `create_backups_table.php` script.</small></p>
         <?php else: ?>
-            <table class="data-table">
-                <thead><tr><th>Filename</th><th>Size</th><th>Created At</th><th>Created By</th><th>Actions</th></tr></thead>
+            <table class="data-table" id="backups-table">
+                <thead>
+                    <tr>
+                        <th class="backup-checkbox">
+                            <input type="checkbox" id="select-all-header" onchange="toggleSelectAllBackups()" style="display: none;">
+                        </th>
+                        <th>Filename</th>
+                        <th>Size</th>
+                        <th>Created At</th>
+                        <th>Created By</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
                 <tbody>
                     <?php foreach($backups as $backup): ?>
-                    <tr>
+                    <tr class="backup-row" data-id="<?php echo $backup['id']; ?>">
+                        <td class="backup-checkbox">
+                            <input type="checkbox" class="backup-select" value="<?php echo $backup['id']; ?>" onchange="updateBackupSelection()">
+                        </td>
                         <td><i class="fas fa-file-archive"></i> <?php echo htmlspecialchars($backup['filename']); ?></td>
                         <td><?php echo round($backup['filesize'] / 1024, 2); ?> KB</td>
                         <td><?php echo date('M d, Y H:i', strtotime($backup['created_at'])); ?></td>
@@ -166,5 +201,85 @@ try {
     </div>
 </div>
 <?php endif; ?>
+
+<script>
+    function toggleSelectAllBackups() {
+        const selectAll = document.getElementById('select-all-backups');
+        const checkboxes = document.querySelectorAll('.backup-select');
+        const headerCheckbox = document.getElementById('select-all-header');
+        
+        checkboxes.forEach(cb => {
+            cb.checked = selectAll.checked;
+            const row = cb.closest('.backup-row');
+            if (row) {
+                row.classList.toggle('selected', selectAll.checked);
+            }
+        });
+        
+        headerCheckbox.checked = selectAll.checked;
+        updateBackupSelection();
+    }
+    
+    function updateBackupSelection() {
+        const checkboxes = document.querySelectorAll('.backup-select:checked');
+        const selectedCount = checkboxes.length;
+        const bulkActions = document.getElementById('bulk-actions');
+        const deleteBtn = document.getElementById('delete-selected-btn');
+        const selectedCountSpan = document.getElementById('selected-count');
+        const headerCheckbox = document.getElementById('select-all-header');
+        const selectAllCheckbox = document.getElementById('select-all-backups');
+        
+        // Update row styling
+        document.querySelectorAll('.backup-row').forEach(row => {
+            const cb = row.querySelector('.backup-select');
+            row.classList.toggle('selected', cb && cb.checked);
+        });
+        
+        // Update UI
+        if (selectedCount > 0) {
+            bulkActions.classList.add('visible');
+            deleteBtn.style.display = 'inline-block';
+            selectedCountSpan.textContent = selectedCount + ' selected';
+        } else {
+            bulkActions.classList.remove('visible');
+            deleteBtn.style.display = 'none';
+        }
+        
+        // Update select all checkbox state
+        const totalCheckboxes = document.querySelectorAll('.backup-select').length;
+        selectAllCheckbox.checked = selectedCount === totalCheckboxes;
+        headerCheckbox.checked = selectedCount === totalCheckboxes;
+    }
+    
+    function deleteSelectedBackups() {
+        const checkboxes = document.querySelectorAll('.backup-select:checked');
+        const ids = Array.from(checkboxes).map(cb => cb.value);
+        
+        if (ids.length === 0) {
+            alert('Please select at least one backup to delete.');
+            return;
+        }
+        
+        if (!confirm('Are you sure you want to permanently delete ' + ids.length + ' backup(s)? This action cannot be undone.')) {
+            return;
+        }
+        
+        // Create form and submit
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'delete_multiple_backups.php';
+        
+        ids.forEach(id => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'backup_ids[]';
+            input.value = id;
+            form.appendChild(input);
+        });
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+</script>
 
 <?php include '_layout_footer.php'; ?>

@@ -58,7 +58,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (empty($errors)) {
             try {
-                // unique code check
                 $chk = $pdo->prepare('SELECT id FROM promo_codes WHERE code = ?' . ($id ? ' AND id != ?' : ''));
                 if ($id) $chk->execute([$code, $id]); else $chk->execute([$code]);
                 if ($chk->fetch()) {
@@ -92,7 +91,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
     } elseif ($action === 'generate') {
-        // Ajax code generation
         header('Content-Type: application/json');
         $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
         $len = 10; $code = '';
@@ -137,12 +135,48 @@ try {
     .btn { padding:10px 14px; background:#c487a5; color:#fff; border:none; border-radius:6px; cursor:pointer; text-decoration:none; display:inline-block; }
     .btn.secondary { background:#666; }
     .btn.danger { background:#dc3545; }
+    .btn.success { background:#28a745; }
+    .btn.sm { padding:6px 10px; font-size:12px; }
     table { width:100%; border-collapse:collapse; }
     th, td { padding:10px; border-bottom:1px solid #eee; text-align:left; }
     th { background:#fafafa; }
     .alert { padding:10px 14px; border-radius:6px; margin-bottom:12px; }
     .alert.error { background:#fee2e2; color:#991b1b; }
     .alert.success { background:#dcfce7; color:#166534; }
+    
+    /* Tabs */
+    .tabs { display:flex; gap:4px; margin-bottom:16px; border-bottom:2px solid #eee; }
+    .tab { padding:12px 20px; background:none; border:none; cursor:pointer; font-size:14px; color:#666; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all 0.2s; }
+    .tab:hover { color:#c487a5; }
+    .tab.active { color:#c487a5; border-bottom-color:#c487a5; font-weight:600; }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+    
+    /* Sale Price Table */
+    .sale-product { display:flex; align-items:center; gap:10px; }
+    .sale-toggle { position:relative; width:48px; height:24px; }
+    .sale-toggle input { opacity:0; width:0; height:0; }
+    .sale-slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#ccc; transition:0.3s; border-radius:24px; }
+    .sale-slider:before { position:absolute; content:""; height:18px; width:18px; left:3px; bottom:3px; background-color:white; transition:0.3s; border-radius:50%; }
+    .sale-toggle input:checked + .sale-slider { background-color:#28a745; }
+    .sale-toggle input:checked + .sale-slider:before { transform:translateX(24px); }
+    
+    .sale-inputs { display:flex; gap:8px; align-items:center; }
+    .sale-inputs input { width:80px; padding:6px; }
+    .sale-inputs span { color:#666; font-size:12px; }
+    .sale-badge { background:#dc3545; color:white; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
+    .sale-expired { opacity:0.6; }
+    
+    /* Search */
+    .search-box { margin-bottom:16px; display:flex; gap:8px; }
+    .search-box input { flex:1; padding:10px; border:1px solid #ddd; border-radius:6px; }
+    
+    /* Modal */
+    .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center; }
+    .modal.active { display:flex; }
+    .modal-content { background:white; border-radius:12px; padding:20px; max-width:400px; width:90%; }
+    .modal-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+    .modal-close { background:none; border:none; font-size:24px; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -150,8 +184,18 @@ try {
 <?php include '_layout_header.php'; ?>
 
 <div class="content-wrapper" style="padding:20px;">
-    <div class="card">
-        <div class="card-header"><i class="fas fa-ticket"></i> Create / Edit Promo</div>
+    <h1 style="margin-bottom:20px;">Promotions</h1>
+    
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab active" data-tab="promos">Promo Codes</button>
+        <button class="tab" data-tab="sale-prices">Sale Prices</button>
+    </div>
+    
+    <!-- Promo Codes Tab -->
+    <div id="tab-promos" class="tab-content active">
+        <div class="card">
+            <div class="card-header"><i class="fas fa-ticket"></i> Create / Edit Promo</div>
             <div class="card-body">
                 <?php if (!empty($errors)): ?>
                     <div class="alert error"><?php echo implode('<br>', array_map('htmlspecialchars', $errors)); ?></div>
@@ -269,8 +313,270 @@ try {
                 </div>
             </div>
         </div>
+    </div>
+    
+    <!-- Sale Prices Tab -->
+    <div id="tab-sale-prices" class="tab-content">
+        <div class="card">
+            <div class="card-header"><i class="fas fa-tags"></i> Product Sale Prices</div>
+            <div class="card-body">
+                <div class="search-box">
+                    <input type="text" id="sale-search" placeholder="Search products..." onkeyup="searchSaleProducts()">
+                </div>
+                <div style="overflow-x:auto;">
+                    <table id="sale-prices-table">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Original Price</th>
+                                <th>Sale Price</th>
+                                <th>Discount</th>
+                                <th>End Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sale-products-body">
+                            <tr><td colspan="7">Loading products...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sale Price Modal -->
+<div id="sale-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Set Sale Price</h3>
+            <button class="modal-close" onclick="closeSaleModal()">&times;</button>
+        </div>
+        <form id="sale-form" onsubmit="saveSalePrice(event)">
+            <input type="hidden" id="sale-product-id" name="product_id">
+            <div class="form-group" style="margin-bottom:12px;">
+                <label>Product</label>
+                <div id="sale-product-name" style="font-weight:600;"></div>
+            </div>
+            <div class="form-group" style="margin-bottom:12px;">
+                <label>Original Price</label>
+                <div id="sale-original-price" style="font-size:18px; font-weight:600;"></div>
+            </div>
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                <label class="sale-toggle">
+                    <input type="checkbox" id="sale-is-on-sale" name="is_on_sale" onchange="toggleSaleInputs()">
+                    <span class="sale-slider"></span>
+                </label>
+                <span>Enable Sale</span>
+            </div>
+            <div id="sale-inputs" style="display:none;">
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label>Discount Type</label>
+                    <select id="sale-discount-type" onchange="calculateSalePrice()">
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="fixed">Fixed Price (£)</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label id="sale-value-label">Percentage (%)</label>
+                    <input type="number" id="sale-value" step="0.01" min="0" oninput="calculateSalePrice()">
+                </div>
+                <div class="form-group" style="margin-bottom:12px;">
+                    <label>Sale End Date (optional)</label>
+                    <input type="datetime-local" id="sale-end-date" name="sale_end_date">
+                </div>
+                <div style="background:#f8f9fa; padding:12px; border-radius:6px; margin-bottom:12px;">
+                    <div style="font-size:12px; color:#666;">Sale Price Preview:</div>
+                    <div id="sale-preview" style="font-size:24px; font-weight:600; color:#28a745;">-</div>
+                </div>
+            </div>
+            <div style="display:flex; gap:8px; justify-content:flex-end;">
+                <button type="button" class="btn secondary" onclick="closeSaleModal()">Cancel</button>
+                <button type="submit" class="btn success">Save Sale</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script>
+let saleProducts = [];
+
+// Tab functionality
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+        document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+        
+        if (this.dataset.tab === 'sale-prices') {
+            loadSaleProducts();
+        }
+    });
+});
+
+function loadSaleProducts() {
+    console.log('[Sale Prices] Loading products...');
+    fetch('/api/sale-prices.php?action=list')
+        .then(response => {
+            console.log('[Sale Prices] Response status:', response.status);
+            if (!response.ok) {
+                throw new Error('Network response was not ok: ' + response.status);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('[Sale Prices] Response data:', data);
+            if (data.success) {
+                saleProducts = data.products || [];
+                renderSaleProducts(saleProducts);
+            } else {
+                console.error('[Sale Prices] API error:', data.message);
+                document.getElementById('sale-products-body').innerHTML = '<tr><td colspan="7">Error loading products: ' + (data.message || 'Unknown error') + '</td></tr>';
+            }
+        })
+        .catch(error => {
+            console.error('[Sale Prices] Fetch error:', error);
+            document.getElementById('sale-products-body').innerHTML = '<tr><td colspan="7">Error loading products: ' + error.message + '</td></tr>';
+        });
+}
+
+function renderSaleProducts(products) {
+    const tbody = document.getElementById('sale-products-body');
+    if (products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7">No products found.</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = products.map(p => {
+        const isOnSale = p.is_on_sale && !p.sale_expired;
+        let discountPercent = p.sale_percentage;
+        if (!discountPercent && p.sale_price && p.price) {
+            discountPercent = Math.round((p.price - p.sale_price) / p.price * 100);
+        }
+        const saleBadge = p.sale_expired ? '<span class="sale-badge" style="background:#666;">Expired</span>' : 
+                          (isOnSale && discountPercent ? `<span class="sale-badge">-${discountPercent}%</span>` : '');
+        const endDate = p.sale_end_date ? new Date(p.sale_end_date).toLocaleString() : 'No end date';
+        const originalPrice = '£' + parseFloat(p.price).toFixed(2);
+        const salePrice = isOnSale ? '£' + parseFloat(p.sale_price).toFixed(2) : '-';
+        
+        return `<tr class="${p.sale_expired ? 'sale-expired' : ''}">
+            <td><div class="sale-product">${p.name.substring(0, 40)}${p.name.length > 40 ? '...' : ''}</div></td>
+            <td>${originalPrice}</td>
+            <td>${salePrice}</td>
+            <td>${saleBadge}</td>
+            <td>${endDate}</td>
+            <td>${isOnSale ? '<span style="color:#28a745;">On Sale</span>' : '<span style="color:#666;">Regular</span>'}</td>
+            <td><button class="btn sm" onclick="openSaleModal(${p.id})">${isOnSale ? 'Edit' : 'Set Sale'}</button></td>
+        </tr>`;
+    }).join('');
+}
+
+function searchSaleProducts() {
+    const query = document.getElementById('sale-search').value.toLowerCase();
+    const filtered = saleProducts.filter(p => p.name.toLowerCase().includes(query));
+    renderSaleProducts(filtered);
+}
+
+function openSaleModal(productId) {
+    const product = saleProducts.find(p => p.id === productId);
+    if (!product) return;
+    
+    document.getElementById('sale-product-id').value = product.id;
+    document.getElementById('sale-product-name').textContent = product.name;
+    document.getElementById('sale-original-price').textContent = '£' + parseFloat(product.price).toFixed(2);
+    document.getElementById('sale-is-on-sale').checked = product.is_on_sale && !product.sale_expired;
+    document.getElementById('sale-end-date').value = product.sale_end_date ? product.sale_end_date.substring(0, 16) : '';
+    
+    if (product.sale_percentage) {
+        document.getElementById('sale-discount-type').value = 'percentage';
+        document.getElementById('sale-value').value = product.sale_percentage;
+    } else if (product.sale_price) {
+        document.getElementById('sale-discount-type').value = 'fixed';
+        document.getElementById('sale-value').value = product.sale_price;
+    } else {
+        document.getElementById('sale-discount-type').value = 'percentage';
+        document.getElementById('sale-value').value = '';
+    }
+    
+    toggleSaleInputs();
+    calculateSalePrice();
+    document.getElementById('sale-modal').classList.add('active');
+}
+
+function closeSaleModal() {
+    document.getElementById('sale-modal').classList.remove('active');
+}
+
+function toggleSaleInputs() {
+    const inputs = document.getElementById('sale-inputs');
+    inputs.style.display = document.getElementById('sale-is-on-sale').checked ? 'block' : 'none';
+}
+
+function calculateSalePrice() {
+    const type = document.getElementById('sale-discount-type').value;
+    const value = parseFloat(document.getElementById('sale-value').value) || 0;
+    const originalPrice = parseFloat(document.getElementById('sale-original-price').textContent.replace('£', ''));
+    
+    document.getElementById('sale-value-label').textContent = type === 'percentage' ? 'Percentage (%)' : 'Fixed Price (£)';
+    
+    let salePrice = 0;
+    if (type === 'percentage') {
+        salePrice = originalPrice * (1 - value / 100);
+        document.getElementById('sale-preview').textContent = '£' + salePrice.toFixed(2) + ` (${value}% off)`;
+    } else {
+        salePrice = value;
+        const discount = originalPrice > 0 ? Math.round((originalPrice - value) / originalPrice * 100) : 0;
+        document.getElementById('sale-preview').textContent = '£' + salePrice.toFixed(2) + ` (${discount}% off)`;
+    }
+}
+
+function saveSalePrice(e) {
+    e.preventDefault();
+    
+    const productId = document.getElementById('sale-product-id').value;
+    const isOnSale = document.getElementById('sale-is-on-sale').checked ? 1 : 0;
+    const type = document.getElementById('sale-discount-type').value;
+    const value = document.getElementById('sale-value').value;
+    const saleEndDate = document.getElementById('sale-end-date').value;
+    
+    const formData = new FormData();
+    formData.append('action', 'set');
+    formData.append('product_id', productId);
+    formData.append('is_on_sale', isOnSale);
+    if (isOnSale) {
+        if (type === 'percentage') {
+            formData.append('sale_percentage', value);
+        } else {
+            formData.append('sale_price', value);
+        }
+        if (saleEndDate) {
+            formData.append('sale_end_date', saleEndDate);
+        }
+    }
+    
+    fetch('/api/sale-prices.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            closeSaleModal();
+            loadSaleProducts();
+        } else {
+            alert(data.message || 'Error saving sale price');
+        }
+    });
+}
+
+// Close modal on outside click
+document.getElementById('sale-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeSaleModal();
+});
+
+// Promo code functions
 function fillForm(id, code, type, value, minOrder, maxDisc, start, end, usageLimit, isActive) {
     document.getElementById('promo-id').value = id;
     document.getElementById('code').value = code;
@@ -297,7 +603,5 @@ document.getElementById('reset-form').addEventListener('click', function(){
     document.getElementById('promo-id').value = '';
 });
 </script>
-    </div>
-</div>
 
 <?php include '_layout_footer.php'; ?>

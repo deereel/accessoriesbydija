@@ -1,8 +1,8 @@
 /* Custom CTA Section */
 .custom-cta {
     background: linear-gradient(135deg, #fafafa 0%, #f8f5f7 100%);
-    padding: 5rem 0;
-    margin: 4rem 0;
+    padding: 2rem 0;
+    margin: 0;
     opacity: 0;
     transform: translateY(30px);
     transition: all 0.8s ease;

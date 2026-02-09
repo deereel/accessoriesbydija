@@ -13,7 +13,7 @@ $current_page = basename($_SERVER['PHP_SELF']);
 // Pages inaccessible to certain roles
 $restricted_pages = [
     'staff' => ['inventory.php', 'testimonials.php', 'settings.php', 'banners.php', 'categories.php'],
-    'admin' => ['users.php', 'database.php'],
+    'admin' => ['users.php', 'database.php'], // Admin can see links but not access these pages
 ];
 
 if (isset($restricted_pages[$user_role]) && in_array($current_page, $restricted_pages[$user_role])) {
@@ -25,6 +25,48 @@ if (isset($restricted_pages[$user_role]) && in_array($current_page, $restricted_
 // Expected: $page_title (optional), $active_nav (dashboard|inventory|reports|products|categories|orders|customers|banners|testimonials|settings)
 $page_title = isset($page_title) ? $page_title : 'Admin - Dija Accessories';
 $active_nav = isset($active_nav) ? $active_nav : '';
+
+// Pseudo-cron: Check and run weekly backup if needed
+function checkAndRunScheduledBackup() {
+  $backups_dir = __DIR__ . '/backups';
+  $last_run_file = $backups_dir . '/.last_weekly_backup';
+  
+  // Check if backup file exists and is less than 7 days old
+  if (file_exists($last_run_file)) {
+    $last_run = (int)file_get_contents($last_run_file);
+    $one_week = 7 * 24 * 60 * 60;
+    
+    if ((time() - $last_run) < $one_week) {
+      return; // Not yet time for weekly backup
+    }
+  }
+  
+  // It's been more than a week (or first run) - trigger the backup
+  require_once '../app/config/env.php';
+  $cron_key = defined('CRON_KEY') ? CRON_KEY : getenv('CRON_KEY');
+  
+  if (empty($cron_key)) {
+    return; // No cron key configured
+  }
+  
+  // Trigger backup in background
+  ignore_user_abort(true);
+  set_time_limit(300);
+  
+  $cron_url = 'https://' . $_SERVER['HTTP_HOST'] . '/api/cron.php?key=' . urlencode($cron_key) . '&action=run-if-needed';
+  
+  $ctx = stream_context_create([
+    'http' => [
+      'timeout' => 1,
+      'ignore_errors' => true
+    ]
+  ]);
+  
+  @file_get_contents($cron_url, false, $ctx);
+}
+
+// Run the scheduled backup check
+checkAndRunScheduledBackup();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -123,6 +165,22 @@ function closeMobileMenu() {
   overlay.classList.remove('active');
 }
 
+// Save scroll position before leaving page
+window.addEventListener('beforeunload', function() {
+  sessionStorage.setItem('adminScrollPosition', window.scrollY);
+});
+
+// Restore scroll position on page load
+document.addEventListener('DOMContentLoaded', function() {
+  const savedScroll = sessionStorage.getItem('adminScrollPosition');
+  if (savedScroll !== null) {
+    setTimeout(function() {
+      window.scrollTo(0, parseInt(savedScroll));
+      sessionStorage.removeItem('adminScrollPosition');
+    }, 10);
+  }
+});
+
 if ('serviceWorker' in navigator) {
   (async function(){
     try {
@@ -144,6 +202,9 @@ if ('serviceWorker' in navigator) {
   })();
 }
 </script>
+
+<!-- Admin PWA Install Prompt -->
+<script src="/admin/admin-pwa-install.js"></script>
 </head>
 <body>
 <div class="mobile-overlay" onclick="closeMobileMenu()"></div>

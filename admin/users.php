@@ -4,7 +4,7 @@ if (!isset($_SESSION['admin_logged_in'])) {
     header('Location: index.php');
     exit;
 }
-if ($_SESSION['admin_role'] !== 'superadmin') {
+if (!in_array($_SESSION['admin_role'], ['admin', 'superadmin'])) {
     exit('Access Denied: You do not have permission to access this page.');
 }
 

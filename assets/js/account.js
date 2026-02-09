@@ -5,10 +5,36 @@ document.addEventListener('DOMContentLoaded', function() {
     const navItems = document.querySelectorAll('.account-nav-item:not(.logout)');
     const tabs = document.querySelectorAll('.account-tab');
     
+    // Restore saved tab from sessionStorage
+    const savedTab = sessionStorage.getItem('accountActiveTab');
+    if (savedTab) {
+        const targetTab = document.querySelector(`.account-nav-item[data-tab="${savedTab}"]`);
+        if (targetTab) {
+            // Update active nav item
+            navItems.forEach(nav => nav.classList.remove('active'));
+            targetTab.classList.add('active');
+            
+            // Update active tab
+            tabs.forEach(tab => tab.classList.remove('active'));
+            const targetTabContent = document.getElementById(savedTab + '-tab');
+            if (targetTabContent) {
+                targetTabContent.classList.add('active');
+                // Load tab content
+                loadTabContent(savedTab);
+            }
+        }
+    } else {
+        // Load initial dashboard data
+        loadDashboardData();
+    }
+    
     navItems.forEach(item => {
         item.addEventListener('click', function(e) {
             e.preventDefault();
             const tabId = this.dataset.tab;
+            
+            // Save active tab to sessionStorage
+            sessionStorage.setItem('accountActiveTab', tabId);
             
             // Update active nav item
             navItems.forEach(nav => nav.classList.remove('active'));
@@ -23,8 +49,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Load initial dashboard data
-    loadDashboardData();
+    // Load initial dashboard data (only if no saved tab)
+    if (!sessionStorage.getItem('accountActiveTab')) {
+        loadDashboardData();
+    }
+    
+    // Save tab before leaving page
+    window.addEventListener('beforeunload', function() {
+        const activeTab = document.querySelector('.account-nav-item.active');
+        if (activeTab) {
+            sessionStorage.setItem('accountActiveTab', activeTab.dataset.tab);
+        }
+    });
     
     // Profile Form
     document.getElementById('profile-form').addEventListener('submit', handleProfileUpdate);

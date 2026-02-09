@@ -197,6 +197,12 @@ $memory->save('recent_changes', [
         'type' => 'bugfix',
         'description' => 'Fixed featured products not updating when featured in admin - removed conditional skip in featured-products.js that would skip API fetch if server-rendered products had images. Now always fetches fresh data with cache-buster timestamp.',
         'files' => ['assets/js/featured-products.js']
+    ],
+    [
+        'date' => date('Y-m-d H:i:s'),
+        'type' => 'feature',
+        'description' => 'Implemented product sale price feature - added sale prices tab to admin promo codes page. Admin can toggle sale for products and set percentage or fixed price reduction. Sale prices display on storefront with slashed price and discount badge.',
+        'files' => ['app/memory/sale_price_migration.php', 'api/sale-prices.php', 'admin/promos.php', 'assets/css/sale-price.css', 'api/filtered-products.php', 'app/products.php', 'app/product.php']
     ]
 ], ['changes', 'tracking']);
 
