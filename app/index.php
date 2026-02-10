@@ -459,7 +459,7 @@ echo '<script type="application/ld+json">' . json_encode($faq_schema) . '</scrip
                     <a href="custom-jewelry.php" class="custom-btn">Start Custom Design</a>
                 </div>
                 <div class="custom-image">
-                    <div class="jewelry-sketch">💍</div>
+                    <img src="/assets/images/customize.webp" alt="Custom Jewelry Design" loading="lazy" onerror="this.src='/assets/images/placeholder.webp'; this.onerror=null;">
                 </div>
             </div>
         </div>

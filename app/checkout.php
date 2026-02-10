@@ -116,10 +116,31 @@ include 'includes/header.php';
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
         
         .payment-methods { display: grid; gap: 1rem; }
-        .payment-option { border: 2px solid #ddd; padding: 1rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .payment-option { border: 2px solid #ddd; padding: 1rem; border-radius: 6px; cursor: pointer; transition: all 0.2s; position: relative; }
         .payment-option:hover { border-color: #c487a5; background: #fafafa; }
         .payment-option input[type="radio"] { margin-right: 0.75rem; }
         .payment-option.selected { border-color: #c487a5; background: #fff5f8; }
+        .payment-option.disabled { 
+            opacity: 0.6; 
+            cursor: not-allowed; 
+            background: #f5f5f5;
+            border-color: #e0e0e0;
+        }
+        .payment-option.disabled:hover { border-color: #e0e0e0; background: #f5f5f5; }
+        .payment-option.disabled input[type="radio"] { cursor: not-allowed; }
+        .coming-soon-badge {
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            background: #666;
+            color: white;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
         
         .order-summary { position: sticky; top: 2rem; }
         .summary-row { display: flex; justify-content: space-between; margin-bottom: 0.75rem; padding-bottom: 0.75rem; border-bottom: 1px solid #eee; }
@@ -274,20 +295,22 @@ include 'includes/header.php';
                 <div class="checkout-section">
                     <div class="section-title">Payment Method</div>
                     <div class="payment-methods">
-                        <label class="payment-option" onclick="selectPaymentMethod('paystack')">
-                            <input type="radio" name="payment_method" value="paystack" onchange="selectPaymentMethod('paystack')">
+                        <label class="payment-option disabled" onclick="return false;">
+                            <span class="coming-soon-badge">Coming Soon</span>
+                            <input type="radio" name="payment_method" value="paystack" disabled>
                             <i class="fas fa-credit-card"></i> Paystack
-                            <small style="display: block; color: #666; margin-left: 1.75rem;">Card, Mobile Money, Bank Transfer</small>
+                            <small style="display: block; color: #999; margin-left: 1.75rem;">Card, Mobile Money, Bank Transfer</small>
                         </label>
                         <label class="payment-option selected" onclick="selectPaymentMethod('stripe')">
                             <input type="radio" name="payment_method" value="stripe" checked onchange="selectPaymentMethod('stripe')">
                             <i class="fab fa-stripe"></i> Stripe
                             <small style="display: block; color: #666; margin-left: 1.75rem;">Card Payments</small>
                         </label>
-                        <label class="payment-option" onclick="selectPaymentMethod('remita')">
-                            <input type="radio" name="payment_method" value="remita" onchange="selectPaymentMethod('remita')">
+                        <label class="payment-option disabled" onclick="return false;">
+                            <span class="coming-soon-badge">Coming Soon</span>
+                            <input type="radio" name="payment_method" value="remita" disabled>
                             <i class="fas fa-money-bill"></i> Remita
-                            <small style="display: block; color: #666; margin-left: 1.75rem;">Bank Transfer, Card, Wallet</small>
+                            <small style="display: block; color: #999; margin-left: 1.75rem;">Bank Transfer, Card, Wallet</small>
                         </label>
                     </div>
                 </div>
@@ -529,6 +552,12 @@ include 'includes/header.php';
         }
 
         function selectPaymentMethod(method) {
+            // Prevent selection of disabled payment methods
+            const selectedOption = document.querySelector(`input[name="payment_method"][value="${method}"]`);
+            if (selectedOption && selectedOption.disabled) {
+                return; // Do nothing for disabled methods
+            }
+            
             document.querySelectorAll('.payment-option').forEach(opt => {
                 opt.classList.remove('selected');
             });
@@ -668,13 +697,12 @@ include 'includes/header.php';
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Redirect to payment gateway
-                    if (paymentMethod === 'paystack') {
-                        window.location.href = `/api/payments/paystack/initialize.php?order_id=${data.order_id}`;
-                    } else if (paymentMethod === 'stripe') {
+                    // Redirect to payment gateway (only Stripe is available)
+                    if (paymentMethod === 'stripe') {
                         window.location.href = `/api/payments/stripe/create-session.php?order_id=${data.order_id}`;
-                    } else if (paymentMethod === 'remita') {
-                        window.location.href = `/api/payments/remita/initialize.php?order_id=${data.order_id}`;
+                    } else {
+                        // Fallback to Stripe if somehow another method was selected
+                        window.location.href = `/api/payments/stripe/create-session.php?order_id=${data.order_id}`;
                     }
                 } else {
                     alert('Error creating order: ' + (data.message || 'Unknown error'));

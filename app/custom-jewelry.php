@@ -160,19 +160,27 @@ $adornments = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <h3>Custom Pieces We've Created</h3>
                     <div class="gallery-grid">
                         <div class="gallery-item">
-                            <img src="assets/images/custom-1.jpg" alt="Custom engagement ring" loading="lazy" onerror="this.src='assets/images/placeholder.jpg'">
+                            <div class="gallery-placeholder" style="background: linear-gradient(135deg, #c487a5 0%, #b07591 100%);">
+                                <span>💍</span>
+                            </div>
                             <p>Custom Engagement Ring</p>
                         </div>
                         <div class="gallery-item">
-                            <img src="assets/images/custom-2.jpg" alt="Personalized necklace" loading="lazy" onerror="this.src='assets/images/placeholder.jpg'">
+                            <div class="gallery-placeholder" style="background: linear-gradient(135deg, #d4a5a5 0%, #b07591 100%);">
+                                <span>📿</span>
+                            </div>
                             <p>Personalized Necklace</p>
                         </div>
                         <div class="gallery-item">
-                            <img src="assets/images/custom-3.jpg" alt="Custom wedding bands" loading="lazy" onerror="this.src='assets/images/placeholder.jpg'">
+                            <div class="gallery-placeholder" style="background: linear-gradient(135deg, #a5c4d4 0%, #7591b0 100%);">
+                                <span>💒</span>
+                            </div>
                             <p>Custom Wedding Bands</p>
                         </div>
                         <div class="gallery-item">
-                            <img src="assets/images/custom-4.jpg" alt="Birthstone bracelet" loading="lazy" onerror="this.src='assets/images/placeholder.jpg'">
+                            <div class="gallery-placeholder" style="background: linear-gradient(135deg, #d4a5c4 0%, #b09175 100%);">
+                                <span>🎁</span>
+                            </div>
                             <p>Birthstone Bracelet</p>
                         </div>
                     </div>
@@ -331,6 +339,16 @@ $adornments = $stmt->fetchAll(PDO::FETCH_ASSOC);
     height: 150px;
     object-fit: cover;
     border-radius: 8px;
+}
+
+.gallery-placeholder {
+    width: 100%;
+    height: 150px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
 }
 
 .gallery-item p {
