@@ -49,9 +49,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
         } elseif ($action === 'delete_category') {
             $id = (int)($_POST['id'] ?? 0);
             if ($id) {
-                $stmt = $pdo->prepare("DELETE FROM categories WHERE id=?");
+                // Check if category is being used by any products
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM products WHERE category_id = ?");
                 $stmt->execute([$id]);
-                echo json_encode(['success' => true, 'message' => 'Category deleted successfully!']);
+                $usageCount = $stmt->fetchColumn();
+                
+                if ($usageCount > 0) {
+                    echo json_encode(['success' => false, 'message' => "Cannot delete this category because it is currently assigned to $usageCount product(s). Please remove or reassign these products first."]);
+                } else {
+                    $stmt = $pdo->prepare("DELETE FROM categories WHERE id=?");
+                    $stmt->execute([$id]);
+                    echo json_encode(['success' => true, 'message' => 'Category deleted successfully!']);
+                }
             } else {
                 echo json_encode(['success' => false, 'message' => 'Invalid category ID']);
             }
@@ -84,9 +93,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
         } elseif ($action === 'delete_color') {
             $id = (int)($_POST['id'] ?? 0);
             if ($id) {
-                $stmt = $pdo->prepare("DELETE FROM colors WHERE id=?");
+                // Get the color name first
+                $stmt = $pdo->prepare("SELECT name FROM colors WHERE id = ?");
                 $stmt->execute([$id]);
-                echo json_encode(['success' => true, 'message' => 'Color deleted successfully!']);
+                $colorName = $stmt->fetchColumn();
+                
+                if (!$colorName) {
+                    echo json_encode(['success' => false, 'message' => 'Color not found']);
+                    exit;
+                }
+                
+                // Check if color is being used by any products (stored by name in product_variations)
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM product_variations WHERE color = ?");
+                $stmt->execute([$colorName]);
+                $usageCount = $stmt->fetchColumn();
+                
+                if ($usageCount > 0) {
+                    echo json_encode(['success' => false, 'message' => "Cannot delete this color because it is currently used by $usageCount product(s). Please remove or reassign these products first."]);
+                } else {
+                    $stmt = $pdo->prepare("DELETE FROM colors WHERE id=?");
+                    $stmt->execute([$id]);
+                    echo json_encode(['success' => true, 'message' => 'Color deleted successfully!']);
+                }
             } else {
                 echo json_encode(['success' => false, 'message' => 'Invalid color ID']);
             }
@@ -121,11 +149,76 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ajax'])) {
         } elseif ($action === 'delete_adornment') {
             $id = (int)($_POST['id'] ?? 0);
             if ($id) {
-                $stmt = $pdo->prepare("DELETE FROM adornments WHERE id=?");
+                // Get the adornment name first
+                $stmt = $pdo->prepare("SELECT name FROM adornments WHERE id = ?");
                 $stmt->execute([$id]);
-                echo json_encode(['success' => true, 'message' => 'Adornment deleted successfully!']);
+                $adornmentName = $stmt->fetchColumn();
+                
+                if (!$adornmentName) {
+                    echo json_encode(['success' => false, 'message' => 'Adornment not found']);
+                    exit;
+                }
+                
+                // Check if adornment is being used by any products (stored by name in product_variations)
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM product_variations WHERE adornment = ?");
+                $stmt->execute([$adornmentName]);
+                $usageCount = $stmt->fetchColumn();
+                
+                if ($usageCount > 0) {
+                    echo json_encode(['success' => false, 'message' => "Cannot delete this adornment because it is currently used by $usageCount product(s). Please remove or reassign these products first."]);
+                } else {
+                    $stmt = $pdo->prepare("DELETE FROM adornments WHERE id=?");
+                    $stmt->execute([$id]);
+                    echo json_encode(['success' => true, 'message' => 'Adornment deleted successfully!']);
+                }
             } else {
                 echo json_encode(['success' => false, 'message' => 'Invalid adornment ID']);
+            }
+            exit;
+        } elseif ($action === 'add_material') {
+            $name = trim($_POST['name'] ?? '');
+            $description = trim($_POST['description'] ?? '');
+            
+            if ($name) {
+                $slug = strtolower(str_replace(' ', '-', $name));
+                $stmt = $pdo->prepare("INSERT INTO materials (name, slug, description, is_active) VALUES (?, ?, ?, ?)");
+                $stmt->execute([$name, $slug, $description, 1]);
+                echo json_encode(['success' => true, 'message' => 'Material added successfully!']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Material name is required']);
+            }
+            exit;
+        } elseif ($action === 'update_material') {
+            $id = (int)($_POST['id'] ?? 0);
+            $name = trim($_POST['name'] ?? '');
+            $description = trim($_POST['description'] ?? '');
+            
+            if ($id && $name) {
+                $slug = strtolower(str_replace(' ', '-', $name));
+                $stmt = $pdo->prepare("UPDATE materials SET name=?, slug=?, description=? WHERE id=?");
+                $stmt->execute([$name, $slug, $description, $id]);
+                echo json_encode(['success' => true, 'message' => 'Material updated successfully!']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Invalid material data']);
+            }
+            exit;
+        } elseif ($action === 'delete_material') {
+            $id = (int)($_POST['id'] ?? 0);
+            if ($id) {
+                // Check if material is being used by any products
+                $stmt = $pdo->prepare("SELECT COUNT(*) FROM product_variations WHERE material_id = ?");
+                $stmt->execute([$id]);
+                $usageCount = $stmt->fetchColumn();
+                
+                if ($usageCount > 0) {
+                    echo json_encode(['success' => false, 'message' => "Cannot delete this material because it is currently used by $usageCount product(s). Please remove or reassign these products first."]);
+                } else {
+                    $stmt = $pdo->prepare("DELETE FROM materials WHERE id=?");
+                    $stmt->execute([$id]);
+                    echo json_encode(['success' => true, 'message' => 'Material deleted successfully!']);
+                }
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Invalid material ID']);
             }
             exit;
         }
@@ -155,6 +248,15 @@ try {
 } catch (Exception $e) {
     // Table might not exist
     $adornments = [];
+}
+
+// Fetch materials
+try {
+    $stmt = $pdo->query("SELECT * FROM materials ORDER BY name ASC");
+    $materials = $stmt->fetchAll(PDO::FETCH_ASSOC);
+} catch (Exception $e) {
+    // Table might not exist
+    $materials = [];
 }
 ?>
 
@@ -361,11 +463,81 @@ try {
     .table-responsive {
         overflow-x: auto;
     }
+    
+    /* Modal Styles */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .modal-overlay.show {
+        display: flex;
+    }
+    
+    .modal-content {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        position: relative;
+    }
+    
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    
+    .modal-header h3 {
+        margin: 0;
+        color: #333;
+    }
+    
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #999;
+        line-height: 1;
+    }
+    
+    .modal-close:hover {
+        color: #333;
+    }
+    
+    .modal-body {
+        margin-bottom: 20px;
+        color: #666;
+    }
+    
+    .modal-body.error {
+        color: #721c24;
+    }
+    
+    .modal-footer {
+        text-align: right;
+    }
+    
+    .modal-footer .btn {
+        min-width: 80px;
+    }
 </style>
 
 <div class="card">
     <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
-        <span><i class="fas fa-list"></i> Categories, Colors & Adornments Management</span>
+        <span><i class="fas fa-list"></i> Categories, Colors, Adornments & Materials Management</span>
     </div>
     <div class="card-body">
         <div id="message-container"></div>
@@ -380,6 +552,9 @@ try {
                 </button>
                 <button class="tab-btn" onclick="switchTab('adornments')">
                     <i class="fas fa-gem"></i> Adornments
+                </button>
+                <button class="tab-btn" onclick="switchTab('materials')">
+                    <i class="fas fa-cubes"></i> Materials
                 </button>
             </div>
             
@@ -441,12 +616,7 @@ try {
                                         <td><?php echo $category['parent_id'] ? 'Yes' : '-'; ?></td>
                                         <td class="actions">
                                             <button class="btn btn-sm" onclick="editCategory(<?php echo $category['id']; ?>, '<?php echo htmlspecialchars($category['name']); ?>', '<?php echo htmlspecialchars($category['description'] ?? ''); ?>', <?php echo $category['parent_id'] ?? 'null'; ?>)">Edit</button>
-                                            <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this category?');">
-                                                <input type="hidden" name="action" value="delete_category">
-                                                <input type="hidden" name="ajax" value="1">
-                                                <input type="hidden" name="id" value="<?php echo $category['id']; ?>">
-                                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                            </form>
+                                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteItem('delete_category', <?php echo $category['id']; ?>, 'category')">Delete</button>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -510,12 +680,7 @@ try {
                                         <td><?php echo htmlspecialchars($color['hex_code'] ?? '-'); ?></td>
                                         <td class="actions">
                                             <button class="btn btn-sm" onclick="editColor(<?php echo $color['id']; ?>, '<?php echo htmlspecialchars($color['name']); ?>', '<?php echo htmlspecialchars($color['hex_code'] ?? ''); ?>')">Edit</button>
-                                            <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this color?');">
-                                                <input type="hidden" name="action" value="delete_color">
-                                                <input type="hidden" name="ajax" value="1">
-                                                <input type="hidden" name="id" value="<?php echo $color['id']; ?>">
-                                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                            </form>
+                                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteItem('delete_color', <?php echo $color['id']; ?>, 'color')">Delete</button>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -574,12 +739,66 @@ try {
                                         <td><?php echo htmlspecialchars($adornment['description'] ?? '-'); ?></td>
                                         <td class="actions">
                                             <button class="btn btn-sm" onclick="editAdornment(<?php echo $adornment['id']; ?>, '<?php echo htmlspecialchars($adornment['name']); ?>', '<?php echo htmlspecialchars($adornment['description'] ?? ''); ?>')">Edit</button>
-                                            <form method="POST" style="display:inline;" onsubmit="return confirm('Delete this adornment?');">
-                                                <input type="hidden" name="action" value="delete_adornment">
-                                                <input type="hidden" name="ajax" value="1">
-                                                <input type="hidden" name="id" value="<?php echo $adornment['id']; ?>">
-                                                <button type="submit" class="btn btn-sm btn-danger">Delete</button>
-                                            </form>
+                                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteItem('delete_adornment', <?php echo $adornment['id']; ?>, 'adornment')">Delete</button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Materials Tab -->
+            <div id="materials-tab" class="tab-content">
+                <div class="add-form">
+                    <h3>Add New Material</h3>
+                    <form id="material-form" onsubmit="handleMaterialSubmit(event)">
+                        <input type="hidden" name="action" value="add_material">
+                        <input type="hidden" name="ajax" value="1">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Material Name *</label>
+                                <input type="text" name="name" required placeholder="e.g., Sterling Silver">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <textarea name="description" rows="2" placeholder="Description of this material..."></textarea>
+                        </div>
+                        <button type="submit" class="btn">Add Material</button>
+                    </form>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="item-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Slug</th>
+                                <th>Description</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($materials)): ?>
+                                <tr>
+                                    <td colspan="5" class="empty-state">
+                                        <i class="fas fa-cubes"></i>
+                                        <p>No materials yet. Add your first material above.</p>
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                            <?php foreach ($materials as $material): ?>
+                                    <tr>
+                                        <td><?php echo $material['id']; ?></td>
+                                        <td><strong><?php echo htmlspecialchars($material['name']); ?></strong></td>
+                                        <td><?php echo htmlspecialchars($material['slug']); ?></td>
+                                        <td><?php echo htmlspecialchars($material['description'] ?? '-'); ?></td>
+                                        <td class="actions">
+                                            <button class="btn btn-sm" onclick="editMaterial(<?php echo $material['id']; ?>, '<?php echo htmlspecialchars($material['name']); ?>', '<?php echo htmlspecialchars($material['description'] ?? ''); ?>')">Edit</button>
+                                        <button type="button" class="btn btn-sm btn-danger" onclick="deleteItem('delete_material', <?php echo $material['id']; ?>, 'material')">Delete</button>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -592,7 +811,22 @@ try {
     </div>
 </div>
 
+<!-- Message Modal -->
+<div id="messageModal" class="modal-overlay">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modalTitle">Message</h3>
+            <button class="modal-close" onclick="closeMessageModal()">&times;</button>
+        </div>
+        <div id="modalBody" class="modal-body"></div>
+        <div class="modal-footer">
+            <button class="btn" onclick="closeMessageModal()">OK</button>
+        </div>
+    </div>
+</div>
+
 <script>
+    // Store active tab in localStorage
     function switchTab(tabName) {
         // Update tab buttons
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -601,13 +835,57 @@ try {
         // Update tab content
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
         document.getElementById(tabName + '-tab').classList.add('active');
+        
+        // Save to localStorage
+        localStorage.setItem('categoriesActiveTab', tabName);
     }
+    
+    // Restore active tab from localStorage on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const savedTab = localStorage.getItem('categoriesActiveTab');
+        if (savedTab && document.getElementById(savedTab + '-tab')) {
+            // Simulate click on the saved tab button
+            const tabBtn = document.querySelector(`.tab-btn[onclick="switchTab('${savedTab}')"]`);
+            if (tabBtn) {
+                tabBtn.classList.add('active');
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.getElementById(savedTab + '-tab').classList.add('active');
+            }
+        }
+    });
     
     function showMessage(message, type) {
         const container = document.getElementById('message-container');
         container.innerHTML = `<div class="${type}-message">${message}</div>`;
         setTimeout(() => container.innerHTML = '', 5000);
     }
+    
+    function showMessageModal(message, isError = false) {
+        const modal = document.getElementById('messageModal');
+        const modalBody = document.getElementById('modalBody');
+        
+        modalBody.innerHTML = message;
+        modalBody.className = 'modal-body' + (isError ? ' error' : '');
+        modal.classList.add('show');
+    }
+    
+    function closeMessageModal() {
+        document.getElementById('messageModal').classList.remove('show');
+    }
+    
+    // Close modal when clicking outside
+    document.getElementById('messageModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeMessageModal();
+        }
+    });
+    
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeMessageModal();
+        }
+    });
     
     async function handleCategorySubmit(event) {
         event.preventDefault();
@@ -622,14 +900,14 @@ try {
             const result = await response.json();
             
             if (result.success) {
-                showMessage(result.message, 'success');
+                showMessageModal('Success: ' + result.message);
                 form.reset();
                 setTimeout(() => location.reload(), 1000);
             } else {
-                showMessage(result.message, 'error');
+                showMessageModal(result.message, true);
             }
         } catch (error) {
-            showMessage('An error occurred. Please try again.', 'error');
+            showMessageModal('An error occurred. Please try again.', true);
         }
     }
     
@@ -646,16 +924,16 @@ try {
             const result = await response.json();
             
             if (result.success) {
-                showMessage(result.message, 'success');
+                showMessageModal('Success: ' + result.message);
                 form.reset();
                 document.getElementById('color-picker').value = '#C0C0C0';
                 document.getElementById('hex-input').value = '';
                 setTimeout(() => location.reload(), 1000);
             } else {
-                showMessage(result.message, 'error');
+                showMessageModal(result.message, true);
             }
         } catch (error) {
-            showMessage('An error occurred. Please try again.', 'error');
+            showMessageModal('An error occurred. Please try again.', true);
         }
     }
     
@@ -672,14 +950,14 @@ try {
             const result = await response.json();
             
             if (result.success) {
-                showMessage(result.message, 'success');
+                showMessageModal('Success: ' + result.message);
                 form.reset();
                 setTimeout(() => location.reload(), 1000);
             } else {
-                showMessage(result.message, 'error');
+                showMessageModal(result.message, true);
             }
         } catch (error) {
-            showMessage('An error occurred. Please try again.', 'error');
+            showMessageModal('An error occurred. Please try again.', true);
         }
     }
     
@@ -831,6 +1109,104 @@ try {
         if (cancelBtn) cancelBtn.remove();
         
         form.querySelector('button[type="submit"]').textContent = 'Add Adornment';
+    }
+    
+    function deleteItem(action, id, itemName) {
+        if (!confirm('Delete this ' + itemName + '?')) {
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('action', action);
+        formData.append('ajax', '1');
+        formData.append('id', id);
+        
+        fetch('', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                showMessageModal('Success: ' + result.message);
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showMessageModal(result.message, true);
+            }
+        })
+        .catch(error => {
+            showMessageModal('An error occurred. Please try again.', true);
+        });
+    }
+    
+    async function handleMaterialSubmit(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        
+        try {
+            const response = await fetch('', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+                showMessageModal('Success: ' + result.message);
+                form.reset();
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                showMessageModal(result.message, true);
+            }
+        } catch (error) {
+            showMessageModal('An error occurred. Please try again.', true);
+        }
+    }
+    
+    function editMaterial(id, name, description) {
+        const form = document.getElementById('material-form');
+        form.querySelector('input[name="action"]').value = 'update_material';
+        form.querySelector('input[name="name"]').value = name;
+        form.querySelector('textarea[name="description"]').value = description || '';
+        
+        // Add hidden ID field
+        let idField = form.querySelector('input[name="id"]');
+        if (!idField) {
+            idField = document.createElement('input');
+            idField.type = 'hidden';
+            idField.name = 'id';
+            form.appendChild(idField);
+        }
+        idField.value = id;
+        
+        // Change submit button text
+        form.querySelector('button[type="submit"]').textContent = 'Update Material';
+        
+        // Add cancel button if not exists
+        if (!form.querySelector('.cancel-btn')) {
+            const cancelBtn = document.createElement('button');
+            cancelBtn.type = 'button';
+            cancelBtn.className = 'btn btn-secondary cancel-btn';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.onclick = resetMaterialForm;
+            form.querySelector('button[type="submit"]').before(cancelBtn);
+        }
+        
+        form.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    function resetMaterialForm() {
+        const form = document.getElementById('material-form');
+        form.reset();
+        form.querySelector('input[name="action"]').value = 'add_material';
+        
+        const idField = form.querySelector('input[name="id"]');
+        if (idField) idField.remove();
+        
+        const cancelBtn = form.querySelector('.cancel-btn');
+        if (cancelBtn) cancelBtn.remove();
+        
+        form.querySelector('button[type="submit"]').textContent = 'Add Material';
     }
 </script>
 

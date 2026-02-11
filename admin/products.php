@@ -128,6 +128,29 @@ if (isset($_POST['toggle_active'])) {
     exit;
 }
 
+// Handle toggle customized
+if (isset($_POST['toggle_customized'])) {
+    $product_id = (int)$_POST['toggle_customized'];
+    try {
+        $stmt = $pdo->prepare("UPDATE products SET is_customized = 1 - is_customized WHERE id = ?");
+        $stmt->execute([$product_id]);
+
+        // Get product slug for cache clearing
+        $slug_stmt = $pdo->prepare("SELECT slug FROM products WHERE id = ?");
+        $slug_stmt->execute([$product_id]);
+        $slug = $slug_stmt->fetchColumn();
+
+        // Clear product cache
+        cache_delete('product_' . $slug);
+
+        $_SESSION['flash_message'] = "Product customized status updated.";
+    } catch (Exception $e) {
+        $_SESSION['flash_message'] = $e->getMessage();
+    }
+    header("Location: " . $_SERVER['PHP_SELF']);
+    exit;
+}
+
 $page_title = "Products Management";
 $active_nav = "products";
 
@@ -419,13 +442,66 @@ if ($_POST) {
 $stmt = $pdo->query("SELECT p.*, COUNT(pv.id) as variation_count FROM products p LEFT JOIN product_variations pv ON p.id = pv.product_id GROUP BY p.id ORDER BY p.created_at DESC");
 $products = $stmt->fetchAll();
 
-// Fetch materials for form
-$stmt = $pdo->query("SELECT * FROM materials ORDER BY name");
-$materials = $stmt->fetchAll();
+// Fetch materials for form from database
+try {
+    $stmt = $pdo->query("SELECT * FROM materials WHERE is_active = 1 ORDER BY name");
+    $db_materials = $stmt->fetchAll();
+} catch (Exception $e) {
+    $db_materials = [];
+}
+
+// Fallback to hardcoded materials if database table is empty
+$materialOptions = !empty($db_materials) ? $db_materials : [
+    ['id' => 1, 'name' => 'Sterling Silver'],
+    ['id' => 2, 'name' => 'Gold'],
+    ['id' => 3, 'name' => 'Gold Plated'],
+    ['id' => 4, 'name' => 'Rose Gold'],
+    ['id' => 5, 'name' => 'White Gold'],
+    ['id' => 6, 'name' => 'Stainless Steel'],
+    ['id' => 7, 'name' => 'Leather'],
+    ['id' => 8, 'name' => 'Fabric'],
+    ['id' => 9, 'name' => 'Beads'],
+    ['id' => 10, 'name' => 'Wood'],
+];
 
 // Fetch categories for form
 $stmt = $pdo->query("SELECT * FROM categories ORDER BY name");
 $categories = $stmt->fetchAll();
+
+// Fetch colors from database for dropdown
+try {
+    $stmt = $pdo->query("SELECT * FROM colors WHERE is_active = 1 ORDER BY name");
+    $db_colors = $stmt->fetchAll();
+} catch (Exception $e) {
+    $db_colors = [];
+}
+
+// Fetch adornments from database for dropdown
+try {
+    $stmt = $pdo->query("SELECT * FROM adornments WHERE is_active = 1 ORDER BY name");
+    $db_adornments = $stmt->fetchAll();
+} catch (Exception $e) {
+    $db_adornments = [];
+}
+
+// Fallback to hardcoded values if database tables are empty
+$colorOptions = !empty($db_colors) ? array_map(function($c) { return ['value' => $c['name'], 'hex' => $c['hex_code']]; }, $db_colors) : [
+    ['value' => 'Gold', 'hex' => '#FFD700'],
+    ['value' => 'Silver', 'hex' => '#C0C0C0'],
+    ['value' => 'Rose Gold', 'hex' => '#B76E79'],
+    ['value' => 'White Gold', 'hex' => '#E8E8E8'],
+    ['value' => 'Black', 'hex' => '#000000'],
+    ['value' => 'Blue', 'hex' => '#0000FF'],
+    ['value' => 'Red', 'hex' => '#FF0000'],
+    ['value' => 'Pink', 'hex' => '#FFC0CB'],
+    ['value' => 'Green', 'hex' => '#008000'],
+    ['value' => 'Purple', 'hex' => '#800080'],
+];
+
+$adornmentOptions = !empty($db_adornments) ? array_map(function($a) { return $a['name']; }, $db_adornments) : [
+    'Diamond', 'Ruby', 'Emerald', 'Zirconia', 'Sapphire', 'Pearl', 'Moissanite',
+    'Blue Gem', 'Pink Gem', 'White Gem', 'Red Gem', 'White Stone', 'Black Stone', 'Red Stone', 'Pink Stone'
+];
 ?>
 
 <?php include '_layout_header.php'; ?>
@@ -433,7 +509,11 @@ $categories = $stmt->fetchAll();
 <style>
     .controls { background: var(--card); padding: 20px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
     .products-table { background: var(--card); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-    table { width: 100%; border-collapse: collapse; }
+    .products-table-wrapper {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    table { width: 100%; border-collapse: collapse; min-width: 600px; }
     th, td { padding: 12px; text-align: left; border-bottom: 1px solid var(--border); }
     th { background: #f8f8f8; font-weight: 600; }
     .tab-container { display: flex; background: #f8f8f8; border-bottom: 1px solid #ddd; }
@@ -447,6 +527,8 @@ $categories = $stmt->fetchAll();
     .image-preview { width: 100px; height: 100px; object-fit: cover; border-radius: 4px; margin-right: 10px; }
     .remove-image { position: absolute; top: 5px; right: 5px; background: #dc3545; color: white; border: none; border-radius: 50%; width: 25px; height: 25px; cursor: pointer; }
     .size-item { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+    .customized-badge { background: #6f42c1; color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-left: 8px; }
+    .product-name-cell { display: flex; align-items: center; }
 </style>
 
         <?php if (isset($success)): ?>
@@ -466,44 +548,57 @@ $categories = $stmt->fetchAll();
         </div>
 
         <div class="products-table">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Product</th>
-                        <th>SKU</th>
-                        <th>Price</th>
-                        <th>Stock</th>
-                        <th>Variations</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($products as $product): ?>
-                    <tr>
-                        <td><strong><?= htmlspecialchars($product['name']) ?></strong></td>
-                        <td><?= htmlspecialchars($product['sku']) ?></td>
-                        <td>£<?= number_format($product['price'], 2) ?></td>
-                        <td><?= $product['stock_quantity'] ?></td>
-                        <td><?= $product['variation_count'] ?> variations</td>
-                        <td>
-                            <button class="btn" onclick="editProduct(<?= $product['id'] ?>)" style="margin-right: 5px;">Edit</button>
-                            <form method="POST" style="display:inline; margin-right: 5px;">
-                                <input type="hidden" name="toggle_feature" value="<?= $product['id'] ?>">
-                                <button type="submit" class="btn"><?= $product['is_featured'] ? 'Unfeature' : 'Feature' ?></button>
-                            </form>
-                            <form method="POST" style="display:inline; margin-right: 5px;">
-                                <input type="hidden" name="toggle_active" value="<?= $product['id'] ?>">
-                                <button type="submit" class="btn"><?= $product['is_active'] ? 'Deactivate' : 'Activate' ?></button>
-                            </form>
-                            <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this product?')">
-                                <input type="hidden" name="delete_product" value="<?= $product['id'] ?>">
-                                <button type="submit" class="btn btn-danger">Delete</button>
-                            </form>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+            <div class="products-table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>SKU</th>
+                            <th>Price</th>
+                            <th>Stock</th>
+                            <th>Variations</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($products as $product): ?>
+                        <tr>
+                            <td class="product-name-cell">
+                                <strong><?= htmlspecialchars($product['name']) ?></strong>
+                                <?php if (!empty($product['is_customized'])): ?>
+                                    <span class="customized-badge">Customized</span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?= htmlspecialchars($product['sku']) ?></td>
+                            <td>£<?= number_format($product['price'], 2) ?></td>
+                            <td><?= $product['stock_quantity'] ?></td>
+                            <td><?= $product['variation_count'] ?> variations</td>
+                            <td>
+                                <button class="btn" onclick="editProduct(<?= $product['id'] ?>)" style="margin-right: 5px;">Edit</button>
+                                <form method="POST" style="display:inline; margin-right: 5px;">
+                                    <input type="hidden" name="toggle_feature" value="<?= $product['id'] ?>">
+                                    <button type="submit" class="btn"><?= $product['is_featured'] ? 'Unfeature' : 'Feature' ?></button>
+                                </form>
+                                <form method="POST" style="display:inline; margin-right: 5px;">
+                                    <input type="hidden" name="toggle_active" value="<?= $product['id'] ?>">
+                                    <button type="submit" class="btn"><?= $product['is_active'] ? 'Deactivate' : 'Activate' ?></button>
+                                </form>
+                                <form method="POST" style="display:inline; margin-right: 5px;">
+                                    <input type="hidden" name="toggle_customized" value="<?= $product['id'] ?>">
+                                    <button type="submit" class="btn" style="background: <?= $product['is_customized'] ? '#6f42c1' : '' ?>; color: <?= $product['is_customized'] ? 'white' : '' ?>;">
+                                        <?= $product['is_customized'] ? 'Uncustomize' : 'Customize' ?>
+                                    </button>
+                                </form>
+                                <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this product?')">
+                                    <input type="hidden" name="delete_product" value="<?= $product['id'] ?>">
+                                    <button type="submit" class="btn btn-danger">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
         
     </main>
@@ -995,6 +1090,28 @@ function addImageField() {
         
         function addVariationToForm(variation, index) {
             const container = document.getElementById('variations-container');
+            
+            // Generate material options from database values
+            const materialOptions = [
+                <?php foreach ($materialOptions as $material): ?>
+                { id: '<?= $material['id'] ?>', name: '<?= htmlspecialchars($material['name']) ?>' },
+                <?php endforeach; ?>
+            ];
+            
+            // Generate color options from database values
+            const colorOptions = [
+                <?php foreach ($colorOptions as $color): ?>
+                { value: '<?= htmlspecialchars($color['value'] ?? $color['name']) ?>', hex: '<?= htmlspecialchars($color['hex'] ?? '') ?>' },
+                <?php endforeach; ?>
+            ];
+            
+            // Generate adornment options from database values
+            const adornmentOptions = [
+                <?php foreach ($adornmentOptions as $adornment): ?>
+                '<?= htmlspecialchars(is_array($adornment) ? ($adornment['name'] ?? '') : $adornment) ?>',
+                <?php endforeach; ?>
+            ];
+            
             const variationHtml = `
                 <div class="variation-item">
                     <div class="form-row">
@@ -1006,9 +1123,7 @@ function addImageField() {
                             <label>Material</label>
                             <select name="variations[${index}][material_id]" required>
                                 <option value="">Select Material</option>
-                                <?php foreach ($materials as $material): ?>
-                                <option value="<?= $material['id'] ?>" ${variation.material_id == <?= $material['id'] ?> ? 'selected' : ''}><?= htmlspecialchars($material['name']) ?></option>
-                                <?php endforeach; ?>
+                                ${materialOptions.map(m => `<option value="${m.id}" ${String(variation.material_id) === m.id ? 'selected' : ''}>${m.name}</option>`).join('')}
                             </select>
                         </div>
                     </div>
@@ -1017,37 +1132,14 @@ function addImageField() {
                             <label>Color</label>
                             <select name="variations[${index}][color]">
                                 <option value="">Select Color</option>
-                                <option value="Gold" ${variation.color === 'Gold' ? 'selected' : ''}>Gold</option>
-                                <option value="Silver" ${variation.color === 'Silver' ? 'selected' : ''}>Silver</option>
-                                <option value="Rose Gold" ${variation.color === 'Rose Gold' ? 'selected' : ''}>Rose Gold</option>
-                                <option value="White Gold" ${variation.color === 'White Gold' ? 'selected' : ''}>White Gold</option>
-                                <option value="Black" ${variation.color === 'Black' ? 'selected' : ''}>Black</option>
-                                <option value="Blue" ${variation.color === 'Blue' ? 'selected' : ''}>Blue</option>
-                                <option value="Red" ${variation.color === 'Red' ? 'selected' : ''}>Red</option>
-                                <option value="Pink" ${variation.color === 'Pink' ? 'selected' : ''}>Pink</option>
-                                <option value="Green" ${variation.color === 'Green' ? 'selected' : ''}>Green</option>
-                                <option value="Purple" ${variation.color === 'Purple' ? 'selected' : ''}>Purple</option>
+                                ${colorOptions.map(c => `<option value="${c.value}" ${variation.color === c.value ? 'selected' : ''}>${c.value}</option>`).join('')}
                             </select>
                         </div>
                         <div class="form-group">
                             <label>Adornments</label>
                             <select name="variations[${index}][adornment]">
                                 <option value="">Select Adornment</option>
-                                <option value="Diamond" ${variation.adornment === 'Diamond' ? 'selected' : ''}>Diamond</option>
-                                <option value="Ruby" ${variation.adornment === 'Ruby' ? 'selected' : ''}>Ruby</option>
-                                <option value="Emerald" ${variation.adornment === 'Emerald' ? 'selected' : ''}>Emerald</option>
-                                <option value="Zirconia" ${variation.adornment === 'Zirconia' ? 'selected' : ''}>Zirconia</option>
-                                <option value="Sapphire" ${variation.adornment === 'Sapphire' ? 'selected' : ''}>Sapphire</option>
-                                <option value="Pearl" ${variation.adornment === 'Pearl' ? 'selected' : ''}>Pearl</option>
-                                <option value="Moissanite" ${variation.adornment === 'Moissanite' ? 'selected' : ''}>Moissanite</option>
-                                <option value="Blue Gem" ${variation.adornment === 'Blue Gem' ? 'selected' : ''}>Blue Gem</option>
-                                <option value="Pink Gem" ${variation.adornment === 'Pink Gem' ? 'selected' : ''}>Pink Gem</option>
-                                <option value="White Gem" ${variation.adornment === 'White Gem' ? 'selected' : ''}>White Gem</option>
-                                <option value="Red Gem" ${variation.adornment === 'Red Gem' ? 'selected' : ''}>Red Gem</option>
-                                <option value="White Stone" ${variation.adornment === 'White Stone' ? 'selected' : ''}>White Stone</option>
-                                <option value="Black Stone" ${variation.adornment === 'Black Stone' ? 'selected' : ''}>Black Stone</option>
-                                <option value="Red Stone" ${variation.adornment === 'Red Stone' ? 'selected' : ''}>Red Stone</option>
-                                <option value="Pink Stone" ${variation.adornment === 'Pink Stone' ? 'selected' : ''}>Pink Stone</option>
+                                ${adornmentOptions.map(a => `<option value="${a}" ${variation.adornment === a ? 'selected' : ''}>${a}</option>`).join('')}
                             </select>
                         </div>
                     </div>

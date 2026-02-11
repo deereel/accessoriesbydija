@@ -1,6 +1,6 @@
 <?php
 /**
- * Fix Colors and Adornments Tables
+ * Fix Colors, Adornments, and Materials Tables
  * Run this script to add missing columns and set up the tables properly
  */
 
@@ -40,6 +40,22 @@ try {
         )
     ");
     echo "✓ Adornments table created/verified\n";
+    
+    // Create materials table with proper structure
+    $pdo->exec("
+        CREATE TABLE IF NOT EXISTS materials (
+            id INT PRIMARY KEY AUTO_INCREMENT,
+            name VARCHAR(100) NOT NULL,
+            slug VARCHAR(100) NOT NULL,
+            description TEXT,
+            is_active TINYINT(1) DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY unique_name (name),
+            UNIQUE KEY unique_slug (slug)
+        )
+    ");
+    echo "✓ Materials table created/verified\n";
     
     // Insert default colors if table is empty
     $stmt = $pdo->query("SELECT COUNT(*) FROM colors");
@@ -101,6 +117,34 @@ try {
         echo "✓ Adornments table already has data\n";
     }
     
+    // Insert default materials if table is empty
+    $stmt = $pdo->query("SELECT COUNT(*) FROM materials");
+    if ($stmt->fetchColumn() == 0) {
+        $defaultMaterials = [
+            ['Sterling Silver', '925 Sterling Silver - high quality silver alloy'],
+            ['Gold', '24k Gold - pure gold'],
+            ['Gold Plated', 'Gold plated over base metal'],
+            ['Rose Gold', 'Rose gold alloy'],
+            ['White Gold', 'White gold alloy'],
+            ['Stainless Steel', 'Durable stainless steel'],
+            ['Leather', 'Genuine leather'],
+            ['Fabric', 'Fabric or cord material'],
+            ['Beads', 'Glass or crystal beads'],
+            ['Wood', 'Natural wood elements'],
+            ['Resin', 'Epoxy resin'],
+            ['Titanium', 'Hypoallergenic titanium'],
+        ];
+        
+        $stmt = $pdo->prepare("INSERT INTO materials (name, slug, description) VALUES (?, ?, ?)");
+        foreach ($defaultMaterials as $material) {
+            $slug = strtolower(str_replace(' ', '-', $material[0]));
+            $stmt->execute([$material[0], $slug, $material[1]]);
+        }
+        echo "✓ Inserted " . count($defaultMaterials) . " default materials\n";
+    } else {
+        echo "✓ Materials table already has data\n";
+    }
+    
     echo "\n========================================\n";
     echo "✓ Database fix complete!\n";
     echo "========================================\n\n";
@@ -108,7 +152,8 @@ try {
     echo "You can now:\n";
     echo "1. Add new colors with names and hex codes\n";
     echo "2. Add new adornments with names and descriptions\n";
-    echo "3. Edit and delete existing colors/adornments\n\n";
+    echo "3. Add new materials with names and descriptions\n";
+    echo "4. Edit and delete existing colors/adornments/materials\n\n";
     
 } catch (Exception $e) {
     echo "Error: " . $e->getMessage() . "\n";

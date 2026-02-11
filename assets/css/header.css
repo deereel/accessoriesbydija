@@ -270,6 +270,64 @@ body {
     grid-template-columns: 300px 1fr;
     gap: 60px;
     align-items: start;
+    max-height: 50vh;
+}
+
+.category-list-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    overflow-y: auto;
+    max-height: 50vh;
+    padding-right: 10px;
+}
+
+.category-list-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.category-list-scroll::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.category-list-scroll::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+.category-list-scroll::-webkit-scrollbar-thumb:hover {
+    background: #aaa;
+}
+
+.category-list-scroll a {
+    color: #222;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 500;
+    padding: 10px 0;
+    border-bottom: 1px solid transparent;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.category-list-scroll a:hover {
+    color: #C27BA0;
+    border-bottom-color: #C27BA0;
+}
+
+.promo-banner-fixed {
+    position: sticky;
+    top: 0;
+    height: fit-content;
+}
+
+.promo-banner-fixed .promo-banner-img {
+    width: 100%;
+    height: auto;
+    max-height: 50vh;
+    object-fit: cover;
+    border-radius: 8px;
 }
 
 .category-list {
@@ -379,12 +437,9 @@ body {
         min-height: 60px;
     }
     
+    /* Hide desktop search box on mobile */
     .search-container {
-        display: block;
-        flex: none;
-        max-width: none;
-        width: auto;
-        order: 3;
+        display: none !important;
     }
     
     .logo {
@@ -396,30 +451,6 @@ body {
     .header-icons {
         order: 2;
         flex: none;
-    }
-    
-    .search-container input {
-        display: none;
-        position: absolute;
-        top: 100%;
-        left: 0;
-        right: 0;
-        z-index: 1002;
-        border-radius: 0;
-        border: 1px solid #ddd;
-        border-top: none;
-    }
-    
-    .search-container .search-icon {
-        position: static;
-        font-size: 18px;
-        color: #222;
-        cursor: pointer;
-        padding: 5px;
-        transform: none;
-        top: auto;
-        right: auto;
-        pointer-events: auto;
     }
     
     .logo img {
@@ -501,6 +532,13 @@ body {
     .exclusives-links a {
         font-size: 14px;
         padding: 8px 0;
+    }
+}
+
+/* Desktop styles - hide mobile search icon */
+@media screen and (min-width: 769px) {
+    .mobile-search-icon {
+        display: none !important;
     }
 }
 

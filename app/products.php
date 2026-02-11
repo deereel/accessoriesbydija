@@ -314,6 +314,19 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
     transform: none !important; /* Prevent any transforms on hover */
 }
 
+/* Customized badge */
+.customized-badge {
+    background: #6f42c1;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    margin-left: 8px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 .wishlist-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: white; border: none; border-radius: 50%; padding: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1); cursor: pointer; }
 .wishlist-btn.active { background: #C27BA0; color: white; }
 .wishlist-btn.active i { color: white; }
@@ -527,7 +540,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
 
                                      <!-- Product Info -->
                                      <div class="product-info">
-                                         <h3><a href="product.php?slug=<?= $product['slug'] ?>" style="text-decoration:none;color:inherit;"><?= htmlspecialchars($product['name']) ?></a></h3>
+                                         <h3><a href="product.php?slug=<?= $product['slug'] ?>" style="text-decoration:none;color:inherit;"><?= htmlspecialchars($product['name']) ?></a><?php if (!empty($product['is_customized'])): ?><span class="customized-badge">Customized</span><?php endif; ?></h3>
                                          <p><?= htmlspecialchars(substr($product['short_description'] ?: $product['description'] ?: '', 0, 50)) ?>...</p>
                                          <?php if ($product['weight']): ?>
                                          <p style="font-size: 0.75rem; color: #888; margin-bottom: 0.5rem;">⚖️ <?= htmlspecialchars($product['weight']) ?>g</p>
@@ -699,7 +712,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 html += saleBadge;
                 html += '</a>';
                 html += '<div class="product-info">';
-                html += '<h3><a href="product.php?slug=' + product.slug + '" style="text-decoration:none;color:inherit;">' + product.name + '</a></h3>';
+                html += '<h3><a href="product.php?slug=' + product.slug + '" style="text-decoration:none;color:inherit;">' + product.name + '</a>' + (product.is_customized ? '<span class="customized-badge">Customized</span>' : '') + '</h3>';
                 html += '<p>' + product.short_description + '...</p>';
                 
                 if (product.weight) {
@@ -850,6 +863,13 @@ document.addEventListener('DOMContentLoaded', function () {
             sessionStorage.setItem('productsSwiperIndex', window.swiperInstance.activeIndex);
         }
     });
+
+    // Clear scroll position when clicking on product links
+    document.querySelectorAll('.product-card a[href*="product.php"], .product-card a[href*="product."]').forEach(link => {
+        link.addEventListener('click', function() {
+            sessionStorage.removeItem('appScrollPosition');
+        });
+    });
 });
 
 // Wishlist functionality
@@ -911,7 +931,8 @@ window.toggleWishlist = function(productId, btn) {
     width: 100%;
     height: auto;
     position: relative;
-    overflow: hidden; /* required so only the active slide is visible */
+    overflow: hidden;
+    padding-bottom: 60px; /* Space for navigation buttons at bottom */
 }
 
 .swiper .swiper-wrapper {
@@ -933,16 +954,67 @@ window.toggleWishlist = function(productId, btn) {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 1rem;
-    margin-top: 2rem;
+    gap: 2rem;
+    margin-top: 0;
     padding: 1rem 0;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+}
+
+.swiper-button-prev,
+.swiper-button-next {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: none;
+    color: #C27BA0;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    font-size: 16px;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Font Awesome 7 Free';
+    font-weight: 900;
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    margin: 0;
+    transform: none;
+}
+
+.swiper-button-prev {
+    order: 1;
 }
 
 .swiper-pagination {
+    order: 2;
     display: flex;
     justify-content: center;
     gap: 0.5rem;
     margin: 0;
+    position: relative;
+    bottom: auto;
+    left: auto;
+    transform: none;
+}
+
+.swiper-button-next {
+    order: 3;
+}
+
+.swiper-button-next::before {
+    content: '\f061'; /* fa-arrow-right */
+}
+
+.swiper-button-prev::before {
+    content: '\f060'; /* fa-arrow-left */
 }
 
 .swiper-pagination-bullet {
@@ -983,14 +1055,19 @@ window.toggleWishlist = function(productId, btn) {
     justify-content: center;
     font-family: 'Font Awesome 7 Free';
     font-weight: 900;
+    position: absolute;
+    top: auto;
+    bottom: 0;
+    margin-top: 0;
+    transform: none;
 }
 
-.swiper-button-next::before {
-    content: '\f061'; /* fa-arrow-right */
+.swiper-button-prev {
+    left: 0;
 }
 
-.swiper-button-prev::before {
-    content: '\f060'; /* fa-arrow-left */
+.swiper-button-next {
+    right: 0;
 }
 
 .swiper-button-next:hover, .swiper-button-prev:hover {

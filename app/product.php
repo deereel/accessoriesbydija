@@ -417,6 +417,46 @@ if (!empty($reviews)) {
 .product-card img { width: 100%; height: 200px; object-fit: cover; }
 .product-card h3 { font-size: 1.1rem; margin: 1rem; color: #333; }
 .product-card .price { font-size: 1.2rem; color: #C27BA0; font-weight: bold; margin: 0 1rem 1rem; }
+
+/* Image Navigation Arrows */
+.image-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    transition: all 0.3s;
+    z-index: 10;
+}
+.image-nav-btn:hover {
+    background: white;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+.image-nav-btn.prev {
+    left: 15px;
+}
+.image-nav-btn.next {
+    right: 15px;
+}
+.image-nav-btn i {
+    color: #333;
+    font-size: 1.2rem;
+}
+.image-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+.main-image-container {
+    position: relative;
+}
 </style>
 
 <main data-product='<?php echo json_encode($product); ?>' data-images='<?php echo json_encode($images); ?>'>
@@ -427,6 +467,12 @@ if (!empty($reviews)) {
     <div class="product-detail-container">
         <div class="product-images">
             <div class="main-image-container">
+                <button class="image-nav-btn prev" id="imagePrevBtn" aria-label="Previous image">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button class="image-nav-btn next" id="imageNextBtn" aria-label="Next image">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
                 <div class="main-image" id="mainImage">
                     <?php if ($images && isset($images[0])):
                     ?>
@@ -489,10 +535,10 @@ if (!empty($reviews)) {
             
             <div class="product-options">
                 <div class="option-group">
-                    <label>Material:</label>
                     <div class="selection-guidance" id="materialGuidance">
-                        <i class="fas fa-hand-pointer"></i> Please select a material below to proceed
+                        <i class="fas fa-hand-point-down"></i> Please select a material below to proceed
                     </div>
+                    <label>Material:</label>
                     <div class="option-buttons" id="materialOptions">
                         <?php foreach ($materials as $material):
                         ?>
@@ -504,18 +550,18 @@ if (!empty($reviews)) {
                 </div>
                 
                 <div class="option-group" id="variationGroup" style="display: none;">
-                    <label>Variation:</label>
                     <div class="selection-guidance" id="variationGuidance">
-                        <i class="fas fa-hand-pointer"></i> Please select a variant below to proceed
+                        <i class="fas fa-hand-point-down"></i> Please select a variant below to proceed
                     </div>
+                    <label>Variation:</label>
                     <div class="option-buttons" id="variationOptions"></div>
                 </div>
                 
                 <div class="option-group" id="sizeGroup" style="display: none;">
-                    <label>Size:</label>
                     <div class="selection-guidance" id="sizeGuidance">
-                        <i class="fas fa-hand-pointer"></i> Please select a size below to proceed
+                        <i class="fas fa-hand-point-down"></i> Please select a size below to proceed
                     </div>
+                    <label>Size:</label>
                     <div class="option-buttons" id="sizeOptions"></div>
                 </div>
             </div>
@@ -806,3 +852,59 @@ if (!empty($reviews)) {
 
 <?php include 'includes/footer.php'; ?>
 <script src="/assets/js/product-details.js" defer></script>
+<script>
+// Image navigation functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const mainImage = document.getElementById('mainImage');
+    const prevBtn = document.getElementById('imagePrevBtn');
+    const nextBtn = document.getElementById('imageNextBtn');
+    
+    // Get all images from the thumbnails
+    const thumbnails = document.querySelectorAll('.thumbnail img');
+    const totalImages = thumbnails.length;
+    let currentIndex = 0;
+    
+    // Initialize button states
+    function updateButtons() {
+        prevBtn.disabled = totalImages <= 1;
+        nextBtn.disabled = totalImages <= 1;
+    }
+    
+    // Change image function
+    function showImage(index) {
+        if (index < 0) index = totalImages - 1;
+        if (index >= totalImages) index = 0;
+        
+        currentIndex = index;
+        const newImage = thumbnails[index];
+        if (newImage) {
+            mainImage.innerHTML = '<img src="' + newImage.src + '" alt="' + newImage.alt + '" style="width: 100%; height: 100%; object-fit: cover;" loading="lazy">';
+        }
+        
+        // Update active thumbnail
+        document.querySelectorAll('.thumbnail').forEach((thumb, i) => {
+            thumb.classList.toggle('active', i === index);
+        });
+        
+        updateButtons();
+    }
+    
+    // Event listeners for buttons
+    if (prevBtn) {
+        prevBtn.addEventListener('click', function() {
+            showImage(currentIndex - 1);
+        });
+    }
+    
+    if (nextBtn) {
+        nextBtn.addEventListener('click', function() {
+            showImage(currentIndex + 1);
+        });
+    }
+    
+    // Initialize
+    if (totalImages > 0) {
+        updateButtons();
+    }
+});
+</script>

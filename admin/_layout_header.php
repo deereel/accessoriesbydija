@@ -165,21 +165,8 @@ function closeMobileMenu() {
   overlay.classList.remove('active');
 }
 
-// Save scroll position before leaving page
-window.addEventListener('beforeunload', function() {
-  sessionStorage.setItem('adminScrollPosition', window.scrollY);
-});
-
-// Restore scroll position on page load
-document.addEventListener('DOMContentLoaded', function() {
-  const savedScroll = sessionStorage.getItem('adminScrollPosition');
-  if (savedScroll !== null) {
-    setTimeout(function() {
-      window.scrollTo(0, parseInt(savedScroll));
-      sessionStorage.removeItem('adminScrollPosition');
-    }, 10);
-  }
-});
+// Ensure page always opens at top when navigating
+window.scrollTo(0, 0);
 
 if ('serviceWorker' in navigator) {
   (async function(){

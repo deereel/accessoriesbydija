@@ -435,11 +435,12 @@ require_once APP_PATH . '/config/cache.php';
     }
     
     @media (max-width: 768px) {
+        /* Hide desktop search box on mobile */
         .search-container {
-            display: none;
+            display: none !important;
         }
         
-        /* Mobile Search Icon */
+        /* Mobile Search Icon - only show on mobile */
         .mobile-search-icon {
             display: flex !important;
             align-items: center;
@@ -458,6 +459,13 @@ require_once APP_PATH . '/config/cache.php';
         
         .mobile-search-icon:hover {
             color: #C27BA0;
+        }
+    }
+    
+    /* Desktop styles - hide mobile search icon by default */
+    @media (min-width: 769px) {
+        .mobile-search-icon {
+            display: none !important;
         }
     }
     </style>
@@ -512,6 +520,9 @@ require_once APP_PATH . '/config/cache.php';
             <div class="nav-item" data-menu="gift">
                 <a href="gift-box.php">GIFT BOX &#9660;</a>
             </div>
+            <div class="nav-item">
+                <a href="custom-jewelry.php">CUSTOMIZE</a>
+            </div>
         </nav>
         
         <!-- Mega Menu Dropdowns -->
@@ -520,7 +531,7 @@ require_once APP_PATH . '/config/cache.php';
             <!-- WOMEN Dropdown -->
             <div class="dropdown-content" data-content="women">
                 <div class="category-layout">
-                    <div class="category-list">
+                    <div class="category-list-scroll">
                         <a href="products.php?gender=women&category=anklets">Anklets</a>
                         <a href="products.php?gender=women&category=bangles">Bangles</a>
                         <a href="products.php?gender=women&category=bracelets">Bracelets</a>
@@ -531,8 +542,9 @@ require_once APP_PATH . '/config/cache.php';
                         <a href="products.php?gender=women&category=sets">Sets</a>
                         <a href="products.php?gender=women&category=studs">Studs</a>
                         <a href="products.php?gender=women&category=watches">Watches</a>
+                        <a href="custom-jewelry.php">Custom Jewelry</a>
                     </div>
-                    <div class="promo-banner">
+                    <div class="promo-banner-fixed">
                         <img src="/assets/images/women-menu.jpg" alt="Women's Collection" class="promo-banner-img">
                         <div class="promo-banner-overlay">
                             <h2>Women's Collection</h2>
@@ -544,7 +556,7 @@ require_once APP_PATH . '/config/cache.php';
             <!-- MEN Dropdown -->
             <div class="dropdown-content" data-content="men">
                 <div class="category-layout">
-                    <div class="category-list">
+                    <div class="category-list-scroll">
                         <a href="products.php?gender=men&category=bracelets">Bracelets</a>
                         <a href="products.php?gender=men&category=cufflinks">Cufflinks</a>
                         <a href="products.php?gender=men&category=Hand Chains">Hand Chains</a>
@@ -555,8 +567,9 @@ require_once APP_PATH . '/config/cache.php';
                         <a href="products.php?gender=men&category=sets">Sets</a>
                         <a href="products.php?gender=men&category=studs">Studs</a>
                         <a href="products.php?gender=men&category=watches">Watches</a>
+                        <a href="custom-jewelry.php">Custom Jewelry</a>
                     </div>
-                    <div class="promo-banner">
+                    <div class="promo-banner-fixed">
                         <img src="/assets/images/men-menu.jpg" alt="Men's Collection" class="promo-banner-img">
                         <div class="promo-banner-overlay">
                             <h2>Men's Collection</h2>
@@ -855,24 +868,5 @@ require_once APP_PATH . '/config/cache.php';
     }
     </script>
     
-    <!-- PWA Install Prompt Handler -->
-    <script src="/app/includes/pwa-install.js"></script>
-    <script>
-    // Save scroll position before leaving page
-    window.addEventListener('beforeunload', function() {
-        sessionStorage.setItem('appScrollPosition', window.scrollY);
-    });
 
-    // Restore scroll position on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        const savedScroll = sessionStorage.getItem('appScrollPosition');
-        if (savedScroll !== null) {
-            setTimeout(function() {
-                window.scrollTo(0, parseInt(savedScroll));
-                sessionStorage.removeItem('appScrollPosition');
-            }, 10);
-        }
-    });
-    </script>
-</body>
 </html>

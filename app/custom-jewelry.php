@@ -19,6 +19,38 @@ $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $stmt = $pdo->prepare("SELECT id, name FROM adornments ORDER BY name");
 $stmt->execute();
 $adornments = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch customized products
+try {
+    $stmt = $pdo->query("SELECT p.*, 
+                          (SELECT image_url FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1) as main_image 
+                          FROM products p 
+                          WHERE p.is_active = 1 AND p.is_customized = 1 
+                          ORDER BY p.created_at DESC 
+                          LIMIT 8");
+    $customized_products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Fix image paths
+    foreach ($customized_products as &$product) {
+        if (!empty($product['main_image']) && strpos($product['main_image'], '/') !== 0) {
+            $product['main_image'] = '/' . $product['main_image'];
+        }
+    }
+} catch (Exception $e) {
+    $customized_products = [];
+}
+
+// Fetch user's wishlist
+$user_wishlist = [];
+if (isset($_SESSION['user_id'])) {
+    try {
+        $stmt_wishlist = $pdo->prepare("SELECT product_id FROM wishlists WHERE user_id = ?");
+        $stmt_wishlist->execute([$_SESSION['user_id']]);
+        $user_wishlist = $stmt_wishlist->fetchAll(PDO::FETCH_COLUMN);
+    } catch (Exception $e) {
+        $user_wishlist = [];
+    }
+}
 ?>
 
 <main>
@@ -30,6 +62,36 @@ $adornments = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         </div>
     </section>
+
+    <!-- Customized Products Section -->
+    <?php if (!empty($customized_products)): ?>
+    <section class="customized-products-section">
+        <div class="container">
+            <h2>Featured Custom Pieces</h2>
+            <p class="section-subtitle">Discover our collection of handcrafted customized jewelry</p>
+            <div class="customized-products-grid">
+                <?php foreach ($customized_products as $product): ?>
+                <div class="customized-product-card">
+                    <a href="product.php?slug=<?= $product['slug'] ?>">
+                        <?php if ($product['main_image']): ?>
+                            <img src="<?= htmlspecialchars($product['main_image']) ?>" alt="<?= htmlspecialchars($product['name']) ?>" onerror="this.src='/assets/images/placeholder.jpg'; this.onerror=null;">
+                        <?php else: ?>
+                            <div class="placeholder-img"><?= htmlspecialchars(substr($product['name'], 0, 3)) ?></div>
+                        <?php endif; ?>
+                        <div class="customized-product-info">
+                            <h3><?= htmlspecialchars($product['name']) ?></h3>
+                            <p class="product-price">£<?= number_format($product['price'], 2) ?></p>
+                        </div>
+                    </a>
+                    <button class="wishlist-btn<?= in_array($product['id'], $user_wishlist) ? ' active' : '' ?>" data-product-id="<?= $product['id'] ?>" onclick="toggleWishlist(<?= $product['id'] ?>, this)">
+                        <i class="<?= in_array($product['id'], $user_wishlist) ? 'fas' : 'far' ?> fa-heart"></i>
+                    </button>
+                </div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+    <?php endif; ?>
 
     <section class="custom-process">
         <div class="container">
@@ -211,6 +273,113 @@ $adornments = $stmt->fetchAll(PDO::FETCH_ASSOC);
     opacity: 0.9;
 }
 
+/* Customized Products Section */
+.customized-products-section {
+    padding: 4rem 0;
+    background: #f8f8f8;
+}
+
+.customized-products-section h2 {
+    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+.section-subtitle {
+    text-align: center;
+    color: #666;
+    margin-bottom: 3rem;
+}
+
+.customized-products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1.5rem;
+}
+
+.customized-product-card {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    position: relative;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.customized-product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+.customized-product-card a {
+    text-decoration: none;
+    color: inherit;
+}
+
+.customized-product-card img,
+.customized-product-card .placeholder-img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+}
+
+.customized-product-card .placeholder-img {
+    background: #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #999;
+    font-weight: bold;
+}
+
+.customized-product-info {
+    padding: 1rem;
+}
+
+.customized-product-info h3 {
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+.customized-product-info .product-price {
+    font-weight: 600;
+    color: #c487a5;
+}
+
+.customized-product-card .wishlist-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: white;
+    border: none;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.customized-product-card .wishlist-btn:hover {
+    transform: scale(1.1);
+}
+
+.customized-product-card .wishlist-btn.active {
+    background: #C27BA0;
+    color: white;
+}
+
+.customized-product-card .wishlist-btn.active i {
+    color: white;
+}
+
 .custom-process {
     padding: 4rem 0;
     background: #f8f8f8;
@@ -334,13 +503,6 @@ $adornments = $stmt->fetchAll(PDO::FETCH_ASSOC);
     gap: 1rem;
 }
 
-.gallery-item img {
-    width: 100%;
-    height: 150px;
-    object-fit: cover;
-    border-radius: 8px;
-}
-
 .gallery-placeholder {
     width: 100%;
     height: 150px;
@@ -379,10 +541,58 @@ $adornments = $stmt->fetchAll(PDO::FETCH_ASSOC);
     .gallery-grid {
         grid-template-columns: 1fr;
     }
+    
+    .customized-products-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 </style>
 
 <script>
+// Wishlist functionality
+window.toggleWishlist = function(productId, btn) {
+    fetch('/api/wishlist.php?product_id=' + productId)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) {
+                window.location.href = 'login.php?redirect=' + encodeURIComponent(window.location.href);
+                return;
+            }
+
+            const isInWishlist = data.in_wishlist;
+            const method = isInWishlist ? 'DELETE' : 'POST';
+            const url = isInWishlist ? '/api/wishlist.php?product_id=' + productId : '/api/wishlist.php';
+
+            fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: method === 'POST' ? JSON.stringify({ product_id: productId }) : null
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    if (isInWishlist) {
+                        btn.classList.remove('active');
+                        btn.querySelector('i').className = 'far fa-heart';
+                    } else {
+                        btn.classList.add('active');
+                        btn.querySelector('i').className = 'fas fa-heart';
+                    }
+                } else {
+                    alert('Error: ' + result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            });
+        })
+        .catch(error => {
+            console.error('Error checking wishlist:', error);
+            alert('An error occurred. Please try again.');
+        });
+}
+
 document.getElementById('custom-form').addEventListener('submit', async function(e) {
     e.preventDefault();
 
