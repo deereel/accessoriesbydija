@@ -48,8 +48,8 @@ try {
 
                 <div class="faq-item" itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
                     <h3 itemprop="name">What is your return policy?</h3>
-                    <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
-                        <p itemprop="text">We offer a 30-day return policy for unworn items in original condition. Custom pieces are final sale unless there's a manufacturing defect. All returns include free shipping.</p>
+                     <div itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer">
+                        <p itemprop="text">We accept returns within 48 hours of delivery. Items must be unused, in their original packaging, and in resalable condition. Proof of purchase is required.</p>
                     </div>
                 </div>
 

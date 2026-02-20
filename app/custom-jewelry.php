@@ -156,11 +156,12 @@ if (isset($_SESSION['user_id'])) {
                             <label for="budget">Budget Range *</label>
                             <select id="budget" name="budget" required>
                                 <option value="">Select Budget</option>
-                                <option value="under-500">Under $500</option>
-                                <option value="500-1000">$500 - $1,000</option>
-                                <option value="1000-2500">$1,000 - $2,500</option>
-                                <option value="2500-5000">$2,500 - $5,000</option>
-                                <option value="over-5000">Over $5,000</option>
+                                <option value="under-100">Under £100</option>
+                                <option value="100-500">£100 - £500</option>
+                                <option value="500-1000">£500 - £1,000</option>
+                                <option value="1000-2500">£1,000 - £2,500</option>
+                                <option value="2500-5000">£2,500 - £5,000</option>
+                                <option value="over-5000">Over £5,000</option>
                             </select>
                         </div>
 
@@ -223,9 +224,9 @@ if (isset($_SESSION['user_id'])) {
                     <div class="gallery-grid">
                         <div class="gallery-item">
                             <div class="gallery-placeholder" style="background: linear-gradient(135deg, #c487a5 0%, #b07591 100%);">
-                                <span>💍</span>
+                                <span>✨</span>
                             </div>
-                            <p>Custom Engagement Ring</p>
+                            <p>Custom Earrings</p>
                         </div>
                         <div class="gallery-item">
                             <div class="gallery-placeholder" style="background: linear-gradient(135deg, #d4a5a5 0%, #b07591 100%);">
@@ -235,15 +236,9 @@ if (isset($_SESSION['user_id'])) {
                         </div>
                         <div class="gallery-item">
                             <div class="gallery-placeholder" style="background: linear-gradient(135deg, #a5c4d4 0%, #7591b0 100%);">
-                                <span>💒</span>
+                                <span>💎</span>
                             </div>
-                            <p>Custom Wedding Bands</p>
-                        </div>
-                        <div class="gallery-item">
-                            <div class="gallery-placeholder" style="background: linear-gradient(135deg, #d4a5c4 0%, #b09175 100%);">
-                                <span>🎁</span>
-                            </div>
-                            <p>Birthstone Bracelet</p>
+                            <p>Custom Jewelry Set</p>
                         </div>
                     </div>
                 </div>

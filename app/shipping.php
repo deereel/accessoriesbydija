@@ -21,8 +21,7 @@ include 'includes/header.php';
                     <div class="delivery-option">
                         <h3>Standard Shipping</h3>
                         <p>5-7 business days</p>
-                        <p>Free on orders over £50</p>
-                        <p>£4.99 for orders under £50</p>
+                        <p>£4.99</p>
                     </div>
 
                     <div class="delivery-option">
@@ -36,7 +35,6 @@ include 'includes/header.php';
                         <h3>International Shipping</h3>
                         <p>7-14 business days</p>
                         <p>£12.99</p>
-                        <p>Free on orders over £150</p>
                     </div>
                 </div>
 

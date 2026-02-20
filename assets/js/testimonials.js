@@ -25,32 +25,16 @@ async function loadTestimonials() {
 }
 
 function displayFallbackTestimonials() {
-    const fallbackTestimonials = [
-        {
-            customer_name: "Sarah M.",
-            rating: 5,
-            content: "Beautiful quality jewelry and excellent customer service. My custom engagement ring exceeded all expectations!",
-            created_at: "2024-01-15",
-            product_id: null
-        },
-        {
-            customer_name: "Michael R.",
-            rating: 5,
-            content: "Fast shipping and gorgeous pieces. The necklace I ordered looks even better in person.",
-            created_at: "2024-01-10",
-            product_id: null
-        },
-        {
-            customer_name: "Emma L.",
-            rating: 5,
-            content: "Amazing craftsmanship and attention to detail. Will definitely be ordering again!",
-            created_at: "2024-01-05",
-            product_id: null
+    // No fallback testimonials - if no testimonials in database, slider remains empty
+    const container = document.getElementById('testimonials-slider');
+    if (container) {
+        const wrapper = container.querySelector('.swiper-wrapper');
+        if (wrapper) {
+            wrapper.innerHTML = '<div class="swiper-slide"><div class="testimonial-card"><div class="testimonial-content">No testimonials yet. Be the first to review our products!</div></div></div>';
         }
-    ];
-    
-    displayTestimonials(fallbackTestimonials);
-    initTestimonialsSlider();
+        // Still initialize slider to maintain layout
+        initTestimonialsSlider();
+    }
 }
 
 function displayTestimonials(testimonials) {

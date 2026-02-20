@@ -1,14 +1,14 @@
 <?php
-$page_title = "Returns & Exchanges";
-$page_description = "Our hassle-free returns and exchanges policy for jewelry purchases from Accessories By Dija.";
+$page_title = "Returns & Refunds - Accessories by Dija";
+$page_description = "Our returns and refunds policy for jewelry purchases. We offer a 48-hour return window for unused items in original condition.";
 include 'includes/header.php';
 ?>
 
 <main>
     <section class="returns-hero">
         <div class="container">
-            <h1>Returns & Exchanges</h1>
-            <p>Shop with confidence. We offer a 30-day return policy on most items.</p>
+            <h1>Returns & Refunds</h1>
+            <p>Shop with confidence. We offer a 48-hours return policy on most items.</p>
         </div>
     </section>
 
@@ -16,26 +16,36 @@ include 'includes/header.php';
         <div class="container">
             <div class="returns-grid">
                 <div class="returns-policy">
-                    <h2>Return Policy</h2>
+                    <h2>Returns Policy</h2>
 
                     <div class="policy-item">
-                        <h3>30-Day Returns</h3>
-                        <p>You have 30 days from delivery to return unworn items in original condition with tags attached.</p>
+                        <h3>48 Hours Returns</h3>
+                        <p>We accept returns within 48hrs of delivery. Returns must be processed within 2 days after you have received your item.</p>
                     </div>
 
                     <div class="policy-item">
-                        <h3>Free Returns</h3>
-                        <p>Return shipping is free for UK customers. International customers pay for return shipping.</p>
+                        <h3>Return Eligibility</h3>
+                        <p>To qualify for a return, items must be unused, in their original packaging, in a resaleable and same condition which you received it. Proof or receipt of purchase will also be required.</p>
+                    </div>
+
+                    <div class="policy-item">
+                        <h3>Return Process</h3>
+                        <p>If your return is accepted, we’ll send you a return shipping label, as well as instructions on how and where to send your package. Items sent back to us without first requesting a return will not be accepted.</p>
+                    </div>
+
+                    <div class="policy-item">
+                        <h3>Refunds</h3>
+                        <p>Once your return is received and inspected, we’ll process your refund within 5–7 business days to your original payment method. Original shipping fees are non-refundable unless the item is faulty.</p>
+                    </div>
+
+                    <div class="policy-item">
+                        <h3>Faulty or Damaged Items</h3>
+                        <p>If you receive a faulty or damaged item, please contact us immediately or within 24hours of delivery. Include your order number and clear photos. We will offer a replacement or full refund promptly.</p>
                     </div>
 
                     <div class="policy-item">
                         <h3>Exchanges</h3>
-                        <p>Exchange for a different size, color, or style within 30 days of delivery.</p>
-                    </div>
-
-                    <div class="policy-item">
-                        <h3>Custom Orders</h3>
-                        <p>Custom and personalized items are not eligible for returns unless damaged or defective.</p>
+                        <p>We do not offer direct exchanges. If you wish to exchange an item, please return the original and place a new order.</p>
                     </div>
                 </div>
 
@@ -46,7 +56,7 @@ include 'includes/header.php';
                         <div class="step-number">1</div>
                         <div class="step-content">
                             <h3>Contact Us</h3>
-                            <p>Email us at returns@accessoriesbydija.uk or call +44 20 7946 0958 with your order number.</p>
+                            <p>Email us at accessoriesbydija@gmail.com or call +44 7823794582 with your order number.</p>
                         </div>
                     </div>
 
@@ -62,7 +72,7 @@ include 'includes/header.php';
                         <div class="step-number">3</div>
                         <div class="step-content">
                             <h3>Ship It Back</h3>
-                            <p>Use the prepaid return label for UK customers, or ship to: Accessories By Dija, Returns Dept, London, UK.</p>
+                            <p>Use the return label for UK customers, or ship to: Accessories By Dija, Returns Dept, London, UK.</p>
                         </div>
                     </div>
 

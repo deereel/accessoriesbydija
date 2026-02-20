@@ -79,8 +79,8 @@ function generateBusinessStructuredData() {
         "alternateName" => "Dija Accessories",
         "url" => $base_url,
         "logo" => $base_url . "/assets/images/logo.webp",
-        "description" => "Premium handcrafted jewelry collection featuring rings, necklaces, earrings, bracelets, and custom pieces. Expert artisans create timeless jewelry with ethically sourced materials.",
-        "foundingDate" => "2020",
+        "description" => "Accessories by Dija specializes in gold-plated stainless steel and titanium steel jewelry - beautiful, non-reactive, tarnish-resistant pieces designed to blend seamlessly with everyday wear and African-inspired fashion.",
+        "foundingDate" => "2017",
         "slogan" => "Timeless Elegance, Handcrafted Perfection",
         "address" => [
             "@type" => "PostalAddress",
@@ -177,7 +177,7 @@ function generateFAQStructuredData() {
                 "name" => "What materials do you use?",
                 "acceptedAnswer" => [
                     "@type" => "Answer",
-                    "text" => "We use only the finest materials including 14K and 18K gold, sterling silver, platinum, and ethically sourced diamonds and gemstones. All our materials are carefully selected for quality and durability."
+                    "text" => "We specialize in gold-plated stainless steel and titanium steel jewelry. These materials are durable, affordable, skin-friendly, and tarnish-resistant."
                 ]
             ],
             [
@@ -193,7 +193,7 @@ function generateFAQStructuredData() {
                 "name" => "What is your return policy?",
                 "acceptedAnswer" => [
                     "@type" => "Answer",
-                    "text" => "We offer a 30-day return policy on all jewelry items. Items must be in original condition with tags attached. Custom pieces may have different return terms - please contact us for details."
+                    "text" => "We accept returns within 48 hours of delivery. Items must be unused, in their original packaging, and in resalable condition. Proof of purchase is required."
                 ]
             ],
             [

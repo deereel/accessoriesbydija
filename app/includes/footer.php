@@ -21,6 +21,14 @@
                 </ul>
             </div>
             <div class="footer-section">
+                <h4>About</h4>
+                <ul>
+                    <li><a href="about.php">Our Story</a></li>
+                    <li><a href="about.php#mission">Mission & Vision</a></li>
+                    <li><a href="about.php#why-choose-us">Why Choose Us</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
                 <h4>Customer Care</h4>
                 <ul>
                     <li><a href="contact.php">Contact Us</a></li>

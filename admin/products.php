@@ -692,7 +692,24 @@ $adornmentOptions = !empty($db_adornments) ? array_map(function($a) { return $a[
                             <div class="form-row">
                                 <div class="form-group">
                                     <label>Image File</label>
-                                    <input type="file" name="images[0][file]" accept="image/*">
+                                    <input type="file" name="images[0][file]" accept="image/*" multiple>
+                                </div>
+                                <div class="form-group">
+                                    <label>Or Choose from Cloud Storage</label>
+                                    <div class="drive-buttons">
+                                        <button type="button" class="btn btn-sm" onclick="openGoogleDrivePicker()" style="background: #4285F4; color: white;">
+                                            <i class="fab fa-google-drive"></i> Google Drive
+                                        </button>
+                                        <button type="button" class="btn btn-sm" onclick="openDropboxPicker()" style="background: #0061FF; color: white;">
+                                            <i class="fab fa-dropbox"></i> Dropbox
+                                        </button>
+                                        <button type="button" class="btn btn-sm" onclick="openOneDrivePicker()" style="background: #0078D4; color: white;">
+                                            <i class="fab fa-microsoft"></i> OneDrive
+                                        </button>
+                                        <button type="button" class="btn btn-sm" onclick="openICloudPicker()" style="background: #007AFF; color: white;">
+                                            <i class="fas fa-cloud"></i> iCloud
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="form-group">
                                     <label>Tag (Optional)</label>
@@ -765,6 +782,23 @@ function addImageField() {
                                     <input type="file" name="images[${imageCount}][file]" accept="image/*">
                                 </div>
                                 <div class="form-group">
+                                    <label>Or Choose from Cloud Storage</label>
+                                    <div class="drive-buttons">
+                                        <button type="button" class="btn btn-sm" onclick="openGoogleDrivePicker()" style="background: #4285F4; color: white;">
+                                            <i class="fab fa-google-drive"></i> Google Drive
+                                        </button>
+                                        <button type="button" class="btn btn-sm" onclick="openDropboxPicker()" style="background: #0061FF; color: white;">
+                                            <i class="fab fa-dropbox"></i> Dropbox
+                                        </button>
+                                        <button type="button" class="btn btn-sm" onclick="openOneDrivePicker()" style="background: #0078D4; color: white;">
+                                            <i class="fab fa-microsoft"></i> OneDrive
+                                        </button>
+                                        <button type="button" class="btn btn-sm" onclick="openICloudPicker()" style="background: #007AFF; color: white;">
+                                            <i class="fas fa-cloud"></i> iCloud
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="form-group">
                                     <label>Tag (Optional)</label>
                                     <select name="images[${imageCount}][tag]">
                                         <option value="">General Product Image</option>
@@ -804,6 +838,23 @@ function addImageField() {
                             <label>Replace Image (Optional)</label>
                             <input type="file" name="images[${index}][file]" accept="image/*">
                         </div>
+                                <div class="form-group">
+                                    <label>Or Choose from Cloud Storage</label>
+                                    <div class="drive-buttons">
+                                        <button type="button" class="btn btn-sm" onclick="openGoogleDrivePicker()" style="background: #4285F4; color: white;">
+                                            <i class="fab fa-google-drive"></i> Google Drive
+                                        </button>
+                                        <button type="button" class="btn btn-sm" onclick="openDropboxPicker()" style="background: #0061FF; color: white;">
+                                            <i class="fab fa-dropbox"></i> Dropbox
+                                        </button>
+                                        <button type="button" class="btn btn-sm" onclick="openOneDrivePicker()" style="background: #0078D4; color: white;">
+                                            <i class="fab fa-microsoft"></i> OneDrive
+                                        </button>
+                                        <button type="button" class="btn btn-sm" onclick="openICloudPicker()" style="background: #007AFF; color: white;">
+                                            <i class="fas fa-cloud"></i> iCloud
+                                        </button>
+                                    </div>
+                                </div>
                         <div class="form-group">
                             <label>Tag (Optional)</label>
                             <select name="images[${index}][tag]">
@@ -922,6 +973,23 @@ function addImageField() {
                             <label>Image File</label>
                             <input type="file" name="images[0][file]" accept="image/*">
                         </div>
+                                <div class="form-group">
+                                    <label>Or Choose from Cloud Storage</label>
+                                    <div class="drive-buttons">
+                                        <button type="button" class="btn btn-sm" onclick="openGoogleDrivePicker()" style="background: #4285F4; color: white;">
+                                            <i class="fab fa-google-drive"></i> Google Drive
+                                        </button>
+                                        <button type="button" class="btn btn-sm" onclick="openDropboxPicker()" style="background: #0061FF; color: white;">
+                                            <i class="fab fa-dropbox"></i> Dropbox
+                                        </button>
+                                        <button type="button" class="btn btn-sm" onclick="openOneDrivePicker()" style="background: #0078D4; color: white;">
+                                            <i class="fab fa-microsoft"></i> OneDrive
+                                        </button>
+                                        <button type="button" class="btn btn-sm" onclick="openICloudPicker()" style="background: #007AFF; color: white;">
+                                            <i class="fas fa-cloud"></i> iCloud
+                                        </button>
+                                    </div>
+                                </div>
                         <div class="form-group">
                             <label>Tag (Optional)</label>
                             <select name="images[0][tag]">
@@ -1340,6 +1408,62 @@ function addImageField() {
             return true;
         }
         
+        // Drive Picker functions
+        function openGoogleDrivePicker() {
+            // Google Drive integration requires API key and OAuth 2.0 setup
+            // This would need to be implemented with Google Picker API
+            alert('Google Drive integration requires OAuth 2.0 setup. Please use the file upload option for now.');
+        }
+        
+        function openDropboxPicker() {
+            // Dropbox integration requires app key and Chooser API setup
+            // This would need to be implemented with Dropbox Chooser API
+            alert('Dropbox integration requires app key setup. Please use the file upload option for now.');
+        }
+        
+        function openOneDrivePicker() {
+            // OneDrive integration requires app registration and API setup
+            // This would need to be implemented with OneDrive File Picker API
+            alert('OneDrive integration requires app registration. Please use the file upload option for now.');
+        }
+        
+        function openICloudPicker() {
+            // iCloud integration requires Apple ID authentication and API setup
+            // This would need to be implemented with iCloud Drive API
+            alert('iCloud integration requires Apple ID setup. Please use the file upload option for now.');
+        }
+
+        // Drive buttons styling
+        const style = document.createElement('style');
+        style.textContent = `
+            .drive-buttons {
+                display: flex;
+                gap: 5px;
+                flex-wrap: wrap;
+            }
+            
+            .drive-buttons .btn {
+                padding: 5px 10px;
+                font-size: 12px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
+                transition: opacity 0.2s;
+            }
+            
+            .drive-buttons .btn:hover {
+                opacity: 0.9;
+            }
+            
+            .drive-buttons .btn i {
+                font-size: 12px;
+            }
+        `;
+        document.head.appendChild(style);
+
         window.onclick = function(event) {
             const modal = document.getElementById('productModal');
             if (event.target == modal) {

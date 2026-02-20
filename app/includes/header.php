@@ -521,6 +521,9 @@ require_once APP_PATH . '/config/cache.php';
                 <a href="gift-box.php">GIFT BOX &#9660;</a>
             </div>
             <div class="nav-item">
+                <a href="about.php">ABOUT</a>
+            </div>
+            <div class="nav-item">
                 <a href="custom-jewelry.php">CUSTOMIZE</a>
             </div>
         </nav>

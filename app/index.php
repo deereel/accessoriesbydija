@@ -17,7 +17,7 @@ $website_schema = [
     "@type" => "WebSite",
     "name" => "Accessories By Dija",
     "url" => $base_url,
-    "description" => "Premium handcrafted jewelry collection featuring rings, necklaces, earrings, bracelets, and custom pieces. Expert artisans create timeless jewelry with ethically sourced materials.",
+    "description" => "Accessories by Dija specializes in gold-plated stainless steel and titanium steel jewelry - beautiful, non-reactive, tarnish-resistant pieces designed to blend seamlessly with everyday wear and African-inspired fashion.",
     "publisher" => [
         "@type" => "Organization",
         "@id" => $base_url . "#organization"
@@ -51,7 +51,7 @@ $faq_schema = [
             "name" => "What materials do you use for your jewelry?",
             "acceptedAnswer" => [
                 "@type" => "Answer",
-                "text" => "We use premium materials including 14K and 18K gold, sterling silver, and ethically sourced gemstones. All our pieces are crafted with attention to quality and durability."
+                "text" => "We specialize in gold-plated stainless steel and titanium steel jewelry. These materials are durable, affordable, skin-friendly, and tarnish-resistant."
             ]
         ],
         [
@@ -67,7 +67,7 @@ $faq_schema = [
             "name" => "What is your return policy?",
             "acceptedAnswer" => [
                 "@type" => "Answer",
-                "text" => "We offer a 30-day return policy on all jewelry purchases. Items must be in original condition with tags attached. Custom pieces are not eligible for return."
+                "text" => "We accept returns within 48 hours of delivery. Items must be unused, in their original packaging, and in resalable condition. Proof of purchase is required."
             ]
         ],
         [
@@ -450,7 +450,7 @@ echo '<script type="application/ld+json">' . json_encode($faq_schema) . '</scrip
             <div class="custom-content">
                 <div class="custom-text">
                     <h2>Create Your Perfect Piece</h2>
-                    <p>Work with our expert designers to create custom jewelry that tells your unique story. From engagement rings to personalized gifts, we bring your vision to life with premium materials and expert craftsmanship.</p>
+                    <p>Work with our expert designers to create custom jewelry that tells your unique story. From customized pendants to personalized gifts, we bring your vision to life with premium materials and expert craftsmanship.</p>
                     <div class="custom-features">
                         <span>✓ Free Consultation</span>
                         <span>✓ 3D Design Preview</span>
