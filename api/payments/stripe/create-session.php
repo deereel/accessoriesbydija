@@ -29,8 +29,8 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../../app/config/env.php';
 require_once __DIR__ . '/../../../app/config/database.php';
 
-// TODO: Use Composer autoloader if installed
-// require __DIR__ . '/../../../vendor/autoload.php';
+	// Use Composer autoloader
+	require __DIR__ . '/../../../vendor/autoload.php';
 
 // Get order ID
 $order_id = $_GET['order_id'] ?? null;
@@ -97,97 +97,61 @@ try {
         exit;
     }
 
-    // TODO: If using Stripe PHP library
-    // \Stripe\Stripe::setApiKey($STRIPE_SECRET_KEY);
+	// Use Stripe PHP library
+	\Stripe\Stripe::setApiKey($STRIPE_SECRET_KEY);
 
-    // Prepare line items from order_items table
-    $line_items = [];
-    
-    // TODO: Fetch actual order items
-    // For now, create a single item with total amount
-    $order_number = $order['order_number'] ?? 'Order #' . $order['id'];
-    $line_items[] = [
-        'price_data' => [
-            'currency' => 'gbp',
-            'product_data' => [
-                'name' => $order_number,
-                'description' => 'Order items'
-            ],
-            'unit_amount' => intval($order['total_amount'] * 100) // Amount in pence
-        ],
-        'quantity' => 1
-    ];
+	// Prepare line items from order_items table
+	$line_items = [];
+	
+	// TODO: Fetch actual order items
+	// For now, create a single item with total amount
+	$order_number = $order['order_number'] ?? 'Order #' . $order['id'];
+	$line_items[] = [
+		'price_data' => [
+			'currency' => 'gbp',
+			'product_data' => [
+				'name' => $order_number,
+				'description' => 'Order items'
+			],
+			'unit_amount' => intval($order['total_amount'] * 100) // Amount in pence
+		],
+		'quantity' => 1
+	];
 
-    // TODO: Add shipping as a separate line item
-    // 'name' => 'Shipping',
-    // 'unit_amount' => intval($order['shipping_amount'] * 100)
+	// TODO: Add shipping as a separate line item
+	// 'name' => 'Shipping',
+	// 'unit_amount' => intval($order['shipping_amount'] * 100)
 
-    // Create Stripe Checkout Session
-    $base_url = getenv('APP_URL') ?: 'http://localhost';
-    
-    // In create-session.php, around line 107, modify the session_params array:
-    $session_params = [
-        'payment_method_types' => ['card'],
-        'line_items' => $line_items,
-        'mode' => 'payment',
-        'success_url' => $base_url . '/order-confirmation.php?order_id=' . $order_id . '&payment=stripe&session_id={CHECKOUT_SESSION_ID}',
-        'cancel_url' => $base_url . '/checkout.php?cancelled=1',
-        'customer_email' => $order['email'],
-        'metadata' => [
-            'order_id' => $order_id
-        ],
-        'payment_intent_data' => [
-            // Removed invalid 'currency' parameter - currency is set at session level
-        ],
-        'currency' => 'gbp'  // Force currency to GBP
-    ];
+	// Create Stripe Checkout Session
+	$base_url = getenv('APP_URL') ?: 'http://localhost';
+	
+	$session = \Stripe\Checkout\Session::create([
+		'payment_method_types' => ['card'],
+		'line_items' => $line_items,
+		'mode' => 'payment',
+		'success_url' => $base_url . '/order-confirmation.php?order_id=' . $order_id . '&payment=stripe&session_id={CHECKOUT_SESSION_ID}',
+		'cancel_url' => $base_url . '/checkout.php?cancelled=1',
+		'customer_email' => $order['email'],
+		'metadata' => [
+			'order_id' => $order_id
+		],
+		'currency' => 'gbp'  // Force currency to GBP
+	]);
 
-    // Make API request to Stripe
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL => 'https://api.stripe.com/v1/checkout/sessions',
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => http_build_query($session_params),
-        CURLOPT_USERPWD => $STRIPE_SECRET_KEY . ':',
-        CURLOPT_TIMEOUT => 30
-    ]);
+	// Log for debugging
+	error_log("Stripe API Response - Session ID: " . $session->id);
 
-    $response = curl_exec($ch);
-    $curl_error = curl_error($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    // Log for debugging
-    error_log("Stripe API Response - HTTP Code: $http_code, Response: " . substr($response, 0, 500));
-
-    if ($curl_error) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Curl error: ' . $curl_error]);
-        exit;
-    }
-
-    if ($http_code !== 200) {
-        http_response_code(500);
-        $error_response = json_decode($response, true);
-        $error_message = $error_response['error']['message'] ?? 'Failed to create Stripe session';
-        echo json_encode(['success' => false, 'message' => $error_message]);
-        exit;
-    }
-
-    $session = json_decode($response, true);
-
-    if (!isset($session['id'])) {
-        http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Invalid Stripe response']);
-        exit;
-    }
+	if (!isset($session->id)) {
+		http_response_code(500);
+		echo json_encode(['success' => false, 'message' => 'Invalid Stripe response']);
+		exit;
+	}
 
     // Store session ID in session for verification
-    $_SESSION['stripe_session_id'] = $session['id'];
+    $_SESSION['stripe_session_id'] = $session->id;
 
-    // Redirect to Stripe Checkout
-    header('Location: ' . $session['url']);
+	// Redirect to Stripe Checkout
+	header('Location: ' . $session->url);
     exit;
 
 } catch (PDOException $e) {
