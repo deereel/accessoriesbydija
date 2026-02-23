@@ -77,7 +77,7 @@
                 <a href="terms.php">Terms & Conditions</a>
                 <a href="returns.php">Returns Policy</a>
             </div>
-            <p>&copy; 2024 Dija Accessories. All rights reserved.</p>
+            <p>&copy; 2024 <a href="/admin/" class="admin-link">Dija</a> Accessories. All rights reserved.</p>
         </div>
     </footer>
     <script src="/assets/js/main.js"></script>
@@ -134,6 +134,17 @@
     </div>
 
     <style>
+    /* Admin link styles */
+    .admin-link {
+        color: inherit;
+        text-decoration: none;
+    }
+    
+    .admin-link:hover {
+        color: #C27BA0; /* Match the theme color */
+        text-decoration: underline;
+    }
+    
     /* The Modal (background) */
     .modal {
         display: none; /* Hidden by default */
