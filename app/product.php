@@ -65,7 +65,7 @@ if (empty($images)) {
     if (is_dir($image_dir)) {
         $files = scandir($image_dir);
         foreach ($files as $file) {
-            if (in_array(strtolower(pathinfo($file, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp'])) {
+            if (in_array(strtolower(pathinfo($file, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif'])) {
                 if (strpos($file, $product['id'] . '_') === 0) {
                     $image_files[] = $image_dir . $file;
                 }
@@ -605,6 +605,28 @@ if (!empty($reviews)) {
                         <?php if (!empty($product['description'])):
                         ?>
                             <p><?= nl2br(htmlspecialchars($product['description'])) ?></p>
+                            <div class="product-specs">
+                                <ul>
+                                    <?php if ($product['weight']):
+                                    ?>
+                                        <li><strong>Weight:</strong> <?= htmlspecialchars($product['weight']) ?>g</li>
+                                    <?php endif; ?>
+                                    <li><strong>Stock:</strong> <?= htmlspecialchars($product['stock_quantity']) ?> available</li>
+                                    <?php if ($product['material']):
+                                    ?>
+                                        <li><strong>Material:</strong> <?= htmlspecialchars($product['material']) ?></li>
+                                    <?php endif; ?>
+                                    <?php if ($product['stone_type']):
+                                    ?>
+                                        <li><strong>Stone Type:</strong> <?= htmlspecialchars($product['stone_type']) ?></li>
+                                    <?php endif; ?>
+                                    <li><strong>Gender:</strong> <?= htmlspecialchars($gender_display ?? 'Unisex') ?></li>
+                                    <li>Premium materials sourced ethically</li>
+                                    <li>Handcrafted by skilled artisans</li>
+                                    <li>Lifetime warranty on all pieces</li>
+                                    <li>Free shipping on orders over £100</li>
+                                </ul>
+                            </div>
                         <?php else:
                         ?>
                             <div class="product-specs">
@@ -852,6 +874,7 @@ if (!empty($reviews)) {
 
 <?php include 'includes/footer.php'; ?>
 <script src="/assets/js/product-details.js" defer></script>
+<script src="/assets/js/heic-display.js" defer></script>
 <script>
 // Image navigation functionality
 document.addEventListener('DOMContentLoaded', function() {

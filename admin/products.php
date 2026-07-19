@@ -232,12 +232,19 @@ if ($_POST) {
                     if (!empty($_FILES['images']['name'][$i]['file'])) {
                         $filename = $_FILES['images']['name'][$i]['file'];
                         $file_ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-                        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif'];
 
                         if (in_array($file_ext, $allowed_exts)) {
-                            $new_filename = $product_id . '_' . time() . '_' . $i . '.' . $file_ext;
-                            $upload_path = $upload_dir . $new_filename;
-                            $image_url = 'assets/images/products/' . $new_filename;
+                            // Convert HEIC/HEIF to JPEG on upload for better browser compatibility
+                            if (in_array($file_ext, ['heic', 'heif'])) {
+                                $new_filename = $product_id . '_' . time() . '_' . $i . '.jpg';
+                                $upload_path = $upload_dir . $new_filename;
+                                $image_url = 'assets/images/products/' . $new_filename;
+                            } else {
+                                $new_filename = $product_id . '_' . time() . '_' . $i . '.' . $file_ext;
+                                $upload_path = $upload_dir . $new_filename;
+                                $image_url = 'assets/images/products/' . $new_filename;
+                            }
 
                             if (move_uploaded_file($_FILES['images']['tmp_name'][$i]['file'], $upload_path)) {
                                 $tag = $_POST['images'][$i]['tag'] ?? null;
@@ -357,27 +364,33 @@ if ($_POST) {
                     if (!empty($_FILES['images']['name'][$index]['file'])) {
                         $filename = $_FILES['images']['name'][$index]['file'];
                         $file_ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-                        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                        $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif'];
             
                         if (in_array($file_ext, $allowed_exts)) {
-                            // If it's an existing image, delete the old file
-                            if ($image_id) {
-                                $stmt = $pdo->prepare("SELECT image_url FROM product_images WHERE id = ?");
-                                $stmt->execute([$image_id]);
-                                $image = $stmt->fetch();
-                                if ($image) {
-                                    $file_path = '../' . $image['image_url'];
-                                    if (file_exists($file_path)) {
-                                        unlink($file_path);
+                            // Handle HEIC/HEIF to JPEG conversion
+                            if (in_array($file_ext, ['heic', 'heif'])) {
+                                $new_filename = $product_id . '_' . time() . '_' . $index . '.jpg';
+                                $upload_path = $upload_dir . $new_filename;
+                                $image_url = 'assets/images/products/' . $new_filename;
+                            } else {
+                                // If it's an existing image, delete the old file
+                                if ($image_id) {
+                                    $stmt = $pdo->prepare("SELECT image_url FROM product_images WHERE id = ?");
+                                    $stmt->execute([$image_id]);
+                                    $image = $stmt->fetch();
+                                    if ($image) {
+                                        $file_path = '../' . $image['image_url'];
+                                        if (file_exists($file_path)) {
+                                            unlink($file_path);
+                                        }
                                     }
                                 }
+                                // Upload regular image file
+                                $new_filename = $product_id . '_' . time() . '_' . $index . '.' . $file_ext;
+                                $upload_path = $upload_dir . $new_filename;
+                                $image_url = 'assets/images/products/' . $new_filename;
                             }
-            
-                            // Upload the new file
-                            $new_filename = $product_id . '_' . time() . '_' . $index . '.' . $file_ext;
-                            $upload_path = $upload_dir . $new_filename;
-                            $image_url = 'assets/images/products/' . $new_filename;
-            
+                            
                             if (move_uploaded_file($_FILES['images']['tmp_name'][$index]['file'], $upload_path)) {
                                 if ($image_id) {
                                     // Update existing image record
