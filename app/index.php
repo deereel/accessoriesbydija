@@ -391,6 +391,13 @@ echo '<script type="application/ld+json">' . json_encode($faq_schema) . '</scrip
                                 <button class="wishlist-btn" data-product-id="<?php echo $product['id']; ?>" onclick="toggleWishlist(<?php echo $product['id']; ?>)" aria-label="Add to wishlist">
                                     <i class="far fa-heart"></i>
                                 </button>
+                                <?php
+                                $share_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'accessoriesbydija.uk') . '/product.php?slug=' . urlencode($product['slug']);
+                                ?>
+                                <button type="button" class="share-product-btn" data-share-url="<?php echo htmlspecialchars($share_url); ?>" aria-label="Share product" title="Share product">
+                                    <i class="fas fa-share-alt"></i>
+                                    <span class="share-feedback">Copied!</span>
+                                </button>
                                 <div class="featured-image">
                                     <a href="product.php?slug=<?php echo $product['slug']; ?>" aria-label="View <?php echo htmlspecialchars($product['name']); ?>">
                                         <?php if ($imageUrl): ?>

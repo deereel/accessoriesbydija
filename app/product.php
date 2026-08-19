@@ -459,6 +459,9 @@ if (!empty($reviews)) {
 }
 </style>
 
+<?php
+$share_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'accessoriesbydija.uk') . '/product.php?slug=' . urlencode($product['slug']);
+?>
 <main data-product='<?php echo json_encode($product); ?>' data-images='<?php echo json_encode($images); ?>'>
     <div class="breadcrumb">
         <a href="index.php">Home</a> / <a href="products.php">Products</a> / <?php echo htmlspecialchars($product['name']); ?>
@@ -586,6 +589,10 @@ if (!empty($reviews)) {
                 <button class="btn btn-primary" id="addToCartBtn" data-action="add-to-cart" data-product-id="<?php echo $product['id']; ?>" disabled>Select Your Preferred Material to Proceed</button>
                 <button data-action="toggle-wishlist" data-product-id="<?php echo $product['id'] ?? 0; ?>" style="padding: 0.75rem 1.5rem; border: 2px solid #C27BA0; background: white; color: #C27BA0; border-radius: 4px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem; margin-left: 1rem;">
                     <i class="far fa-heart"></i> Add to Wishlist
+                </button>
+                <button type="button" class="share-product-btn" data-share-url="<?php echo htmlspecialchars($share_url); ?>" aria-label="Share product" title="Share product">
+                    <i class="fas fa-share-alt"></i> Share
+                    <span class="share-feedback">Copied!</span>
                 </button>
             </div>
         </div>

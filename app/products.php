@@ -11,6 +11,9 @@ $body_class = 'products-page';
 if ($is_new_filter) {
     $page_title = 'New Arrivals | Accessories by Dija';
     $page_description = 'Discover our latest jewelry arrivals including new rings, necklaces, earrings, bracelets, and custom pieces. Fresh styles and trending designs with free shipping on orders over £100.';
+} elseif ($is_sale_filter) {
+    $page_title = 'Sale | Accessories by Dija';
+    $page_description = 'Shop our sale jewelry collection. Find discounted rings, necklaces, earrings, bracelets, and more at Accessories By Dija. Limited time offers with free shipping on orders over £100.';
 } else {
     $page_title = 'All Products | Accessories by Dija';
     $page_description = 'Browse our complete collection of premium jewelry including rings, necklaces, earrings, bracelets, and custom pieces. Shop by category, material, and price range with free shipping on orders over £100.';
@@ -110,6 +113,7 @@ if (isset($_GET['adornment'])) {
 }
 
 $is_new_filter = isset($_GET['new']) && $_GET['new'] == '1';
+$is_sale_filter = isset($_GET['sale']) && $_GET['sale'] == '1';
 
 // Base query with all necessary joins
 $sql = "SELECT p.*, 
@@ -124,6 +128,10 @@ $where = ["p.is_active = 1"];
 
 if ($is_new_filter) {
     $where[] = "p.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+}
+
+if ($is_sale_filter) {
+    $where[] = "p.is_on_sale = 1 AND p.sale_price IS NOT NULL AND p.sale_price < p.price AND (p.sale_end_date IS NULL OR p.sale_end_date >= NOW())";
 }
 $params = [];
 
@@ -425,7 +433,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
         <div class="breadcrumb">
             <a href="index.php">Home</a>
             <span>/</span>
-            <span>Products</span>
+            <span><?= $is_sale_filter ? 'Sale' : ($is_new_filter ? 'New Arrivals' : 'Products') ?></span>
         </div>
     </div>
 
@@ -477,7 +485,7 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
         <!-- Products Area -->
         <div class="products-area">
             <div class="products-header">
-                <h2><?= $is_new_filter ? 'New Arrivals' : 'All Products' ?> (<?= count($products) ?>)</h2>
+                <h2><?= $is_sale_filter ? 'On Sale' : ($is_new_filter ? 'New Arrivals' : 'All Products') ?> (<?= count($products) ?>)</h2>
                 <select id="sort-select" class="sort-select">
                     <option value="" <?= $current_sort === '' ? 'selected' : '' ?>>Sort by latest</option>
                     <option value="price-low" <?= $current_sort === 'price-low' ? 'selected' : '' ?>>Price: Low to High</option>
@@ -521,6 +529,13 @@ main { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
                                      <!-- Wishlist Button -->
                                      <button class="wishlist-btn<?= in_array($product['id'], $user_wishlist) ? ' active' : '' ?>" data-product-id="<?= $product['id'] ?>" onclick="toggleWishlist(<?= $product['id'] ?>, this)">
                                          <i class="<?= in_array($product['id'], $user_wishlist) ? 'fas' : 'far' ?> fa-heart"></i>
+                                     </button>
+                                     <?php
+                                     $share_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'accessoriesbydija.uk') . '/product.php?slug=' . urlencode($product['slug']);
+                                     ?>
+                                     <button type="button" class="share-product-btn" data-share-url="<?= htmlspecialchars($share_url) ?>" aria-label="Share product" title="Share product">
+                                         <i class="fas fa-share-alt"></i>
+                                         <span class="share-feedback">Copied!</span>
                                      </button>
 
                                      <!-- Product Image -->
@@ -744,6 +759,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         productGrid.innerHTML = html;
+        if (window.bindProductShareButtons) {
+            window.bindProductShareButtons(document);
+        }
 
         // Properly reinitialize swiper after dynamic content update
         if (window.swiperInstance) {
@@ -811,7 +829,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const header = document.querySelector('.products-header h2');
         if (header) {
             const isNew = new URLSearchParams(window.location.search).get('new') === '1';
-            header.textContent = (isNew ? 'New Arrivals' : 'All Products') + ' (' + count + ')';
+            const isSale = new URLSearchParams(window.location.search).get('sale') === '1';
+            header.textContent = (isSale ? 'On Sale' : (isNew ? 'New Arrivals' : 'All Products')) + ' (' + count + ')';
         }
     }
 

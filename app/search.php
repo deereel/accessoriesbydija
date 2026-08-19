@@ -372,6 +372,13 @@ $page_description = "Search results for '$search_term' - " . $total_products . "
                 <div class="products-grid">
                     <?php foreach ($products as $product): ?>
                         <div class="product-card">
+                            <?php
+                            $share_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'accessoriesbydija.uk') . '/product.php?slug=' . urlencode($product['slug']);
+                            ?>
+                            <button type="button" class="share-product-btn" data-share-url="<?= htmlspecialchars($share_url) ?>" aria-label="Share product" title="Share product">
+                                <i class="fas fa-share-alt"></i>
+                                <span class="share-feedback">Copied!</span>
+                            </button>
                             <a href="product.php?slug=<?= htmlspecialchars($product['slug']) ?>">
                                 <div class="product-image">
                                     <?php if ($product['image_url']): ?>

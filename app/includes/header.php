@@ -143,6 +143,7 @@ require_once APP_PATH . '/config/cache.php';
     <link rel="stylesheet" href="/assets/css/footer.css">
     <link rel="stylesheet" href="/assets/css/product-cards.css">
     <link rel="stylesheet" href="/assets/css/megamenu.css">
+    <link rel="stylesheet" href="/assets/css/sales-menu.css">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link href="/assets/css/all.min.css" rel="stylesheet">
     <script src="/assets/js/header.js" defer></script>
@@ -160,6 +161,90 @@ require_once APP_PATH . '/config/cache.php';
             }).catch(function(){ /* ignore failures */ });
         } catch (e) {}
     };
+
+    window.shareProductLink = function(url, button) {
+        if (!url) return;
+
+        var feedback = button ? button.querySelector('.share-feedback') : null;
+        var showFeedback = function(message) {
+            if (!feedback) return;
+            feedback.textContent = message;
+            feedback.classList.add('show');
+            setTimeout(function() {
+                feedback.classList.remove('show');
+            }, 1800);
+        };
+
+        var copyTextToClipboard = function(text) {
+            return new Promise(function(resolve, reject) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(resolve).catch(reject);
+                    return;
+                }
+
+                var textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.setAttribute('readonly', '');
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+
+                try {
+                    document.execCommand('copy');
+                    resolve();
+                } catch (error) {
+                    reject(error);
+                } finally {
+                    document.body.removeChild(textArea);
+                }
+            });
+        };
+
+        var fallbackToCopy = function() {
+            copyTextToClipboard(url)
+                .then(function() {
+                    showFeedback('Link copied');
+                })
+                .catch(function() {
+                    showFeedback('Copy failed');
+                });
+        };
+
+        if (navigator.share) {
+            navigator.share({
+                title: document.title || 'Product',
+                text: 'Check out this product',
+                url: url
+            }).then(function() {
+                showFeedback('Shared');
+            }).catch(function() {
+                fallbackToCopy();
+            });
+        } else {
+            fallbackToCopy();
+        }
+    };
+
+    window.bindProductShareButtons = function(root) {
+        if (!root) {
+            root = document;
+        }
+
+        root.querySelectorAll('.share-product-btn').forEach(function(button) {
+            if (button.dataset.shareBound === 'true') return;
+            button.dataset.shareBound = 'true';
+            button.addEventListener('click', function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                window.shareProductLink(this.getAttribute('data-share-url'), this);
+            });
+        });
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        window.bindProductShareButtons(document);
+    });
     </script>
     <style>
     /* Mobile-first responsive fixes */
@@ -202,6 +287,58 @@ require_once APP_PATH . '/config/cache.php';
     }
     
     /* Scroll-to-top button (global) */
+    .share-product-btn {
+        position: absolute;
+        top: 12px;
+        right: 48px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: 1px solid rgba(194, 123, 160, 0.25);
+        background: rgba(255, 255, 255, 0.95);
+        color: #C27BA0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: all 0.2s ease;
+        z-index: 5;
+    }
+    .share-product-btn:hover {
+        background: #C27BA0;
+        color: #fff;
+        transform: translateY(-1px);
+    }
+    .share-product-btn .share-feedback {
+        position: absolute;
+        top: 42px;
+        left: 50%;
+        transform: translateX(-50%) scale(0.95);
+        background: #1f2937;
+        color: #fff;
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .share-product-btn .share-feedback.show {
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+    }
+    .product-actions .share-product-btn {
+        position: static;
+        width: auto;
+        height: auto;
+        padding: 0.75rem 1.25rem;
+        border-radius: 4px;
+        gap: 0.5rem;
+        font-weight: 600;
+        margin-left: 1rem;
+    }
     .scroll-top {
         position: fixed;
         right: 18px;
@@ -471,6 +608,14 @@ require_once APP_PATH . '/config/cache.php';
     </style>
 </head>
 <body class="<?php echo isset($body_class) ? $body_class : ''; ?>">
+    <?php
+    $showSalesHotBadge = false;
+    if (isset($pdo)) {
+        $salePromoCheck = $pdo->query("SELECT 1 FROM products WHERE is_active = 1 AND is_on_sale = 1 AND sale_price IS NOT NULL AND sale_price < price AND (sale_end_date IS NULL OR sale_end_date >= NOW()) LIMIT 1")->fetchColumn();
+        $activePromoCheck = $pdo->query("SELECT 1 FROM promo_codes WHERE is_active = 1 AND start_date <= NOW() AND end_date >= NOW() LIMIT 1")->fetchColumn();
+        $showSalesHotBadge = !empty($salePromoCheck) || !empty($activePromoCheck);
+    }
+    ?>
     <header class="header">
         <div class="header-top">
             <div class="search-container">
@@ -511,6 +656,15 @@ require_once APP_PATH . '/config/cache.php';
             <div class="nav-item" data-menu="shop">
                 <a href="products.php">SHOP</a>
             </div>
+            <div class="nav-item" data-menu="sales">
+                <a href="products.php?sale=1">
+                    SALES
+                    <?php if ($showSalesHotBadge): ?>
+                        <span class="sales-hot-badge">HOT</span>
+                    <?php endif; ?>
+                </a>
+            </div>
+
             <div class="nav-item" data-menu="women">
                 <a href="products.php?gender=women">WOMEN &#9660;</a>
             </div>
@@ -592,6 +746,15 @@ require_once APP_PATH . '/config/cache.php';
                     </div>
                     <div class="gift-column">
                         <span class="disabled-link" aria-disabled="true">Holiday Specials — Coming soon</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SALES Dropdown -->
+            <div class="dropdown-content" data-content="sales">
+                <div class="sales-dropdown-layout">
+                    <div class="sales-products-grid" id="sales-products-grid">
+                        <div class="sale-loading">Loading sale products...</div>
                     </div>
                 </div>
             </div>

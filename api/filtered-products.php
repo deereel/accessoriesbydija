@@ -55,6 +55,7 @@ if (isset($_GET['adornment'])) {
 }
 
 $is_new_filter = isset($_GET['new']) && $_GET['new'] == '1';
+$is_sale_filter = isset($_GET['sale']) && $_GET['sale'] == '1';
 $current_sort = $_GET['sort'] ?? '';
 
 try {
@@ -72,6 +73,10 @@ try {
 
     if ($is_new_filter) {
         $where[] = "p.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+    }
+
+    if ($is_sale_filter) {
+        $where[] = "p.is_on_sale = 1 AND p.sale_price IS NOT NULL AND p.sale_price < p.price AND (p.sale_end_date IS NULL OR p.sale_end_date >= NOW())";
     }
 
     // Handle gender filter

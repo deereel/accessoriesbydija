@@ -1,5 +1,4 @@
-// Wait for DOM to be fully loaded
-document.addEventListener('DOMContentLoaded', function() {
+function initializeHeaderInteractions() {
     // Mega menu functionality
     function initMegaMenu() {
         const navItems = document.querySelectorAll('.nav-item');
@@ -7,10 +6,69 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!megaMenu || navItems.length === 0) return;
 
+        let saleProductsLoaded = false;
+
+        function loadSaleProducts() {
+            if (saleProductsLoaded) return;
+            
+            const desktopGrid = document.getElementById('sales-products-grid');
+            const mobileGrid = document.getElementById('sales-mobile-grid');
+            
+            fetch('/api/sale-products.php')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.products && data.products.length > 0) {
+                        const productHtml = data.products.slice(0, 12).map(product => {
+                            const imageHtml = product.main_image
+                                ? `<img src="${product.main_image}" alt="${product.name}" onerror="this.src='/assets/images/placeholder.jpg'; this.onerror=null;">`
+                                : `<div class="placeholder-img">${product.name.substring(0, 3)}</div>`;
+                            
+                            const originalPrice = product.price ? `<span class="product-price-original">£${product.price.toFixed(2)}</span>` : '';
+                            const salePrice = product.sale_price ? `<span class="product-price-sale">£${product.sale_price.toFixed(2)}</span>` : '';
+                            
+                            return `<div class="product-card" data-product-id="${product.id}" onclick="window.location.href='product.php?slug=${product.slug}'">
+                                <div class="product-image">
+                                    ${imageHtml}
+                                </div>
+                                <h4>${product.name}</h4>
+                                <div class="price">
+                                    ${originalPrice}
+                                    ${salePrice}
+                                </div>
+                            </div>`;
+                        }).join('');
+                        
+                        if (desktopGrid) {
+                            desktopGrid.innerHTML = productHtml;
+                        }
+                        if (mobileGrid) {
+                            mobileGrid.innerHTML = productHtml;
+                        }
+                    } else {
+                        const noProductsHtml = '<div class="sale-no-products">No products on sale right now. Check back soon!</div>';
+                        if (desktopGrid) desktopGrid.innerHTML = noProductsHtml;
+                        if (mobileGrid) mobileGrid.innerHTML = noProductsHtml;
+                    }
+                    saleProductsLoaded = true;
+                })
+                .catch(() => {
+                    const errorHtml = '<div class="sale-no-products">Unable to load sale products. Please try again later.</div>';
+                    if (desktopGrid) desktopGrid.innerHTML = errorHtml;
+                    if (mobileGrid) mobileGrid.innerHTML = errorHtml;
+                    saleProductsLoaded = true;
+                });
+        }
+
         // Mouse enter handler for nav items
         function handleNavItemEnter(e) {
             const menuType = this.dataset.menu;
             if (!menuType) return;
+            
+            if (menuType === 'sales' && window.innerWidth <= 768) return;
+            
+            if (menuType === 'sales') {
+                loadSaleProducts();
+            }
             
             // Hide all dropdown contents
             document.querySelectorAll('.dropdown-content').forEach(content => {
@@ -27,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Add event listeners to each nav item
         navItems.forEach(item => {
-            item.removeEventListener('mouseenter', handleNavItemEnter); // Remove existing to prevent duplicates
+            item.removeEventListener('mouseenter', handleNavItemEnter);
             item.addEventListener('mouseenter', handleNavItemEnter);
         });
 
@@ -59,7 +117,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Re-initialize when navigating with turbolinks/pjax if needed
     document.addEventListener('turbolinks:load', initMegaMenu);
     window.addEventListener('popstate', initMegaMenu);
-});
+
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeHeaderInteractions);
+} else {
+    initializeHeaderInteractions();
+}
 
 // Currency selector
 function initCurrencySelector() {

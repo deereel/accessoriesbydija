@@ -160,6 +160,25 @@ body {
     position: relative;
 }
 
+.nav-item[data-menu="sales"] a {
+    position: relative;
+}
+
+.sales-hot-badge {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    background: #e53935;
+    color: white;
+    font-size: 8px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.4px;
+    padding: 3px 5px;
+    border-radius: 999px;
+    text-transform: uppercase;
+}
+
 .nav-item a {
     display: block;
     padding: 20px 30px;
@@ -506,6 +525,17 @@ body {
         padding: 15px 0;
         text-align: left;
         font-size: 16px;
+    }
+
+    .nav-item[data-menu="sales"] a {
+        padding-right: 42px;
+    }
+
+    .sales-hot-badge {
+        top: 2px;
+        right: 0;
+        font-size: 7px;
+        padding: 2px 4px;
     }
     
     .mega-menu {
